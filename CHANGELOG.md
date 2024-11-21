@@ -7,31 +7,39 @@ every popular database including mysql, postgresql, mssql, kdb…
 For more info see:
 [timestored.com/qstudio](https://timestored.com/qstudio)
 
-This file lists the changes that have occurred in the project:
+## Unreleased
 
+* Currently, no unreleased features
 
-2024-11-18 - 4.01   - SQL Notebooks official launch version. 
+## 4.01 - SQL Notebooks - 2024-11-18
 
-2024-11-12 - 3.86   - Improved Welcome and code examples. Improved display of kdb+ lists as table. bugfix: chartpanel size.
+SQL Notebooks official launch version.
+See the [SQLNotebook page](https://www.timestored.com/sqlnotebook/) for details.
 
-2024-11-08 - 3.85   - Add update reminder. Remove expression watcher, splash screen. Faster startup.
+## 3.07 to 3.86 - 2024-09-13 to 2024-11-12
 
-2024-11-01 - 3.84   - Improved auto-complete of multiple languages. Move all kdb+ code to one area.
+**3.86 - 2024-11-12**  - Improved Welcome and code examples. Improved display of kdb+ lists as table. bugfix: chartpanel size.
 
-2024-10-25 - 3.83   - Remove Legacy SQLDashboards. Update notebooks. Merge to one java project.
+**3.85 - 2024-11-08**  - Add update reminder. Remove expression watcher, splash screen. Faster startup.
 
-2024-10-21 - 3.82   - (SqlNotebooks) - Add Page select dropdown menu when on small screen. Add basic markdown/select-table autocomplete.
+**3.84 - 2024-11-01**   - Improved auto-complete of multiple languages. Move all kdb+ code to one area.
 
-2024-10-18 - 3.81   - (SqlNotebooks) - Add light/dark mode. Improved quote handling. Add top menu. Add demos.
+**3.83 - 2024-10-25**  - Remove Legacy SQLDashboards. Update notebooks. Merge to one java project.
 
-2024-10-14 - 3.80   - (SqlNotebooks) - Allow users to create SQL notebooks based on markdown and HTML.
-					- File tree panel significantly improved. Now opens text files in qStudio, binary files e.g. jpeg using OS.
-					- 10x faster to open OS clicked files in existing qStudio.
-					- Bugfix: Closing doc out of sync bug. 
+**3.82 - 2024-10-21** - (SqlNotebooks) - Add Page select dropdown menu when on small screen. Add basic markdown/select-table autocomplete.
 
-2024-09-14 - 3.10   - Bugfix: Fix custom server border color.
+**3.81 - 2024-10-18** - (SqlNotebooks) - Add light/dark mode. Improved quote handling. Add top menu. Add demos.
 
-2024-09-13 - 3.07   - Upgrade DuckDB to v1.1.0. Add server search to toolbar. 
+**3.80 - 2024-10-14**   
+
+- (SqlNotebooks) - Allow users to create SQL notebooks based on markdown and HTML.
+- File tree panel significantly improved. Now opens text files in qStudio, binary files e.g. jpeg using OS.
+- 10x faster to open OS clicked files in existing qStudio.
+- Bugfix: Closing doc out of sync bug. 
+
+**3.10 - 2024-09-14**   - Bugfix: Fix custom server border color.
+
+**3.07 - 2024-09-13**   - Upgrade DuckDB to v1.1.0. Add server search to toolbar. 
 
 ## 3.06 - 2024-06-05 
 - Add Redshift support.
