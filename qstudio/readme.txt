@@ -1,13 +1,31 @@
-www.timestored.com/qStudio - an IDE for analytical SQL.
+www.timestored.com/qStudio - The analytical SQL Client.
 
 We hope to make this the best IDE for analytical databases there can be 
 so if you find a bug or feel there's a feature you would like added
-please get in touch: tech@timestored.com
+please raise a github issue.
 
 - Ryan Hamilton
 ___________________________________________________________________
 
 Changelog:
+
+2024-03-13 - 4.06   - Add ability to transpose rows.
+					  DuckDB 1.2.1. Improve display of DuckDB arrays.
+					  Add comma separator for thousands option.
+
+2024-02-23 - 4.05   - Upgrade kdb+ c/jdbc.java to allow SSL TLS. 		
+					- Add preference to allow hiding all tooltips.	
+					- Double-click on kdb+ table with dictionary/table/list nested in cell will pop it out. 	
+					
+2024-01-23 - 4.04   - Show column info (avg/min/max) when column header is hovered.
+					- Remove watched expressions entirely.
+					- Improved UI threading for tree/chart display.
+					
+2024-12-23 - 4.03   - Upgrade H2 database to version 2.2.224.
+					- Upgrade DuckDB 1.1.3, MySQL 9.1.0, postgresql 42.7.4.
+					- Default to font sans serif to fix chinese language support.
+
+2024-12-10 - 4.02   - Bugfix: enable buttons on first server add. SQL Notebooks add ```sql type='table' and nesting.
 
 2024-11-18 - 4.01   - SQL Notebooks official launch version. 
 
