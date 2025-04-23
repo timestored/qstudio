@@ -9,6 +9,37 @@ For more info see:
 
 This file lists the changes that have occurred in the project:
 
+2025-04-22 - 4.08   - Bugfix: Candlestick charts were wrong as receiving wrong timezone from kdb driver. Timezone now set to UTC.
+					- Bugfix: "Save as" to .sql was shrinking text. Now fixed.
+					- Bugfix: Show red X close on every document tab.					
+
+2025-04-06 - 4.07   - Add UI Scaling and Font size as separate options to help with 4K monitors
+					- Bugfix: Kdb+ Queries with errors could cause 30 second freezes.
+					- Bugfix: Switch back to MonoSpaced font. Variable width fonts cause wrong caret position.
+					- Improved high resolution QStudio icon.
+					- Mac: Bugfix: Prefences dialog fixed and allows choosing font.
+					- Mac: Fixed Menu shoing about/preferences/exit.
+					- Mac: Allow Command+Option+E to run current query.
+					- 4K handling improved sizing of dialogs.
+					- Bugfix: Improved duckdb init when folder is empty.
+
+2025-03-13 - 4.06   - Add ability to transpose rows.
+					- DuckDB 1.2.1. Improve display of DuckDB arrays.
+					- Add comma separator for thousands option.
+
+2025-02-23 - 4.05   - Upgrade kdb+ c/jdbc.java to allow SSL TLS. 		
+					- Add preference to allow hiding all tooltips.	
+					- Double-click on kdb+ table with dictionary/table/list nested in cell will pop it out. 	
+					
+2025-01-23 - 4.04   - Show column info (avg/min/max) when column header is hovered.
+					- Remove watched expressions entirely.
+					- Improved UI threading for tree/chart display.
+					
+2024-12-23 - 4.03   - Upgrade H2 database to version 2.2.224.
+					- Upgrade DuckDB 1.1.3, MySQL 9.1.0, postgresql 42.7.4.
+					- Default to font sans serif to fix chinese language support.
+
+2024-12-10 - 4.02   - Bugfix: enable buttons on first server add. SQL Notebooks add ```sql type='table' and nesting.
 
 2024-11-18 - 4.01   - SQL Notebooks official launch version. 
 
