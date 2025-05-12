@@ -9,6 +9,10 @@ For more info see:
 
 This file lists the changes that have occurred in the project:
 
+2025-05-12 - 4.09   - Improve Autocomplete suggestions
+					- Add namespace listing panel.
+					- Improve QDoc to add file level details.
+     
 2025-04-22 - 4.08   - Bugfix: Candlestick charts were wrong as receiving wrong timezone from kdb driver. Timezone now set to UTC.
 					- Bugfix: "Save as" to .sql was shrinking text. Now fixed.
 					- Bugfix: Show red X close on every document tab.					
