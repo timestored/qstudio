@@ -9,6 +9,24 @@ ___________________________________________________________________
 
 Changelog:
 
+2025-05-12 - 4.09   - Improve Autocomplete suggestions
+					- Add namespace listing panel.
+					- Improve QDoc to add file level details.
+
+2025-04-22 - 4.08   - Bugfix: Candlestick charts were wrong as receiving wrong timezone from kdb driver. Timezone now set to UTC.
+					- Bugfix: "Save as" to .sql was shrinking text. Now fixed.
+					- Bugfix: Show red X close on every document tab.					
+
+2025-04-06 - 4.07   - Add UI Scaling and Font size as separate options to help with 4K monitors
+					- Bugfix: Kdb+ Queries with errors could cause 30 second freezes.
+					- Bugfix: Switch back to MonoSpaced font. Variable width fonts cause wrong caret position.
+					- Improved high resolution QStudio icon.
+					- Mac: Bugfix: Prefences dialog fixed and allows choosing font.
+					- Mac: Fixed Menu shoing about/preferences/exit.
+					- Mac: Allow Command+Option+E to run current query.
+					- 4K handling improved sizing of dialogs.
+					- Bugfix: Improved duckdb init when folder is empty.
+
 2024-03-13 - 4.06   - Add ability to transpose rows.
 					  DuckDB 1.2.1. Improve display of DuckDB arrays.
 					  Add comma separator for thousands option.
