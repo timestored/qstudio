@@ -8,7 +8,21 @@ For more info see:
 [timestored.com/qstudio](https://timestored.com/qstudio)
 
 This file lists the changes that have occurred in the project:
+QStudio has been continuously developed and improved since first released in 2013.
+We hope to make this the best IDE for analytical databases there can be
+If you find a bug or feel there's a feature you would like added raise an issue on github or email us: tech@timestored.com
 
+
+___________________________________________________________________
+
+Changelog:
+
+2025-08-19 - 4.12   - Show negative numbers in red. TRUE/FALSE for booleans. User configurable.
+					- QDoc 2.0 with modern mkdocs theme.
+
+2025-05-12 - 4.11   - Upgrade ClickHouse driver to 0.8.6.
+					- Upgrade DuckDB to 1.3.0.0.
+	 
 2025-05-12 - 4.09   - Improve Autocomplete suggestions
 					- Add namespace listing panel.
 					- Improve QDoc to add file level details.
