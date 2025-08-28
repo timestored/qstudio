@@ -47,45 +47,44 @@ public class ParsedQEntity implements QEntity, Comparable<ParsedQEntity> {
 	public static final String EXAMPLE_TAG = "example";
 	public static final String RETURN_TAG = "return";
 	private static final Map<String,String> EMPTY_MAP = Collections.emptyMap();
-	
+
 	private final String name;
 	private final String namespace;
 	private final String docDescription;
 	private final String returnDescription;
-	
+
 	/** named tags are like @param ie they have multiple named entries per tag */
 	private final Map<String,Map<String,String>> namedTags;
 	/** tags like @return where it has only one assigned string */
 	private final Map<String,String> tags;
-	
+
 	private final ParsedQFile parentFile;
 	private final int offset;
 
-
 	/**
-	 * 
+	 *
 	 * @param parentFile specifies the parent file to this entity. null is permitted, note
 	 * 	entities are considered equal regardless of what file they are in.
 	 */
-	static ParsedQEntity get(ParsedQFile parentFile, String name, String namespace, 
-			ParsedComments pec, int offset) {
-		
-		return new ParsedQEntity(parentFile, name, namespace, pec.docDescription, 
-				pec.namedTags, pec.tags, 
+	static ParsedQEntity get(ParsedQFile parentFile, String name, String namespace,
+							 ParsedComments pec, int offset) {
+
+		return new ParsedQEntity(parentFile, name, namespace, pec.docDescription,
+				pec.namedTags, pec.tags,
 				pec.returnDescription, offset);
 	}
-	
+
 	/**
 	 * @param parentFile specifies the parent file to this entity. null is NOT permitted, note
 	 * 	entities are considered equal regardless of what file they are in.
 	 */
-	private ParsedQEntity(ParsedQFile parentFile, String name, 
-			String namespace, String docDescription, 
-			Map<String, Map<String, String>> namedTags,
-			Map<String, String> tags,
-			String returnDescription,
-			int offset) {
-		
+	private ParsedQEntity(ParsedQFile parentFile, String name,
+						  String namespace, String docDescription,
+						  Map<String, Map<String, String>> namedTags,
+						  Map<String, String> tags,
+						  String returnDescription,
+						  int offset) {
+
 		this.name = Preconditions.checkNotNull(name);
 		this.namespace = Preconditions.checkNotNull(namespace);
 		this.docDescription = (docDescription == null ? "" : docDescription);
@@ -96,18 +95,18 @@ public class ParsedQEntity implements QEntity, Comparable<ParsedQEntity> {
 		this.parentFile = Preconditions.checkNotNull(parentFile);
 		this.offset = offset;
 	}
-	
-	
+
+
 	/**
 	 * @param parentFile specifies the parent file to this entity. null is NOT permitted, note
 	 * 	entities are considered equal regardless of what file they are in.
 	 */
-	public static ParsedQEntity get(ParsedQFile parentFile, String name, 
-			String namespace, String docDescription, 
-			Map<String, String> paramDescriptions,
-			Map<String, String> exceptionDescriptions,
-			String returnDescription,
-			int offset) {
+	public static ParsedQEntity get(ParsedQFile parentFile, String name,
+									String namespace, String docDescription,
+									Map<String, String> paramDescriptions,
+									Map<String, String> exceptionDescriptions,
+									String returnDescription,
+									int offset) {
 
 		HashMap<String, Map<String,String>> namedTags = new HashMap<String, Map<String,String>>();
 		if(paramDescriptions != null) {
@@ -116,11 +115,11 @@ public class ParsedQEntity implements QEntity, Comparable<ParsedQEntity> {
 		if(exceptionDescriptions != null) {
 			namedTags.put(EXCEPTION_TAG, Collections.unmodifiableMap(exceptionDescriptions));
 		}
-		return new ParsedQEntity(parentFile, name, namespace, docDescription, 
+		return new ParsedQEntity(parentFile, name, namespace, docDescription,
 				namedTags, EMPTY_MAP, returnDescription, offset);
 	}
 
-	/** {@inheritDoc} */ @Override 
+	/** {@inheritDoc} */ @Override
 	public String getNamespace() {
 		return namespace;
 	}
@@ -132,83 +131,99 @@ public class ParsedQEntity implements QEntity, Comparable<ParsedQEntity> {
 	}
 
 	public String getHtmlDoc(boolean shortFormat, String baseWeblink) {
-		
 		boolean hasDocs = !docDescription.trim().isEmpty() || !tags.isEmpty() || !namedTags.isEmpty();
-		String s = "";
-		
-		if(hasDocs) {
-			StringBuilder sb = new StringBuilder();
-			sb.append(HtmlUtils.START);
-			sb.append("<p>" + docDescription + "</p>");	
-			
-			Map<String,String> namesToDescs = Maps.newHashMap();
-			
-			for(Entry<String, String> e : tags.entrySet()) {
-				String k = e.getKey();
-				if(k.equals(RETURN_TAG)) {
-					k = "Return";
-				}
-				namesToDescs.put(k + ": ", e.getValue());
-			}
-			
-			for(Entry<String, Map<String, String>> e : namedTags.entrySet()) {
-				String k = e.getKey();
-				if(k.equals(PARAM_TAG)) {
-					k = "Parameters";
-				} else if(k.equals(EXCEPTION_TAG)) {
-					k = "Exceptions";
-				} else if(k.equals(COLUMN_TAG)) {
-					k = "Columns";
-				}
-				
-				if(k.equals(EXAMPLE_TAG)) {
-					k = "Examples";
-					Map<String, String> codeMap = Maps.newHashMap();
-					e.getValue().forEach((String u, String vv) -> {
-						if(baseWeblink!=null && baseWeblink.length()>0) {
-							u = "<a href='" + baseWeblink + "?" + vv + "'>" + u + "</a>";
-						}
-						codeMap.put(u, "<code>" + vv + "</code>");
-					});
-					namesToDescs.put(k + ": ", HtmlUtils.toList(codeMap, true));
-				} else {
-					namesToDescs.put(k + ": ", HtmlUtils.toList(e.getValue(), true));
-				}
-			}
-			
-			sb.append(HtmlUtils.toTable(namesToDescs, true));
-			sb.append(HtmlUtils.END);
-			s = sb.toString();
+
+		if (!hasDocs) {
+			return "";
 		}
-		
-		return s;
+
+		return generateHtmlDoc(baseWeblink);
 	}
 
-	/** {@inheritDoc} */ @Override 
+	private String generateHtmlDoc(String baseWeblink) {
+		StringBuilder sb = new StringBuilder();
+		sb.append(HtmlUtils.START);
+		sb.append("<p>" + docDescription + "</p>");
+
+		Map<String, String> namesToDescs = Maps.newHashMap();
+
+		processTags(namesToDescs);
+		processNamedTags(baseWeblink, namesToDescs);
+
+		sb.append(HtmlUtils.toTable(namesToDescs, true));
+		sb.append(HtmlUtils.END);
+		return sb.toString();
+	}
+
+	private void processTags(Map<String, String> namesToDescs) {
+		for (Entry<String, String> e : tags.entrySet()) {
+			String k = e.getKey();
+			if (k.equals(RETURN_TAG)) {
+				k = "Return";
+			}
+			namesToDescs.put(k + ": ", e.getValue());
+		}
+	}
+
+	private void processNamedTags(String baseWeblink, Map<String, String> namesToDescs) {
+		for (Entry<String, Map<String, String>> e : namedTags.entrySet()) {
+			String k = e.getKey();
+			k = getTagDisplayName(k);
+
+			if (k.equals(EXAMPLE_TAG)) {
+				processExampleTags(baseWeblink, namesToDescs, e);
+			} else {
+				namesToDescs.put(k + ": ", HtmlUtils.toList(e.getValue(), true));
+			}
+		}
+	}
+
+	private void processExampleTags(String baseWeblink, Map<String, String> namesToDescs, Entry<String, Map<String, String>> e) {
+		String k = "Examples";
+		Map<String, String> codeMap = Maps.newHashMap();
+		e.getValue().forEach((String u, String vv) -> {
+			if (baseWeblink != null && !baseWeblink.isEmpty()) {
+				u = "<a href='" + baseWeblink + "?" + vv + "'>" + u + "</a>";
+			}
+			codeMap.put(u, "<code>" + vv + "</code>");
+		});
+		namesToDescs.put(k + ": ", HtmlUtils.toList(codeMap, true));
+	}
+
+	private String getTagDisplayName(String k) {
+		switch(k) {
+			case PARAM_TAG: return "Parameters";
+			case EXCEPTION_TAG: return "Exceptions";
+			case COLUMN_TAG: return "Columns";
+			default: return k;
+		}
+	}
+
+	/** {@inheritDoc} */ @Override
 	public String getDocName() {
-		 return getFullName();
+		return getFullName();
 	}
 
 	@Override public String getFullName() {
-		 return (namespace.equals(".") ? "" : namespace + ".") + name;
+		return (namespace.equals(".") ? "" : namespace + ".") + name;
 	}
-	
+
 	String getDocDescription() {
 		return docDescription;
 	}
 
-	/** 
+	/**
 	 * Named tags are like @param ie they have multiple named entries per tag.
 	 * @return a map from names to entries, e.g. "param"->("key"->"a unique identifier")
 	 */
 	Map<String, Map<String, String>> getNamedTags() {
 		return Collections.unmodifiableMap(namedTags);
 	}
-	
 
-	/** 
+
+	/**
 	 * Named tags are like @param ie they have multiple named entries per tag
-	 * @return A map of names to descriptions if tagName exists otherwise an empty map.  
+	 * @return A map of names to descriptions if tagName exists otherwise an empty map.
 	 */
 	Map<String, String> getNamedTags(String tagName) {
 		Map<String, String> r = namedTags.get(tagName);
@@ -216,136 +231,71 @@ public class ParsedQEntity implements QEntity, Comparable<ParsedQEntity> {
 	}
 
 
-	/** 
+	/**
 	 * Tags like @return where it has only one assigned string
-	 * @return a map from tags to their description. 
+	 * @return a map from tags to their description.
 	 */
 	public Map<String, String> getTags() {
 		return tags;
 	}
 
 
-	/** 
+	/**
 	 * Tags like @return where it has only one assigned string
-	 * Get the description of a specific tag, or null if it does not exist. 
+	 * Get the description of a specific tag, or null if it does not exist.
 	 */
 	public String getTag(String tag) {
 		return tags.get(tag);
 	}
-	
+
 	Map<String, String> getParamTags() {
 		return getNamedTags(PARAM_TAG);
 	}
 
-	
+
 	Map<String, String> getExceptionTags() {
 		return getNamedTags(EXCEPTION_TAG);
 	}
-	
+
 	String getReturnDescription() {
 		return returnDescription;
 	}
-	
+
 	/**
-	 * @return The parent file if it is known, otherwise null
+	 * @return The parent file if it is known, else null.
 	 */
-	private String getSrcFileAbsolutePath() {
-		return parentFile==null ? null : parentFile.getSrcFileAbsolutePath();
+	ParsedQFile getParentFile() {
+		return parentFile;
 	}
-	
-	/**
-	 * @return position from start of file in characters that entity occurs.
-	 * NOTE! \r\n are treated as one character only!! In order that {@link Document} and parsing 
-	 * offsets match up. All due to javas editor pane handling new lines.
-	 */
-	public int getOffset() {
+
+	int getOffset() {
 		return offset;
 	}
 
-	@Override
-	public String toString() {
-		return MoreObjects.toStringHelper(this)
-			.add("name", name)
-			.add("namespace", namespace)
-			.add("srcFilePath", getSrcFileAbsolutePath())
-			.add("offset", offset)
-			.toString();
+	public boolean isEmpty() {
+		return docDescription.trim().isEmpty()
+				&& namedTags.isEmpty()
+				&& tags.isEmpty();
 	}
 
-	
-	
-	@Override
-	public int hashCode(){
-		return Objects.hashCode(super.hashCode(), name, namespace, 
-				docDescription, namedTags, getSrcFileAbsolutePath(), offset);
-	}
-	
-	public String toFullString() {
-		return MoreObjects.toStringHelper(this)
-			.add("name", name)
-			.add("namespace", namespace)
-			.add("docDescription", docDescription)
-			.add("returnDescription", returnDescription)
-			.add("paramDescriptions", namedTags.get(PARAM_TAG))
-			.add("exceptionDescriptions", namedTags.get(EXCEPTION_TAG))
-			.add("srcFilePath", getSrcFileAbsolutePath())
-			.add("offset", offset)
-			.toString();
-	}
-
-
-	@Override
-	public boolean equals(Object object){
-		if (object instanceof ParsedQEntity) {
-			ParsedQEntity that = (ParsedQEntity) object;
-			return Objects.equal(this.name, that.name)
-				&& Objects.equal(this.namespace, that.namespace)
-				&& Objects.equal(this.docDescription, that.docDescription)
-				&& Objects.equal(this.namedTags, that.namedTags)
-//				&& Objects.equal(this.parentFile, that.parentFile)
-			&& Objects.equal(this.returnDescription, that.returnDescription);
-//				&& Objects.equal(this.offset, that.offset);
+	@Override public boolean equals(Object o) {
+		if (o instanceof ParsedQEntity) {
+			ParsedQEntity other = (ParsedQEntity) o;
+			return Objects.equal(this.name, other.name)
+					&& Objects.equal(this.namespace, other.namespace)
+					&& Objects.equal(this.docDescription, other.docDescription)
+					&& Objects.equal(this.namedTags, other.namedTags)
+					&& Objects.equal(this.returnDescription, other.returnDescription);
 		}
 		return false;
 	}
 
-	/** @return Description up till the first full stop. */
-	public String getShortDescription() {
-		String s = getDocDescription();
-		int p = s.indexOf('.');
-		return p==-1 ? s : s.substring(0, p+1);
+	@Override public int hashCode() {
+		return Objects.hashCode(super.hashCode(), name, namespace, docDescription, namedTags, getSrcFileAbsolutePath(), offset);
 	}
 
-	public void gotoDefinition(OpenDocumentsModel openDocumentsModel) throws IOException {
-		String pth = getSrcFileAbsolutePath();
-		if(pth!=null) {
-			Document d = openDocumentsModel.openDocument(pth);
-			d.setCaratPosition(getOffset());
-		} 
+	@Override public int compareTo(ParsedQEntity other) {
+		return this.getFullName().compareTo(other.getFullName());
 	}
 
-	@Override public ImageIcon getIcon() {
-		return Theme.CIcon.PAGE_CODE.get16();
-	}
-
-	@Override public SourceType getSourceType() {
-		return SourceType.SOURCE;
-	}
-
-	@Override public String getSource() {
-		return parentFile.getFileTitle();
-	}
-
-	ParsedQFile getParentFile() {
-		return parentFile;
-	}
-	
-	/** The name of this entity (not including namesapce */
-	String getName() {
-		return name;
-	}
-	
-	@Override public int compareTo(ParsedQEntity o) {
-		return this.getFullName().compareTo(o.getFullName());
-	}
 }
