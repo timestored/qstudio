@@ -35,7 +35,7 @@ import com.timestored.kdb.KdbConnection;
 public class ServerModel {
 
 	private static final Logger LOG = Logger.getLogger(ServerModel.class.getName());
-	private final  ServerConfig serverConfig;
+	private ServerConfig serverConfig;
 	
 	private ServerObjectTree serverObjectTree;
 	private ServerReport serverReport;
@@ -122,6 +122,23 @@ public class ServerModel {
 		return serverConfig.getName();
 	}
 
+
+	/**
+	 * Update the ServerConfig for this ServerModel. This allows preserving the ServerModel 
+	 * instance (and any associated permissions) when connection details change.
+	 * @param newServerConfig The updated server configuration
+	 */
+	public void updateServerConfig(ServerConfig newServerConfig) {
+		if (!this.serverConfig.getName().equals(newServerConfig.getName())) {
+			throw new IllegalArgumentException("Cannot change server name via updateServerConfig");
+		}
+		this.serverConfig = newServerConfig;
+		
+		// Clear cached objects that may depend on the old config
+		this.serverObjectTree = null;
+		this.serverReport = null;
+		this.serverSlashConfig = null;
+	}
 
 	@Override
 	public String toString() {

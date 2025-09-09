@@ -159,11 +159,12 @@ public class AdminModel implements ConnectionManager.Listener,DocSource {
 						LOG.info("refreshing " + sconf.getName());
 						ServerModel sm = null;
 						for(int i=0; i<serverModels.size(); i++) {
-							if(sconf.equals(serverModels.get(i).getServerConfig())) {
-								sm = new ServerModel(connectionManager, sconf);
+							if(sconf.getName().equals(serverModels.get(i).getServerConfig().getName())) {
+								sm = serverModels.get(i);
+								sm.updateServerConfig(sconf);
 								sm.refresh();
 								serverContainer.put(sconf.getName(), sm);
-								serverModels.set(i, sm);
+								// Note: we don't replace the ServerModel in the list, just update its config
 		
 								for(Listener l : listeners) {
 									l.modelChanged(sm);
@@ -202,8 +203,10 @@ public class AdminModel implements ConnectionManager.Listener,DocSource {
 			
 			// if allowed to use cache, try to get previous.
 			ServerModel cacheSM = serverContainer.get(sconf.getName());
-			if(!hardRefresh && cacheSM!=null && cacheSM.getServerConfig().equals(sconf)) {
+			if(!hardRefresh && cacheSM!=null && cacheSM.getServerConfig().getName().equals(sconf.getName())) {
+				// Reuse the existing ServerModel but update its ServerConfig to preserve permissions
 				sm = cacheSM;
+				sm.updateServerConfig(sconf);
 			} else {
 				sm = new ServerModel(connectionManager, sconf);
 //				modelsNeedingRefreshed.add(sm);
