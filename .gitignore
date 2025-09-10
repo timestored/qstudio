@@ -1,2 +1,6 @@
 .gradle
 build
+*.class
+*.jar
+target/
+*.log
