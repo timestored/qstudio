@@ -1,2 +1,16 @@
 .gradle
 build
+
+# Web UI build artifacts
+/web-ui/node_modules/
+/web-ui/build/
+/web-ui/dist/
+/web-ui/.env.local
+/web-ui/.env.development.local
+/web-ui/.env.test.local
+/web-ui/.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

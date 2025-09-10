@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QueryableEditor Expandable Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .demo-controls {
+            margin-bottom: 20px;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .demo-controls button {
+            margin-right: 10px;
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+        }
+        .demo-controls button:hover {
+            background: #e9ecef;
+        }
+        .demo-controls button.active {
+            background: #007bff;
+            color: white;
+        }
+        .queryable-editor {
+            position: relative;
+            transition: all 0.3s ease-in-out;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 400px;
+            display: flex;
+            justify-content: flex-end;
+            align-items: flex-start;
+        }
+        .queryable-editor.expanded {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1000;
+            background-color: white;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            justify-content: flex-start;
+            align-items: flex-start;
+        }
+        .editor-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1001;
+            display: flex;
+            gap: 8px;
+        }
+        .expandable-btn {
+            padding: 4px 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .expandable-btn.expandable {
+            background: #007bff;
+            color: white;
+        }
+        .expandable-btn.fixed {
+            background: #f8f9fa;
+            color: #333;
+        }
+        .editor-content {
+            max-width: 50%;
+            min-width: 300px;
+            padding: 20px;
+        }
+        .queryable-editor.expanded .editor-content {
+            width: 100%;
+            height: 100%;
+            max-width: none;
+        }
+        .editor-area {
+            width: 100%;
+            height: 300px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            padding: 16px;
+            background-color: #fafafa;
+            font-family: monospace;
+            font-size: 14px;
+            outline: none;
+            overflow: auto;
+            resize: none;
+        }
+        .queryable-editor.expanded .editor-area {
+            height: calc(100% - 60px);
+        }
+        .editor-area.focused {
+            border-color: #007bff;
+        }
+        .status-bar {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #666;
+        }
+        .tooltip {
+            position: absolute;
+            top: 40px;
+            left: 10px;
+            background: #333;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 1002;
+            white-space: nowrap;
+            display: none;
+        }
+        .tooltip.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>QueryableEditor Expandable Demo</h1>
+        <p>This demonstrates the expandable functionality of the QueryableEditor component.</p>
+        
+        <div class="demo-controls">
+            <h3>Demo Controls:</h3>
+            <button id="toggleTooltip">Toggle Tooltip (Currently: Off)</button>
+            <p><strong>Key Features Demonstrated:</strong></p>
+            <ul>
+                <li>Click inside the editor to focus it</li>
+                <li>Use the "Expandable/Fixed" button to toggle expansion capability</li>
+                <li><strong>Editor only expands when both focused AND expandable</strong></li>
+                <li>When not expandable, editor stays on the right side</li>
+            </ul>
+        </div>
+
+        <div class="queryable-editor" id="editor-container">
+            <div class="editor-controls">
+                <button class="expandable-btn expandable" id="expandable-btn" title="Disable expansion">
+                    Expandable
+                </button>
+            </div>
+            
+            <div class="tooltip" id="tooltip">
+                Editor collapsed
+            </div>
+            
+            <div class="editor-content">
+                <textarea class="editor-area" id="editor-area" placeholder="SELECT * FROM users WHERE active = true;
+
+-- Click here to focus the editor
+-- Try toggling the Expandable/Fixed button
+-- Editor only expands when both focused AND expandable"></textarea>
+                
+                <div class="status-bar" id="status-bar">
+                    Status: Unfocused | Expandable | Collapsed
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State management
+        let expandable = JSON.parse(localStorage.getItem('expandable') || 'true');
+        let codeFocussed = false;
+        let showTooltip = false;
+
+        // Get elements
+        const editorContainer = document.getElementById('editor-container');
+        const editorArea = document.getElementById('editor-area');
+        const expandableBtn = document.getElementById('expandable-btn');
+        const statusBar = document.getElementById('status-bar');
+        const tooltip = document.getElementById('tooltip');
+        const tooltipToggle = document.getElementById('toggleTooltip');
+
+        function shouldExpand() {
+            return codeFocussed && expandable;
+        }
+
+        function updateUI() {
+            // Update expandable button
+            expandableBtn.textContent = expandable ? 'Expandable' : 'Fixed';
+            expandableBtn.className = `expandable-btn ${expandable ? 'expandable' : 'fixed'}`;
+            expandableBtn.title = expandable ? 'Disable expansion' : 'Enable expansion';
+
+            // Update editor container
+            if (shouldExpand()) {
+                editorContainer.classList.add('expanded');
+                editorContainer.classList.remove('collapsed');
+            } else {
+                editorContainer.classList.remove('expanded');
+                editorContainer.classList.add('collapsed');
+            }
+
+            // Update editor area focus style
+            if (codeFocussed) {
+                editorArea.classList.add('focused');
+            } else {
+                editorArea.classList.remove('focused');
+            }
+
+            // Update status bar
+            const focusStatus = codeFocussed ? 'Focused' : 'Unfocused';
+            const expandableStatus = expandable ? 'Expandable' : 'Fixed Position';
+            const expandedStatus = shouldExpand() ? 'EXPANDED' : 'Collapsed';
+            statusBar.textContent = `Status: ${focusStatus} | ${expandableStatus} | ${expandedStatus}`;
+
+            // Update tooltip
+            tooltip.textContent = shouldExpand() ? 'Editor expanded (focus + expandable)' : 'Editor collapsed';
+            tooltip.className = showTooltip ? 'tooltip show' : 'tooltip';
+        }
+
+        // Event listeners
+        expandableBtn.addEventListener('click', () => {
+            expandable = !expandable;
+            localStorage.setItem('expandable', JSON.stringify(expandable));
+            updateUI();
+        });
+
+        editorArea.addEventListener('focus', () => {
+            codeFocussed = true;
+            updateUI();
+        });
+
+        editorArea.addEventListener('blur', () => {
+            codeFocussed = false;
+            updateUI();
+        });
+
+        tooltipToggle.addEventListener('click', () => {
+            showTooltip = !showTooltip;
+            tooltipToggle.textContent = `Toggle Tooltip (Currently: ${showTooltip ? 'On' : 'Off'})`;
+            updateUI();
+        });
+
+        // Handle escape key to exit expanded mode
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && shouldExpand()) {
+                editorArea.blur();
+            }
+        });
+
+        // Initial render
+        updateUI();
+    </script>
+</body>
+</html>

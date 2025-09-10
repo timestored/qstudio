@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QueryableEditor Demo</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .demo-controls {
+            margin-bottom: 20px;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .demo-controls button {
+            margin-right: 10px;
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+        }
+        .demo-controls button:hover {
+            background: #e9ecef;
+        }
+        .demo-controls button.active {
+            background: #007bff;
+            color: white;
+        }
+        .editor-container {
+            min-height: 400px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>QueryableEditor Demo</h1>
+        <p>This demonstrates the expandable functionality of the QueryableEditor component.</p>
+        
+        <div class="demo-controls">
+            <h3>Demo Controls:</h3>
+            <button id="toggleFocus">Toggle Focus (Currently: Unfocused)</button>
+            <button id="toggleTooltip">Toggle Tooltip (Currently: Off)</button>
+            <p><strong>Instructions:</strong></p>
+            <ul>
+                <li>Click inside the editor to focus it</li>
+                <li>Use the "Expandable/Fixed" button to toggle expansion capability</li>
+                <li>Editor only expands when both focused AND expandable</li>
+                <li>When not expandable, editor stays on the right side</li>
+            </ul>
+        </div>
+
+        <div class="editor-container" id="editor-container">
+            <!-- QueryableEditor will be rendered here -->
+        </div>
+    </div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // useLocalStorage hook implementation
+        function useLocalStorage(key, initialValue) {
+            const [storedValue, setStoredValue] = useState(() => {
+                try {
+                    const item = window.localStorage.getItem(key);
+                    return item ? JSON.parse(item) : initialValue;
+                } catch (error) {
+                    console.warn(`Error reading localStorage key "${key}":`, error);
+                    return initialValue;
+                }
+            });
+
+            const setValue = (value) => {
+                try {
+                    const valueToStore = value instanceof Function ? value(storedValue) : value;
+                    setStoredValue(valueToStore);
+                    window.localStorage.setItem(key, JSON.stringify(valueToStore));
+                } catch (error) {
+                    console.warn(`Error setting localStorage key "${key}":`, error);
+                }
+            };
+
+            return [storedValue, setValue];
+        }
+
+        // QueryableEditor component
+        const QueryableEditor = (props) => {
+            const [showTooltip, setShowTooltip] = useState(props.showTooltip);
+            const [expandable, setExpandable] = useLocalStorage("expandable", true);
+            const [codeFocussed, setCodeFocussed] = useState(props.codeFocussed || false);
+
+            useEffect(() => {
+                setShowTooltip(props.showTooltip);
+            }, [props.showTooltip]);
+
+            useEffect(() => {
+                setCodeFocussed(props.codeFocussed || false);
+            }, [props.codeFocussed]);
+
+            const shouldExpand = codeFocussed && expandable;
+
+            const handleFocus = () => {
+                setCodeFocussed(true);
+                props.onFocusChange?.(true);
+            };
+
+            const handleBlur = () => {
+                setCodeFocussed(false);
+                props.onFocusChange?.(false);
+            };
+
+            const baseStyles = {
+                position: 'relative',
+                transition: 'all 0.3s ease-in-out',
+                ...props.style,
+            };
+
+            const expandedStyles = shouldExpand
+                ? {
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    zIndex: 1000,
+                    backgroundColor: 'white',
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+                  }
+                : {
+                    position: 'relative',
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    alignItems: 'flex-start',
+                  };
+
+            const containerStyles = {
+                ...baseStyles,
+                ...expandedStyles,
+            };
+
+            const editorContentStyles = shouldExpand
+                ? {
+                    width: '100%',
+                    height: '100%',
+                    padding: '20px',
+                  }
+                : {
+                    maxWidth: '50%',
+                    minWidth: '300px',
+                  };
+
+            return React.createElement('div', {
+                className: `queryable-editor ${shouldExpand ? 'expanded' : 'collapsed'}`,
+                style: containerStyles,
+                onFocus: handleFocus,
+                onBlur: handleBlur,
+            }, [
+                // Expandable toggle button
+                React.createElement('div', {
+                    key: 'controls',
+                    style: {
+                        position: 'absolute',
+                        top: '10px',
+                        right: '10px',
+                        zIndex: 1001,
+                        display: 'flex',
+                        gap: '8px',
+                    }
+                }, [
+                    React.createElement('button', {
+                        key: 'expandable-btn',
+                        onClick: () => setExpandable(!expandable),
+                        style: {
+                            padding: '4px 8px',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px',
+                            background: expandable ? '#007bff' : '#f8f9fa',
+                            color: expandable ? 'white' : '#333',
+                            cursor: 'pointer',
+                            fontSize: '12px',
+                        },
+                        title: expandable ? 'Disable expansion' : 'Enable expansion'
+                    }, expandable ? 'Expandable' : 'Fixed')
+                ]),
+                
+                // Main editor content
+                React.createElement('div', {
+                    key: 'content',
+                    style: editorContentStyles
+                }, [
+                    // Tooltip
+                    showTooltip && React.createElement('div', {
+                        key: 'tooltip',
+                        style: {
+                            position: 'absolute',
+                            top: '40px',
+                            left: '10px',
+                            background: '#333',
+                            color: 'white',
+                            padding: '8px 12px',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            zIndex: 1002,
+                            whiteSpace: 'nowrap',
+                        }
+                    }, shouldExpand ? 'Editor expanded (focus + expandable)' : 'Editor collapsed'),
+
+                    // Editor content area
+                    React.createElement('div', {
+                        key: 'editor',
+                        style: {
+                            width: '100%',
+                            height: shouldExpand ? 'calc(100% - 60px)' : '300px',
+                            border: `2px solid ${codeFocussed ? '#007bff' : '#ddd'}`,
+                            borderRadius: '4px',
+                            padding: '16px',
+                            backgroundColor: '#fafafa',
+                            fontFamily: 'monospace',
+                            fontSize: '14px',
+                            outline: 'none',
+                            overflow: 'auto',
+                        },
+                        contentEditable: true,
+                        suppressContentEditableWarning: true,
+                        onFocus: handleFocus,
+                        onBlur: handleBlur
+                    }, props.children || 'SELECT * FROM users WHERE active = true;\n\n-- Click here to focus the editor\n-- Try toggling the Expandable/Fixed button\n-- Editor only expands when both focused AND expandable'),
+
+                    // Status indicator
+                    React.createElement('div', {
+                        key: 'status',
+                        style: {
+                            marginTop: '8px',
+                            fontSize: '12px',
+                            color: '#666',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                        }
+                    }, React.createElement('span', {}, 
+                        `Status: ${codeFocussed ? 'Focused' : 'Unfocused'} | ${expandable ? 'Expandable' : 'Fixed Position'} | ${shouldExpand ? 'EXPANDED' : 'Collapsed'}`
+                    ))
+                ])
+            ]);
+        };
+
+        // Demo App
+        function App() {
+            const [demoFocused, setDemoFocused] = useState(false);
+            const [demoTooltip, setDemoTooltip] = useState(false);
+
+            const handleFocusChange = (focused) => {
+                setDemoFocused(focused);
+                document.getElementById('toggleFocus').textContent = 
+                    `Toggle Focus (Currently: ${focused ? 'Focused' : 'Unfocused'})`;
+            };
+
+            const toggleTooltip = () => {
+                const newValue = !demoTooltip;
+                setDemoTooltip(newValue);
+                document.getElementById('toggleTooltip').textContent = 
+                    `Toggle Tooltip (Currently: ${newValue ? 'On' : 'Off'})`;
+            };
+
+            return React.createElement(QueryableEditor, {
+                showTooltip: demoTooltip,
+                codeFocussed: demoFocused,
+                onFocusChange: handleFocusChange
+            });
+        }
+
+        // Add event listeners for demo controls
+        document.getElementById('toggleTooltip').addEventListener('click', () => {
+            const currentText = document.getElementById('toggleTooltip').textContent;
+            const isOn = currentText.includes('On');
+            document.getElementById('toggleTooltip').textContent = 
+                `Toggle Tooltip (Currently: ${!isOn ? 'On' : 'Off'})`;
+            
+            // Re-render with new tooltip state
+            renderApp();
+        });
+
+        let tooltipState = false;
+        function renderApp() {
+            ReactDOM.render(React.createElement(QueryableEditor, {
+                showTooltip: tooltipState,
+                onFocusChange: (focused) => {
+                    document.getElementById('toggleFocus').textContent = 
+                        `Toggle Focus (Currently: ${focused ? 'Focused' : 'Unfocused'})`;
+                }
+            }), document.getElementById('editor-container'));
+        }
+
+        document.getElementById('toggleTooltip').addEventListener('click', () => {
+            tooltipState = !tooltipState;
+            document.getElementById('toggleTooltip').textContent = 
+                `Toggle Tooltip (Currently: ${tooltipState ? 'On' : 'Off'})`;
+            renderApp();
+        });
+
+        // Initial render
+        renderApp();
+    </script>
+</body>
+</html>
