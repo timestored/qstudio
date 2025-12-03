@@ -9,6 +9,8 @@ ___________________________________________________________________
 
 Changelog:
 
+2025-12-04 - 5.00   - First Fully Open Source Release.
+
 2025-12-03 - 4.40   - Add chart themes. Excel / tableau / powerbi.
 					- Add comprehensive chart configuration ability.
 					- Remove Dot graph mode.

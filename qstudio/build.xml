@@ -4,7 +4,7 @@
 <project basedir="." default="all" name="QStudio">
 	<property environment="env"/>
 	
-	<property name="APP.VERSION" value="4.4.0.0" />
+	<property name="APP.VERSION" value="5.0.0.0" />
 
     <property name="debuglevel" value="source,lines,vars"/>
     <property name="target" value="8"/>
