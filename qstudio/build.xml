@@ -140,9 +140,50 @@
     </target>
 
 
+    <target name="test" depends="build">
+        <echo message="Compiling and running tests..."/>
+
+        <!-- Compile tests -->
+        <copy todir="${TEST.DIR}">
+            <fileset dir="src/test/java" excludes="**/*.java"/>
+        </copy>
+
+        <javac includeantruntime="false"
+               debug="true"
+               debuglevel="${debuglevel}"
+               destdir="${TEST.DIR}"
+               source="${source}" target="${target}">
+            <src path="src/test/java"/>
+            <classpath>
+                <path refid="APP_CLASSPATH"/>
+                <pathelement location="${MAIN.DIR}"/>
+            </classpath>
+        </javac>
+
+        <!-- Execute tests -->
+        <junit printsummary="yes" haltonfailure="yes" fork="yes">
+            <classpath>
+                <path refid="APP_CLASSPATH"/>
+                <pathelement location="${MAIN.DIR}"/>
+                <pathelement location="${TEST.DIR}"/>
+            </classpath>
+
+            <formatter type="xml"/>
+            <formatter type="plain"/>
+
+            <batchtest todir="${REPORTS.DIR}">
+                <fileset dir="src/test/java">
+                    <include name="**/*Test.java"/>
+                    <include name="**/*Tests.java"/>
+                </fileset>
+            </batchtest>
+        </junit>
+
+    </target>
+
 
 	
-	<target name="all" depends="clean,build"></target>
+	<target name="all" depends="test"></target>
 
 
 </project>

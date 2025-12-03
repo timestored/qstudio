@@ -24,3 +24,17 @@ jobs:
     - name: Build with Ant
       working-directory: qstudio
       run: ant -noinput -buildfile build.xml
+
+    - name: Publish test results
+      uses: actions/upload-artifact@v4
+      with:
+        name: junit-results
+        path: qstudio/target/reports/*.xml
+
+    - name: Report test results
+      uses: dorny/test-reporter@v1
+      if: always()   # run even if tests fail
+      with:
+        name: JUnit Tests
+        path: qstudio/target/reports/*.xml
+        reporter: java-junit
