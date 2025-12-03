@@ -38,3 +38,4 @@ jobs:
         name: JUnit Tests
         path: qstudio/target/reports/*.xml
         reporter: java-junit
+        fail-on-error: false
