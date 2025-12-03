@@ -17,6 +17,8 @@
 package com.timestored.qstudio;
 
 import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.GridLayout;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
@@ -27,6 +29,7 @@ import java.io.IOException;
 import java.util.Random;
 
 import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -40,6 +43,7 @@ import com.timestored.misc.HtmlUtils;
 import com.timestored.qstudio.model.QueryAdapter;
 import com.timestored.qstudio.model.QueryManager;
 import com.timestored.qstudio.model.QueryResult;
+import com.timestored.sqldash.ChartAppearancePanel;
 import com.timestored.sqldash.ChartControlPanel;
 import com.timestored.sqldash.ChartWidget;
 import com.timestored.sqldash.Queryable;
@@ -58,13 +62,16 @@ class ChartResultPanel extends JPanel implements GrabableContainer {
 	private static final int PADDING = 10;
 	private ChartWidget app;
 	private final Growler growler;
+	private final QueryManager adminModel;
     final Random R = new Random();
 
 	private QueryResult latestQueryResult;
 	private ExportPanel exportPanel;
+	private ChartAppearancePanel appearancePanel;
 
 	public ChartResultPanel(final QueryManager adminModel, Growler growler) {
 		this.growler = Preconditions.checkNotNull(growler);
+		this.adminModel = Preconditions.checkNotNull(adminModel);
 		
 		app = new ChartWidget();
 		
@@ -74,27 +81,7 @@ class ChartResultPanel extends JPanel implements GrabableContainer {
 			@Override public void sendingQuery(ServerConfig sc, String query) {}
 
 			@Override public void queryResultReturned(ServerConfig sc, QueryResult qr) {
-				if(exportPanel == null) {
-					resetContent();
-				}
-				// ignore as we will send tab soon
-				app.setIgnoreConfigChanges(true); 
-				String qsrv = adminModel.getSelectedServerName();
-				Queryable q = new Queryable(qsrv, qr.query);
-				app.setQueryable(q);
-				app.setIgnoreConfigChanges(false);
-				exportPanel.setEnabled(false);
-				
-				// ok now send new data for redraw
-				latestQueryResult = qr;
-				if(qr.isException()) {
-					app.queryError(q, qr.e);
-				} else if (qr.isCancelled()) {
-					app.queryError(q, new IOException("Query Cancelled"));
-				} else {
-					app.tabChanged(q, qr.rs);
-					exportPanel.setEnabled(qr.rs != null);
-				}
+				showQueryResult(qr);
 			}
 			
 		});
@@ -103,6 +90,35 @@ class ChartResultPanel extends JPanel implements GrabableContainer {
 			add(UpdateHelper.getNewsPanel(null), BorderLayout.CENTER);
 		}
 	}
+	
+	public void showQueryResult(QueryResult qr) {
+		if(exportPanel == null) {
+			resetContent();
+		}
+		// ignore as we will send tab soon
+		app.setIgnoreConfigChanges(true); 
+		String qsrv = adminModel.getSelectedServerName();
+		Queryable q = new Queryable(qsrv, qr.query);
+		app.setQueryable(q);
+		app.setIgnoreConfigChanges(false);
+		exportPanel.setEnabled(false);
+		
+		// ok now send new data for redraw
+		latestQueryResult = qr;
+		if(qr.isException()) {
+			app.queryError(q, qr.e);
+		} else if (qr.isCancelled()) {
+			app.queryError(q, new IOException("Query Cancelled"));
+		} else {
+			app.tabChanged(q, qr.rs);
+			exportPanel.setEnabled(qr.rs != null);
+			// Update appearance panel with new result set columns
+			if(appearancePanel != null && qr.rs != null) {
+				appearancePanel.updateSeriesConfig(qr.rs);
+			}
+		}
+	}
+	
 
 	public void setChartTheme(ChartTheme chartTheme) {
 		if(app != null) {
@@ -112,11 +128,27 @@ class ChartResultPanel extends JPanel implements GrabableContainer {
 	
 	private void resetContent() {
 		removeAll();
-		JPanel configPanel = Theme.getVerticalBoxPanel();
-		configPanel.add(new ChartControlPanel(app));
+		
+		// Use BorderLayout for the config panel to properly position elements
+		JPanel configPanel = new JPanel(new BorderLayout(0, 10));
+		
+		// Top section: chart controls
+		JPanel topPanel = new JPanel();
+		topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
+		topPanel.add(new ChartControlPanel(app));
+		configPanel.add(topPanel, BorderLayout.NORTH);
+		
+		// Center section: appearance panel (takes remaining space)
+		appearancePanel = new ChartAppearancePanel(app);
+		configPanel.add(appearancePanel, BorderLayout.CENTER);
+		
+		// Bottom section: export buttons
 		exportPanel = new ExportPanel(growler);
 		exportPanel.setEnabled(false);
-		configPanel.add(exportPanel);
+		configPanel.add(exportPanel, BorderLayout.SOUTH);
+		
+		// Set a reasonable preferred width for the config panel
+		configPanel.setPreferredSize(new java.awt.Dimension(450, 0));
 		
 		setLayout(new BorderLayout());
         add(configPanel, BorderLayout.WEST);
@@ -144,7 +176,7 @@ class ChartResultPanel extends JPanel implements GrabableContainer {
 		
 		public ExportPanel(Growler growler) {
 			
-			configureButton = new JButton("Configure Appearance", Theme.CIcon.LAYOUT_EDIT.get16());
+			configureButton = new JButton("HTML5", Theme.CIcon.LAYOUT_EDIT.get16());
 			configureButton.addActionListener(new ActionListener() {
 				@Override public void actionPerformed(ActionEvent e) {
 					HtmlUtils.browse(TimeStored.Page.QSTUDIO_HELP_CHARTCONFIG.url());
@@ -190,14 +222,13 @@ class ChartResultPanel extends JPanel implements GrabableContainer {
 						} else {
 							growler.showWarning("No export possible. Try a different chart type.", "No export possible.");
 						}
-						UpdateHelper.registerEvent("cha_copymd");
 					} catch (Exception e1) {
 						e1.printStackTrace();
 					}
 				}
 			});
 
-			popoutButton = new JButton("Open in New Window", Theme.CIcon.POPUP_WINDOW.get16());
+			popoutButton = new JButton("Popout", Theme.CIcon.POPUP_WINDOW.get16());
 			popoutButton.addActionListener(new ActionListener() {
 				@Override public void actionPerformed(ActionEvent e) {
 
@@ -212,24 +243,24 @@ class ChartResultPanel extends JPanel implements GrabableContainer {
 						JFrame f =  SwingUtils.getPopupFrame(ChartResultPanel.this, title, p, bi);
 						f.setVisible(true);
 					}
-					UpdateHelper.registerEvent("cha_popout");
 				}
 			});
 
-			final InputLabeller IL = Theme.getInputLabeller();
-			Box b = Box.createVerticalBox();
+			JPanel b = new JPanel(new GridLayout(1, 3, 4, 0)); // 4px gap between buttons
 			setLayout(new BorderLayout());
-			b.add(IL.get("", popoutButton, "popoutButton"));
-			b.add(IL.get("", configureButton, "configureButton"));
-//			b.add(IL.get("", exportButton, "exportButton"));
-			b.add(IL.get("", copyMarkdownButton, "copyMarkdownButton"));
-			
-			b.add(Box.createVerticalGlue());
-			add(b, BorderLayout.CENTER);
+
+			b.add(popoutButton);
+			b.add(configureButton);
+			b.add(copyMarkdownButton);
+
+			add(b, BorderLayout.NORTH);
+
 		}
 		
 	}
 
+	
+	
 	@Override public GrabItem grab() {
 		if(latestQueryResult != null) {
 			ChartWidget cw  = new ChartWidget(app);

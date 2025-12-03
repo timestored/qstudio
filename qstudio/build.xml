@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+
+<project basedir="." default="all" name="QStudio">
+	<property environment="env"/>
+	
+	<property name="APP.VERSION" value="4.4.0.0" />
+
+    <property name="debuglevel" value="source,lines,vars"/>
+    <property name="target" value="8"/>
+    <property name="source" value="8"/>
+
+    <property name="JAR.DIR" value="lib"/>
+    <property name="TARGET.DIR" value="target"/>
+    <property name="REPORTS.DIR" value="${TARGET.DIR}/reports"/>
+    <property name="MAIN.DIR" value="${TARGET.DIR}/generated-classes/main"/>
+    <property name="TEST.DIR" value="${TARGET.DIR}/generated-classes/test"/>
+    <property name="RESOURCES.DIR" value="src/main/resources"/>
+	<property name="QSOUT.DIR" value="${TARGET.DIR}/dist/qstudio"/>
+
+
+	<property name="JARS_IN_RELEASE" value="jopt-simple-4.6.jar kdbcommon-fat.jar iText-2.1.5.jar jcommon-1.0.21.jar jfreechart-1.0.19-experimental.jar jfreechart-1.0.19-swt.jar jfreechart-1.0.19.jar jtreemap-1.1.0.jar docking-frames-common.jar docking-frames-core.jar jsyntaxpane-0.9.6.jar opencsv-2.4.jar commons-io-2.4.jar" />
+	<property name="JDBC_JARS" value="duckdb_jdbc-1.4.2.0.jar postgresql-42.7.4.jar mysql-connector-j-9.1.0.jar mssql-jdbc-10.2.1.jre8.jar redis-jdbc-driver-1.4.jar" />
+	<property name="CORE_JARS" value="lombok.jar jsyntaxpane-1.1.5.jar flatlaf-3.4.1.jar flatlaf-swingx-3.4.1.jar flatlaf-swingx-3.4.1.jar flatlaf-fonts-jetbrains-mono-2.242.jar flatlaf-intellij-themes-3.4.1.jar guava-31.1-jre.jar  swingx-combined-1.6.3.jar xmlpull-1.1.3.1.jar xpp3_min-1.1.4c.jar xstream-1.4.13.jar jakarta.xml.bind-api-2.3.3.jar javax.activation-api-1.2.0.jar nanoxlsx4j-1.2.8.jar sql-formatter-1.0.4.jar" />
+
+	<property name="CORE_JARS2" value="commons-dbcp2-2.9.0.jar commons-dbutils-1.7.jar commons-pool2-2.11.1.jar commons-logging-1.2.jar tscore-fat.jar h2-2.2.224.jar slf4j-api-2.0.13.jar jakarta.annotation-api-2.1.1.jar jackson-annotations-2.17.1.jar jackson-core-2.17.1.jar jackson-databind-2.17.1.jar jackson-datatype-jsr310-2.17.1.jar jackson-jq-1.0.0-preview.20240207.jar jsoup-1.17.2.jar opencsv-5.8.jar commons-beanutils-1.9.4.jar commons-collections4-4.4.jar commons-lang3-3.12.0.jar commons-text-1.10.0.jar" />
+        		
+	
+    <path id="APP_CLASSPATH">
+        <pathelement location="${JAR.DIR}/junit-4.11.jar"/>
+        <pathelement location="${JAR.DIR}/hamcrest-all-1.3-sources.jar"/>
+        <pathelement location="${JAR.DIR}/mockito-all-1.9.5.jar"/>
+		
+        <pathelement location="${JAR.DIR}/opencsv-2.4.jar"/>
+		
+        <pathelement location="${JAR.DIR}/fest-assert-1.2.jar"/>
+        <pathelement location="${JAR.DIR}/fest-reflect-1.2.jar"/>
+        <pathelement location="${JAR.DIR}/fest-swing-1.2.jar"/>
+        <pathelement location="${JAR.DIR}/fest-swing-junit-4.5-1.2.jar"/>
+        <pathelement location="${JAR.DIR}/fest-util-1.1.2.jar"/>
+		
+        <pathelement location="${JAR.DIR}/commons-io-2.4.jar"/>
+		
+        <pathelement location="${JAR.DIR}/iText-2.1.5.jar"/>
+        <pathelement location="${JAR.DIR}/jcommon-1.0.21.jar"/>
+        <pathelement location="${JAR.DIR}/jfreechart-1.0.19-experimental.jar"/>
+        <pathelement location="${JAR.DIR}/jfreechart-1.0.19-swt.jar"/>
+        <pathelement location="${JAR.DIR}/jfreechart-1.0.19.jar"/>
+    	
+        <pathelement location="${JAR.DIR}/mockito-all-1.9.5.jar"/>
+        <pathelement location="${JAR.DIR}/kdbcommon-fat.jar"/>
+        <pathelement location="${JAR.DIR}/jopt-simple-4.6.jar"/>
+		
+    	
+        <pathelement location="${JAR.DIR}/jtreemap-1.1.0.jar"/>
+        <pathelement location="${JAR.DIR}/docking-frames-common.jar"/>
+        <pathelement location="${JAR.DIR}/docking-frames-core.jar"/>
+        <pathelement location="${JAR.DIR}/jsyntaxpane-0.9.6.jar"/>
+		
+		<!-- CORE JARS BELOW -->
+
+        <pathelement location="${JAR.DIR}/sql-formatter-1.0.4.jar"/>
+        <pathelement location="${JAR.DIR}/nanoxlsx4j-1.2.8.jar"/>
+        <pathelement location="${JAR.DIR}/lombok.jar"/>
+        <pathelement location="${JAR.DIR}/guava-31.1-jre.jar"/>
+        <pathelement location="${JAR.DIR}/swingx-combined-1.6.3.jar"/>
+        <pathelement location="${JAR.DIR}/jsyntaxpane-1.1.5.jar"/>
+		
+    	<!-- if updating flatlaf see qStudio build.xml as it moves hardcoded flatlaf-windows-x86_64.dll files -->
+        <pathelement location="${JAR.DIR}/flatlaf-3.4.1.jar"/>
+        <pathelement location="${JAR.DIR}/flatlaf-swingx-3.4.1.jar"/>
+        <pathelement location="${JAR.DIR}/flatlaf-intellij-themes-3.4.1.jar"/>
+        <pathelement location="${JAR.DIR}/flatlaf-fonts-jetbrains-mono-2.242.jar"/>
+		
+		
+        <pathelement location="${JAR.DIR}/xmlpull-1.1.3.1.jar"/>
+        <pathelement location="${JAR.DIR}/xpp3_min-1.1.4c.jar"/>
+        <pathelement location="${JAR.DIR}/xstream-1.4.13.jar"/>
+
+		<!-- java 11 removed javax.bind from classpath, need to add ourselves -->
+        <pathelement location="${JAR.DIR}/jakarta.xml.bind-api-2.3.3.jar"/>
+        <pathelement location="${JAR.DIR}/javax.activation-api-1.2.0.jar"/>		
+		
+		
+		<!-- CORE JARS2 -->
+		
+        <pathelement location="${JAR.DIR}/commons-dbcp2-2.9.0.jar"/>
+        <pathelement location="${JAR.DIR}/commons-dbutils-1.7.jar"/>
+        <pathelement location="${JAR.DIR}/commons-pool2-2.11.1.jar"/>
+        <pathelement location="${JAR.DIR}/commons-logging-1.2.jar"/>
+        <pathelement location="${JAR.DIR}/h2-2.2.224.jar"/>
+        <pathelement location="${JAR.DIR}/tscore-fat.jar"/>
+
+		
+        <!-- All of the below are to allow BabelDB -->
+		<pathelement location="${JAR.DIR}/slf4j-api-2.0.13.jar"/>
+        <!--  BabelDB - Allow processing JSON -->
+		<pathelement location="${JAR.DIR}/jakarta.annotation-api-2.1.1.jar"/>
+		<pathelement location="${JAR.DIR}/jackson-annotations-2.17.1.jar"/>
+		<pathelement location="${JAR.DIR}/jackson-core-2.17.1.jar"/>
+		<pathelement location="${JAR.DIR}/jackson-databind-2.17.1.jar"/>
+		<pathelement location="${JAR.DIR}/jackson-datatype-jsr310-2.17.1.jar"/>
+		<pathelement location="${JAR.DIR}/jackson-jq-1.0.0-preview.20240207.jar"/>
+        <pathelement location="${JAR.DIR}/jsoup-1.17.2.jar"/> <!--  BabelDB - Allow querying remote HTML -->
+		<!--  BabelDB - Allow querying CSVs -  opencsv relies on commons -->
+		<pathelement location="${JAR.DIR}/opencsv-5.8.jar"/>  
+		<pathelement location="${JAR.DIR}/commons-beanutils-1.9.4.jar"/>
+		<pathelement location="${JAR.DIR}/commons-collections4-4.4.jar"/>
+		<pathelement location="${JAR.DIR}/commons-lang3-3.12.0.jar"/>
+		<pathelement location="${JAR.DIR}/commons-text-1.10.0.jar"/>
+        <!-- All of the above are to allow BabelDB -->
+		
+		
+        <pathelement location="${MAIN.DIR}"/>
+    </path>
+
+	
+    <target name="clean">
+        <delete dir="${TARGET.DIR}"/>
+    </target>
+        	
+    <target name="init">
+        <mkdir dir="${TARGET.DIR}"/>
+        <mkdir dir="${REPORTS.DIR}"/>
+        <mkdir dir="${MAIN.DIR}"/>
+        <mkdir dir="${TEST.DIR}"/>
+    </target>
+
+	<target depends="init" name="build">
+		
+        <echo message="${ant.project.name}: ${ant.file} "/>
+		<copy todir="${MAIN.DIR}"> <fileset dir="src/main/java" excludes="**/*.java" /> </copy>
+        <javac includeantruntime="false" debug="true" debuglevel="${debuglevel}" destdir="${MAIN.DIR}" 
+        	source="${source}" target="${target}">
+            <src path="src/main/java"/>
+            <classpath refid="APP_CLASSPATH"/>
+        </javac>
+		
+		
+    </target>
+
+
+
+	
+	<target name="all" depends="clean,build"></target>
+
+
+</project>

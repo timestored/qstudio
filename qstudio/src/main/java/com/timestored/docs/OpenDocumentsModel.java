@@ -51,6 +51,11 @@ public class OpenDocumentsModel {
 	/** directory selected by user */
 	private File selectedFolder;
 	@Getter private Pattern ignoredFolderPattern;
+
+	/** Navigation history for back/forward functionality */
+	private final List<Document> navigationHistory = new ArrayList<Document>();
+	private int navigationPosition = -1;
+	private boolean isNavigating = false;
 	
 	
 	public static OpenDocumentsModel newInstance() {
@@ -125,7 +130,6 @@ public class OpenDocumentsModel {
 	 * @throws IOException if problem opening document
 	 */
 	public Document openDocument(String filepath) throws IOException {
-		
 		Preconditions.checkNotNull(filepath);
 		return openDocument(new File(filepath));
 	}
@@ -176,13 +180,34 @@ public class OpenDocumentsModel {
         LOG.info("addDocument: " + d.getTitle());
 		documents.add(d);
 		changeSelectedDocTo(d);
-
+		
+		// Add to navigation history
+		while(navigationHistory.size() > navigationPosition + 1) {
+			navigationHistory.remove(navigationHistory.size() - 1);
+		}
+		navigationHistory.add(d);
+		navigationPosition = navigationHistory.size() - 1;
+				
 		for(Listener l : listeners) {
 			l.docAdded(d);
 			l.docSelected(d);
 		}
 		return d;
 	}
+	
+	public boolean isFileOpen(File file) {
+		return getDocument(file.getAbsolutePath()) != null;
+	}
+
+	public Document getDocument(String filePath) {
+        for(Document d : documents) {
+        	if(d.getFilePath()!=null && d.getFilePath().equals(filePath)) {
+        		return d;
+        	}
+        }
+        return null;
+	}
+	
 	
 	/**
 	 * Open the selected file as a document and make it selected.
@@ -288,6 +313,15 @@ public class OpenDocumentsModel {
 		if(documents.contains(document)) {
 			if(!document.equals(selectedDocument)) {
 				changeSelectedDocTo(document);
+				// Add to navigation history if not navigating via back/forward
+				if(!isNavigating) {
+					// Remove any forward history when user navigates to a new document
+					while(navigationHistory.size() > navigationPosition + 1) {
+						navigationHistory.remove(navigationHistory.size() - 1);
+					}
+					navigationHistory.add(document);
+					navigationPosition = navigationHistory.size() - 1;
+				}
 			}
 			for(Listener l : listeners) {
 				l.docSelected(document);
@@ -394,7 +428,72 @@ public class OpenDocumentsModel {
 			}
 		}
 	}
+	/**
+	 * Navigate in document history.
+	 * @param direction -1 for back, +1 for forward
+	 * @return true if navigation occurred, false otherwise
+	 */
+	private boolean navigate(int direction) {
+	    if (direction == 0) {
+	        throw new IllegalArgumentException("direction must be -1 or +1");
+	    }
+	    boolean canNavigate = direction < 0 ? canNavigateBack() : canNavigateForward();
 
+	    LOG.info("navigate(" + direction + ") - position=" + navigationPosition + " historySize=" + navigationHistory.size());
+
+	    if(!canNavigate) {
+	        return false;
+	    }
+
+	    isNavigating = true;
+	    try {
+	        navigationPosition += direction;
+
+	        while (navigationPosition >= 0 && navigationPosition < navigationHistory.size()) {
+	            Document doc = navigationHistory.get(navigationPosition);
+	            if (documents.contains(doc)) {
+	                setSelectedDocument(doc);
+	                return true;
+	            }
+
+	            // Document closed → remove and adjust index
+	            navigationHistory.remove(navigationPosition);
+
+	            if (direction < 0) {
+	                // Moving backward: after removal, step backward again if possible
+	                if (navigationPosition > 0) {
+	                    navigationPosition--;
+	                } else {
+	                    break;
+	                }
+	            } else if (navigationPosition >= navigationHistory.size()) {
+                    break;
+	            }
+	        }
+	    } finally {
+	        isNavigating = false;
+	    }
+
+	    return false;
+	}
+	
+	public boolean navigateBack() { return navigate(-1); }
+
+	public boolean navigateForward() { return navigate(+1); }
+
+
+	/** @return true if there is a previous document in navigation history */
+	public boolean canNavigateBack() {
+		return navigationPosition > 0;
+	}
+
+	/** @return true if there is a next document in navigation history */
+	public boolean canNavigateForward() {
+		return navigationPosition < navigationHistory.size() - 1;
+	}	
+	
+	
+	
 
 	public void setIgnoredFoldersRegex(Pattern ignoredFolderPattern) {
         LOG.info("setIgnoredFoldersRegex: " + ignoredFolderPattern);
