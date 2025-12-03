@@ -119,7 +119,7 @@ public class HtmlUtils {
 		if(smap.isEmpty()) {
 			return "";
 		}
-		return "<ul>" + expandMapToHtml(smap, hideEmpty,"<li><strong>", "</strong> - ", "", "</li>") + "</ul>";
+		return "<ul>" + expandMapToHtml(smap, hideEmpty,"\r\n\t<li><strong>", "</strong> - ", "", "</li>") + "</ul>";
 	}
 
 	public static String toDefinitions(Map<String, String> smap, boolean hideEmpty) {
@@ -133,7 +133,7 @@ public class HtmlUtils {
 		if(smap.isEmpty()) {
 			return "";
 		}
-		return "<table>" + expandMapToHtml(smap, hideEmpty,"<tr><th>", "</th>", "<td>", "</td></tr>") + "</table>";
+		return "<table>" + expandMapToHtml(smap, hideEmpty,"\r\n<tr><th>", "</th>", "<td>", "</td></tr>") + "</table>";
 	}
 
 

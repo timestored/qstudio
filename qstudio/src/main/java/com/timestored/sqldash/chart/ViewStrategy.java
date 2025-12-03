@@ -20,6 +20,19 @@ public interface ViewStrategy {
 	     */
 		UpdateableView getView(ChartTheme theme);
 		
+		/**
+	     * For the given data and appearance config, give us a panel with a view of that data if possible.
+	     * @param theme The chart theme to apply
+	     * @param appearanceConfig Optional appearance configuration (title, colors, axis assignments)
+	     * @return a panel showing qtab if possible otherwise false.
+	     */
+		default UpdateableView getView(ChartTheme theme, ChartAppearanceConfig appearanceConfig) {
+			return getView(theme);
+		}
+		
+		/** @return true if this view strategy supports appearance configuration */
+		default boolean supportsAppearanceConfig() { return false; }
+		
 		/** a textual description of this chart type */
 		String getDescription();
 

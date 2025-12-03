@@ -78,6 +78,7 @@ public class QStudioModel {
 
 	String[] getFileEndings() {
     	String[] qFirst = new String[] {"q","sql","prql"};
+    	String[] rflFirst = new String[] {"rfl","sql","prql"};
     	String[] sqlFirst = new String[] {"sql","q","prql"};
     	String[] prqlFirst = new String[] {"prql","sql","q"};
     	String[] anyFirst = new String[] {"","prql","sql","q"};
@@ -89,6 +90,8 @@ public class QStudioModel {
     		return sqlFirst;
     	} else if(title.endsWith(".prql")) {
     		return prqlFirst;
+    	} else if(title.endsWith(".rfl")) {
+    		return rflFirst;
     	} else if(title.contains(".")) {
     		return anyFirst;
     	}
@@ -103,6 +106,7 @@ public class QStudioModel {
 	private static final ServerConfig MEMDUCK = new ServerConfig("", 0, "", "", MEMNAME, JdbcTypes.BABELDB, null, "jdbc:babeldb:duckdb:");
 
 	public BabelDBJdbcDriver putIfAbsentLocalSQL() {
+		LOCALDB_DIR.mkdirs();
 		if(connectionManager.getServer(MEMNAME) == null) {
 			connectionManager.addServer(MEMDUCK);
 		}
@@ -115,50 +119,11 @@ public class QStudioModel {
 			return; // Do nothing
 		}
 		BabelDBJdbcDriver babelDuck = putIfAbsentLocalSQL();
-		List<File> dataFiles = new ArrayList<>();
-		File[] files = LOCALDB_DIR.listFiles();
-		if(files != null) {
-			for(File f : files) {
-				String n = f.getName().toLowerCase();
-				if(n.endsWith(".parquet") || n.endsWith(".csv")) {
-					dataFiles.add(f);
-				}
-			}
-		}
-		if(babelDuck != null && dataFiles.size() > 0) {
-			babelDuck.run(getReplaceView(dataFiles));
-		}
+		babelDuck.loadExistingParquet(LOCALDB_DIR);
 	}
 	
-	private static String getTblName(File dfile) {
-		String df = dfile.getAbsolutePath();
-		int p = df.lastIndexOf(File.separator)+1;
-		if(p < 0) {
-			p = 0;
-		}
-		int e = df.lastIndexOf('.');
-		if(e < p) {
-			e = df.length();
-		}
-		return df.substring(p, e);
-	}
-	
-	private static String getReplaceView(List<File> dataFiles) {
-		StringBuilder sb = new StringBuilder();
-		for(File dfile : dataFiles) {
-			String df = dfile.getAbsolutePath();
-			String name = getTblName(dfile);
-			if(df.toLowerCase().endsWith(".csv")) {
-				sb.append("CREATE OR REPLACE VIEW " + name + " AS SELECT * FROM read_csv('" + df + "');\n");	
-			} else if(df.toLowerCase().endsWith(".parquet")) {
-				sb.append("CREATE OR REPLACE VIEW " + name + " AS SELECT * FROM read_parquet('" + df + "');\n");	
-			}
-		}
-		return sb.toString();
-	}
 	
 	void addDataFiles(List<File> dataFiles) {
-		UpdateHelper.registerEvent("qsm_adddata");
 		if(dataFiles.size() == 0) {
 			return;
 		}
@@ -167,7 +132,7 @@ public class QStudioModel {
 		pubQry.append("\n");
 		String name = null;
 		for(File dfile : dataFiles) {
-			name = getTblName(dfile);
+			name = BabelDBJdbcDriver.getTblName(dfile);
 			pubQry.append("SELECT * FROM " + name + " LIMIT 111000;\n");
 		}
 		pubQry.append("\n\n-- Press F7 on the comment line below to use AI to generate queries");
@@ -177,7 +142,7 @@ public class QStudioModel {
 		String docTitle = dataFiles.size() == 1 && name != null ? (name+".sql") : null; 
 		Document selDoc = openDocumentsModel.addDocument(docTitle);
 		openDocumentsModel.setSelectedDocument(selDoc);
-		String code = getReplaceView(dataFiles) + pubQry.toString();
+		String code = BabelDBJdbcDriver.getReplaceView(dataFiles) + pubQry.toString();
 		openDocumentsModel.insertSelectedText(code);
 		queryManager.sendQuery(code);
 		BackgroundExecutor.EXECUTOR.execute(() -> adminModel.refresh(connectionManager.getServer(MEMNAME)));
@@ -212,7 +177,6 @@ public class QStudioModel {
 			String code = sb.toString();
 			openDocumentsModel.insertSelectedText(code);
 		}
-		UpdateHelper.registerEvent("qsm_adddbfiles");
 	}
 	
 	
@@ -223,7 +187,7 @@ public class QStudioModel {
 	private static class MyDbRunner implements Dbrunner {
 		private final ConnectionManager connectionManager;
 
-		@Override public ResultSet executeQry(String serverName, String sql) throws IOException {
+		@Override public ResultSet executeQry(String serverName, String sql, int millisStalenessPermitted) throws IOException {
 			try {
 				return connectionManager.executeQuery(connectionManager.getServer(serverName), sql);
 			} catch (SQLException | IOException e) {
@@ -239,11 +203,9 @@ public class QStudioModel {
 	}
 
 	public File saveToQDuckDB(ResultSet rs, String name) throws SQLException {
-		UpdateHelper.registerEvent("qsm_savetoduck");
 		BabelDBJdbcDriver babelDuck = putIfAbsentLocalSQL();
 		if(babelDuck != null) {
 			babelDuck.dropCreatePopulate(rs, "exportTbl");
-			LOCALDB_DIR.mkdirs();
 			File f = new File(LOCALDB_DIR, name+".parquet");
 			babelDuck.run("COPY exportTbl TO '" + f.getAbsolutePath() + "' (FORMAT PARQUET);");
 			babelDuck.run("CREATE OR REPLACE VIEW " + name + " AS SELECT * FROM read_parquet('" + f.getAbsolutePath() + "');");

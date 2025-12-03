@@ -19,6 +19,26 @@ public class KdbTestExamples {
 
 
     @Parameterized.Parameters
+    public static ArrayList<Object[]> getCandleStickInstancesToTest() {
+		ArrayList<Object[]> r = new ArrayList<Object[]>();
+		
+		// The simpler time types
+		for(char t : "mduv".toCharArray()) { addCandle(r, "{m:1", t);	}
+		/* 
+		 * multiplier used for data type like timespan where must multiply
+		 * to make increments between values large enough to be reasonable.
+		 */
+		for(char t : "tz".toCharArray()) { addCandle(r, "{m:1000", t);	}
+		for(char t : "np".toCharArray()) { addCandle(r, "{m:1000000", t);	}
+		return r;
+    }
+
+	private static void addCandle(ArrayList<Object[]> r, String prefix, char t) {	
+		String cndl = ";a:m*til 22; ([] t:x$a; high:c+30; low:c-20; open:60+til 22; close:c:55+2*til 22)} \"";
+		r.add( new Object[]{ prefix + cndl + t + "\"", "candle-"+t });
+	}
+	
+    @Parameterized.Parameters
     public static ArrayList<Object[]> getTimeSeriesInstancesToTest() {
     	ArrayList<Object[]> r = new ArrayList<Object[]>();
     	
@@ -48,9 +68,16 @@ public class KdbTestExamples {
 		r.add( new Object[]{ "`pq`oi`uy!3 1 2", "cc-kdb_dict" });
 		r.add( new Object[]{ "3 1 2", "cc-kdb_simplelist" });
 		r.add( new Object[]{ "(1 2;`pq`k`j)", "cc-kdb_nestedlist" });
+
+		final String NT = "([] v:1 2; m:(([] nv:1 2);([] nv:1 2)))";
+		r.add( new Object[]{ NT, "cc-kdb_nestedTable" });
+		r.add( new Object[]{ "([] v:1 2; m:(1 2;til 100))", "cc-kdb_nestedTable-list" });
+		r.add( new Object[]{ "([] v:1 2; m:(`p`o!1 2;`p`o!(3 4 5;6 7 8)))", "cc-kdb_nestedTable-Dict" });
+		r.add( new Object[]{ "([] v:1 2 3; m:(`p`o!1 2; ([] ta:`p`o`i; tv:10 20 30) ; 1))", "cc-kdb_nestedTable-mixed" });
+		r.add( new Object[]{ "("+NT + ";" + NT + ")", "cc-kdb_nestedTable-nestedNested" });
 		return r;
     }
-
+    
 	private static void addExamples(ArrayList<Object[]> r, String prefix, char t) {
 		r.add( new Object[]{ prefix + Q + t + "\"", "simple-"+t });
 		r.add( new Object[]{ prefix + MQ + t + "\"", "multi-"+t });

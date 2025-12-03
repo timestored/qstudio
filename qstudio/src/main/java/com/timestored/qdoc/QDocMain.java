@@ -39,7 +39,6 @@ public class QDocMain {
 
 	public static void main(String... args) {
 		
-		//TODO check license!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		String baseWeblink = null;
 		/* Check args  */
 		if(args.length < 2) {
@@ -65,6 +64,7 @@ public class QDocMain {
 		for(File qFile : qs) {
 			try {
 				docs.add(new Document(qFile));
+				System.out.println("Processed: " + qFile);
 			} catch (IOException e) {
 				System.err.println("Problem with file:" + qFile);
 			}

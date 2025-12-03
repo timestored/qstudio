@@ -13,6 +13,7 @@ import javax.swing.JPanel;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Lists;
+import com.timestored.sqldash.chart.ChartAppearanceConfig;
 import com.timestored.sqldash.chart.ChartTheme;
 import com.timestored.sqldash.chart.ChartViewConfiguration;
 import com.timestored.sqldash.chart.DataTableViewStrategy;
@@ -38,6 +39,7 @@ public class ChartWidget extends AbstractWidget {
    	private JdbcChartPanel chartPanel = null;
 	private ResultSet prevRS = null;
 	@Getter private boolean renderLargeDataSets = false;
+	@Getter private ChartAppearanceConfig appearanceConfig = new ChartAppearanceConfig();
 	private Queryable q = new Queryable();
 	private final List<Queryable> queryable = new ArrayList<Queryable>(1);
 
@@ -74,6 +76,7 @@ public class ChartWidget extends AbstractWidget {
 		this.viewStrategy = app.viewStrategy;
 		this.chartTheme = app.chartTheme;
 		this.chartViewConfig = null;
+		this.appearanceConfig = new ChartAppearanceConfig(app.appearanceConfig);
 		q.addListener(queryableListener);
 	}
 	
@@ -87,7 +90,7 @@ public class ChartWidget extends AbstractWidget {
 
 	
 	public void setViewStrategy(ViewStrategy viewStrategy) {
-		if(!this.viewStrategy.equals(DataTableViewStrategy.getInstance(true))) {
+		if(!this.viewStrategy.equals(DataTableViewStrategy.getInstance())) {
 			prevNonTabVS = this.viewStrategy;
 		}
 		this.viewStrategy = viewStrategy;
@@ -97,6 +100,17 @@ public class ChartWidget extends AbstractWidget {
 	public ViewStrategy getViewStrategy() { return viewStrategy; }
 	
 	public ChartViewConfiguration getChartViewConfig() { return chartViewConfig; }
+	
+	public void setAppearanceConfig(ChartAppearanceConfig config) {
+		this.appearanceConfig = config != null ? config : new ChartAppearanceConfig();
+		// Don't call configChanged() for appearance config changes - that triggers
+		// a full chart rebuild which is slow and steals focus from the editor.
+		// Instead, directly update the chart panel's appearance and refresh.
+		if (chartPanel != null) {
+			chartPanel.setAppearanceConfig(appearanceConfig);
+			chartPanel.update(prevRS);
+		}
+	}
 	
 	public void setRenderLargeDataSets(boolean renderLargeDataSets) {
 		this.renderLargeDataSets = renderLargeDataSets;
@@ -117,6 +131,7 @@ public class ChartWidget extends AbstractWidget {
 			chartPanel = ViewStrategyFactory.getJdbcChartpanel();
 			chartPanel.setViewStrategy(getViewStrategy());
 			chartPanel.setTheme(getChartTheme());
+			chartPanel.setAppearanceConfig(appearanceConfig);
 	
 			updateListener = new Widget.Listener() {
 				
@@ -124,6 +139,7 @@ public class ChartWidget extends AbstractWidget {
 					chartPanel.setRenderLargeDataSets(app.isRenderLargeDataSets());
 					chartPanel.setViewStrategy(viewStrategy);
 					chartPanel.setTheme(chartTheme);
+					chartPanel.setAppearanceConfig(appearanceConfig);
 					if(!ignoreConfigChanges) {
 						chartPanel.update(prevRS);
 					}
@@ -214,11 +230,11 @@ public class ChartWidget extends AbstractWidget {
 		Action toggleTabView = new AbstractAction("Toggle Table/Chart View", 
 				CIcon.TABLE_ELEMENT.get16()) {
 			@Override public void actionPerformed(ActionEvent e) {
-				boolean isTab = ChartWidget.this.viewStrategy.equals(DataTableViewStrategy.getInstance(true));
+				boolean isTab = ChartWidget.this.viewStrategy.equals(DataTableViewStrategy.getInstance());
 				if (isTab && prevNonTabVS!=null) {
 					setViewStrategy(prevNonTabVS);
 				} else {
-					setViewStrategy(DataTableViewStrategy.getInstance(true));
+					setViewStrategy(DataTableViewStrategy.getInstance());
 				}
 			}
 		};

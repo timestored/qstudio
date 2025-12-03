@@ -4,6 +4,7 @@ import static com.timestored.sqldash.chart.KdbFunctions.cos;
 import static com.timestored.sqldash.chart.KdbFunctions.mul;
 import static com.timestored.sqldash.chart.KdbFunctions.til;
 
+import java.awt.Color;
 import java.awt.Component;
 import java.sql.ResultSet;
 import java.util.List;
@@ -13,6 +14,7 @@ import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.jfree.data.statistics.HistogramDataset;
 
 import com.google.common.base.Preconditions;
@@ -33,12 +35,19 @@ public enum HistogramViewStrategy implements ViewStrategy {
 	
 	public static final int NUMBER_BINS = 100;
 	private static final String KDB_QUERY = "([] Returns:cos 0.0015*til 500; Losses:cos 0.002*til 500)";
+	private static final String DUCKDB_QUERY = "WITH b AS (\r\nSELECT COS(0.0015*i) AS Returns,COS(0.002*i) AS Losses\r\nFROM generate_series(0,499)t(i))\r\nSELECT * FROM b";
 	private static final String FORMAT = "Each Numeric column represents a separate series in the histogram." +
 	" The series values are placed into buckets and their frquency tallied.";
 
 	@Override public UpdateableView getView(ChartTheme theme) {
-	        return new HistogramUpdateableView(theme);
+		return getView(theme, null);
 	}
+	
+	@Override public UpdateableView getView(ChartTheme theme, ChartAppearanceConfig appearanceConfig) {
+	    return new HistogramUpdateableView(theme, appearanceConfig);
+	}
+	
+	@Override public boolean supportsAppearanceConfig() { return true; }
 
 	@Override public String getDescription() { return "Histogram"; }
 
@@ -53,7 +62,7 @@ public enum HistogramViewStrategy implements ViewStrategy {
 		Object[] colValues = new Object[] { returns, losses };
 		ResultSet resultSet = new SimpleResultSet(colNames, colValues);
 		
-		TestCase testCase = new TestCase(name, resultSet, KDB_QUERY);
+		TestCase testCase = new TestCase(name, resultSet, KDB_QUERY, DUCKDB_QUERY);
 		return ImmutableList.of(new ExampleView(name , description, testCase));
 	}
 
@@ -69,16 +78,34 @@ public enum HistogramViewStrategy implements ViewStrategy {
 	private static class HistogramUpdateableView implements UpdateableView {
 
 		private final ChartPanel chartPanel;
+		private final ChartTheme theme;
+		private final ChartAppearanceConfig appearanceConfig;
+		private final JFreeChart chart;
 
-		public HistogramUpdateableView(ChartTheme theme) {
+		public HistogramUpdateableView(ChartTheme theme, ChartAppearanceConfig appearanceConfig) {
 
 			Preconditions.checkNotNull(theme);
-			JFreeChart chart = ChartFactory.createHistogram("", 
-					null, "Frequency", null, PlotOrientation.VERTICAL, true, true, false);
+			this.theme = theme;
+			this.appearanceConfig = appearanceConfig;
 			
-			chart.getXYPlot().getRenderer().setBaseToolTipGenerator(Tooltip.getXYNumbersGenerator());
+			String chartTitle = (appearanceConfig != null && appearanceConfig.getChartTitle() != null) 
+					? appearanceConfig.getChartTitle() : "";
+			boolean showTooltips = (appearanceConfig == null) || appearanceConfig.isTooltipEnabled();
 			
-			chartPanel = new ChartPanel(theme.apply(chart));
+			chart = ChartFactory.createHistogram(chartTitle, 
+					null, "Frequency", null, PlotOrientation.VERTICAL, true, showTooltips, false);
+			
+			if (showTooltips) {
+				chart.getXYPlot().getRenderer().setBaseToolTipGenerator(Tooltip.getXYNumbersGenerator());
+			}
+			
+			// Apply theme first
+			JFreeChart themedChart = theme.apply(chart);
+			
+			// Then apply chart-level config
+			ChartConfigApplier.applyConfig(themedChart, appearanceConfig);
+			
+			chartPanel = new ChartPanel(themedChart, false, showTooltips, true, false, true);
 		}
 		
 		@Override public void update(ResultSet rs, ChartResultSet chartRS) throws ChartFormatException {
@@ -89,11 +116,45 @@ public enum HistogramViewStrategy implements ViewStrategy {
 			
 			HistogramDataset dataset = new HistogramDataset();
 			for (NumericCol numCol : chartRS.getNumericColumns()) {
-				dataset.addSeries(numCol.getLabel(), numCol.getDoubles(), NUMBER_BINS);
+				String seriesName = numCol.getLabel();
+				
+				// Check visibility
+				boolean isVisible = (appearanceConfig == null) || appearanceConfig.isSeriesVisible(seriesName);
+				if (!isVisible) {
+					continue; // Skip hidden series
+				}
+				
+				dataset.addSeries(seriesName, numCol.getDoubles(), NUMBER_BINS);
 			}
+			
 			XYPlot xyplot = ((XYPlot) chartPanel.getChart().getPlot());
 			xyplot.setDataset(dataset);
-			xyplot.getDomainAxis().setLabel(chartRS.getRowTitle());
+			
+			// Apply domain axis label from config or data
+			if (appearanceConfig != null && appearanceConfig.getDomainAxisLabel() != null 
+					&& !appearanceConfig.getDomainAxisLabel().isEmpty()) {
+				xyplot.getDomainAxis().setLabel(appearanceConfig.getDomainAxisLabel());
+			} else {
+				xyplot.getDomainAxis().setLabel(chartRS.getRowTitle());
+			}
+			
+			// Apply range axis label from config
+			if (appearanceConfig != null && appearanceConfig.getRangeAxisLabel() != null 
+					&& !appearanceConfig.getRangeAxisLabel().isEmpty()) {
+				xyplot.getRangeAxis().setLabel(appearanceConfig.getRangeAxisLabel());
+			}
+			
+			// Apply series colors
+			XYItemRenderer renderer = xyplot.getRenderer();
+			if(appearanceConfig != null) {
+				for(int i = 0; i < dataset.getSeriesCount(); i++) {
+					String seriesName = (String) dataset.getSeriesKey(i);
+					Color color = appearanceConfig.getSeriesColor(seriesName);
+					if(color != null) {
+						renderer.setSeriesPaint(i, color);
+					}
+				}
+			}
 		}
 
 		@Override public Component getComponent() {
@@ -110,5 +171,5 @@ public enum HistogramViewStrategy implements ViewStrategy {
 	@Override public boolean isQuickToRender(ResultSet rs, int rowCount, int numColumnCount) {
 		return rowCount < 211_000; // 1 seconds on Ryans PC
 	}
-	@Override public String getPulseName() { return null; }
+	@Override public String getPulseName() { return "histogram"; }
 }

@@ -27,6 +27,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.UIManager;
 
 import jsyntaxpane.DefaultSyntaxKit;
 import kx.c.KException;
@@ -77,7 +78,7 @@ enum DefaultElementDisplayStrategy
 			        panel.add(scrPane, BorderLayout.CENTER);
 			        codeEditor.setContentType("text/qsql");
 					codeEditor.setText(text);
-					codeEditor.setFont(Theme.getCodeFont());
+					codeEditor.setFont(UIManager.getFont("defaultFont"));
 					codeEditor.setEditable(false);
 	
 				}

@@ -1,0 +1,507 @@
+[
+{
+	"location": "content/compose/concat.html",
+	"title": "Concat <code>concat</code>",
+	"text": "<p>Concatenates two values into a single list or array.</p>"
+},
+{
+	"location": "content/compose/dict.html",
+	"title": "Dict <code>dict</code>",
+	"text": "<p>Creates a dictionary with the specified keys and values.</p> <pre><code>-&gt; (dict [a b c] [1 2 3])\n{\n  a: 1\n  b: 2\n  c: 3\n}\n-&gt; (dict [a b c] (list \"A\" [1 2] 5.77))\n{\n  a: A\n  b: [1 2]\n  c: 5.77\n}\n</code></pre> <p>Warning</p> <p>The keys and values arrays must have the same length</p> <p>Info</p> <ul> <li>Keys can be symbols or strings</li> <li>Values can be of any type</li> <li>Keys must be unique</li> </ul>"
+},
+{
+	"location": "content/compose/distinct.html",
+	"title": "Distinct <code>distinct</code>",
+	"text": "<p>Returns a list of unique elements from the input, removing duplicates.</p> <pre><code>-&gt; (distinct [1 2 3 1 2 3 4 5 6 7 8 9 0])\n[0 1 2 3 4 5 6 7 8 9]\n-&gt; (distinct [true true])\n[true]\n-&gt; (distinct \"test\")\n\"est\"\n-&gt; (distinct [1i 0Ni 1i])\n[1]\n-&gt; (distinct [&apos;a &apos;b &apos;ab &apos;aa &apos;a &apos;aa])\n[a b ab aa]\n</code></pre>"
+},
+{
+	"location": "content/compose/enlist.html",
+	"title": "Enlist <code>enlist</code>",
+	"text": "<p>Creates a list from multiple arguments, folding into a vector if all arguments have the same type.</p> <pre><code>-&gt; (enlist 1 2 3)\n[1 2 3]\n-&gt; (enlist 1 2 [3 4])\n(\n  1\n  2\n  [3 4]\n)\n-&gt; (enlist 1 2 \"asd\")\n(\n  1\n  2\n  asd\n)\n</code></pre> <p>Info</p> <ul> <li>Creates a vector if all arguments are of the same type</li> <li>Creates a list if arguments have different types</li> <li>Preserves nested structures</li> </ul> <p>Tip</p> <p>Use enlist when you need to combine multiple values into a single collection</p>"
+},
+{
+	"location": "content/compose/group.html",
+	"title": "Group <code>group</code>",
+	"text": "<p>Accepts a list and return a dictionary with the keys as distinct elements of the list and the values as the indexes of the elements in the list.</p> <pre><code>-&gt; (group [1 2 3 1 2 3 4 5 6 7 8 9 0])\n{\n  0: [9]\n  1: [0 3]\n  2: [1 4]\n  3: [2 5]\n  4: [6]\n  5: [7]\n  6: [8]\n  7: [9]\n  8: [10]\n  9: [11]\n}\n</code></pre>"
+},
+{
+	"location": "content/compose/guid.html",
+	"title": "Guid <code>guid</code>",
+	"text": "<p>Generates a list of unique identifiers.</p> <pre><code>-&gt; (guid 2)\n[f162feeb-9a43-4168-9a5b-0bb362361a22 58a0c91a-6ece-4df0-8b1d-edc47553017f]\n</code></pre> <p>Info</p> <ul> <li>Takes an i64 number as input specifying how many GUIDs to generate</li> <li>Returns a vector of unique GUIDs</li> <li>Each GUID is guaranteed to be unique</li> </ul> <p>Tip</p> <p>Useful for generating unique identifiers for database records or distributed systems</p>"
+},
+{
+	"location": "content/compose/list.html",
+	"title": "List <code>list</code>",
+	"text": "<p>Creates a heterogeneous list from the provided arguments.</p> <pre><code>-&gt; (list 1 2 3)\n(\n  1\n  2\n  3\n)\n-&gt; (list 1 2 [3 4])\n(\n  1\n  2\n  [3 4]\n)\n</code></pre> <p>Info</p> <ul> <li>Always creates a list, never folds into a vector</li> <li>Preserves nested data structures</li> <li>Can hold elements of different types</li> </ul> <p>Tip</p> <p>Use list when you specifically need a heterogeneous collection</p>"
+},
+{
+	"location": "content/compose/rand.html",
+	"title": "Rand <code>rand</code>",
+	"text": "<p>Generates random numbers within a specified range.</p> <pre><code>-&gt; (rand 5 10)\n[7 3 6 4 9]\n-&gt; (rand 5 100)\n[23 45 67 89 12]\n</code></pre> <p>Info</p> <ul> <li>First argument: number of random elements to generate</li> <li>Second argument: maximum value (exclusive)</li> <li>Generated numbers are integers from 0 to max-1</li> </ul> <p>Tip</p> <p>Useful for generating test data or implementing randomized algorithms</p>"
+},
+{
+	"location": "content/compose/reverse.html",
+	"title": "Reverse <code>reverse</code>",
+	"text": "<p>Reverses the order of elements in a list or array.</p> <pre><code>-&gt; (reverse [1 2 3 4 5])\n[5 4 3 2 1]\n</code></pre> <p>Info</p> <ul> <li>Works with both arrays and lists</li> <li>Preserves the original data type (array stays array, list stays list)</li> <li>Returns a new collection, doesn&apos;t modify the original</li> </ul> <p>Tip</p> <p>Use reverse when you need to process elements in reverse order</p>"
+},
+{
+	"location": "content/compose/table.html",
+	"title": "Table <code>table</code>",
+	"text": "<p>Creates a table from column names and values.</p> <pre><code>-&gt; (table [A B C] (list (til 5) [6 7 8 9 0] (list \"A\" \"B\" \"C\" \"D\" \"E\")))\n┌────┬────┬──────────────────────────────┐\n│ A  │ B  │ C                            │\n├────┼────┼──────────────────────────────┤\n│ 0  │ 6  │ A                            │\n│ 1  │ 7  │ B                            │\n│ 2  │ 8  │ C                            │\n│ 3  │ 9  │ D                            │\n│ 4  │ 0  │ E                            │\n├────┴────┴──────────────────────────────┤\n│ 5 rows (5 shown) 3 columns (3 shown)   │\n└────────────────────────────────────────┘\n</code></pre> <p>Info</p> <ul> <li>First argument: vector of column names (symbols)</li> <li>Second argument: list of column values</li> <li>All columns must have the same length</li> </ul> <p>Warning</p> <p>Column names must be unique and values must have matching lengths</p> <p>Tip</p> <p>Tables are useful for organizing and analyzing structured data</p>"
+},
+{
+	"location": "content/compose/til.html",
+	"title": "Til <code>til</code>",
+	"text": "<p>Generates a sequence of integers from 0 to n-1.</p> <pre><code>-&gt; (til 5)\n[0 1 2 3 4]\n</code></pre> <p>Info</p> <ul> <li>Takes a single integer argument n</li> <li>Returns a vector of integers [0, 1, ..., n-1]</li> <li>Always starts from 0</li> </ul> <p>Tip</p> <p>Useful for generating index sequences or creating numeric ranges</p>"
+},
+{
+	"location": "content/control/do.html",
+	"title": "Do <code>do</code>",
+	"text": "<p>Evaluates the given expressions list and returns the value of the last one.</p> <pre><code>-&gt; (do 1 2 3)\n3\n-&gt; (do (let c (+ 1 2)) 6 (+ c 5))\n8\n</code></pre>"
+},
+{
+	"location": "content/control/exit.html",
+	"title": "Exit <code>exit</code>",
+	"text": "<p><code>exit</code> is a control flow function that exits the current rayforce process with code passed as an argument (optional).</p> <pre><code>-&gt; (exit 1)\n</code></pre> <pre><code>-&gt; (exit 0)\n</code></pre> <pre><code>-&gt; (exit)\n</code></pre>"
+},
+{
+	"location": "content/control/if.html",
+	"title": "If <code>if</code>",
+	"text": "<p>Control flow function that evaluates a condition and executes a block of code if the condition is true.</p> <pre><code>-&gt; (if true (print \"true\") (print \"false\"))\ntrue\n-&gt; (if false (print \"true\") (print \"false\"))\nfalse\n-&gt; (if 1 3)\n3\n-&gt; (if 0 3)\n</code></pre>"
+},
+{
+	"location": "content/control/raise.html",
+	"title": "Raise <code>raise</code>",
+	"text": "<p>The <code>raise</code> statement allows you to raise an exception. Accepts string as an argument.</p> <pre><code>-&gt; (raise \"My exception\")\n•• [E017] error: raised error\n╭─[0]─┬ repl:1..1 in function: @anonymous\n│ 1   │ (raise \"My exception\")\n│     ┴        ‾‾‾‾‾‾‾‾‾‾‾‾‾‾ My exception\n</code></pre>"
+},
+{
+	"location": "content/control/return.html",
+	"title": "Return <code>return</code>",
+	"text": "<p>The <code>return</code> statement is used to return a value from a function. The value can be any data type.</p> <pre><code>-&gt; (set add (fn [a b] (return (+ a b))) 77)\n-&gt; (add 1 2)\n3\n</code></pre>"
+},
+{
+	"location": "content/control/try.html",
+	"title": "Try <code>try</code>",
+	"text": "<p><code>try</code> is a control structure that allows you to handle exceptions in a more controlled way. It accepts two arguments: the expression to be evaluated and an expression to be evaluated in case of an exception.</p> <pre><code>-&gt; (try (raise \"A\") 1)\n1\n&gt;(try (raise \"A\") (fn [x] x))\n\"A\"\n</code></pre>"
+},
+{
+	"location": "content/env/env.html",
+	"title": "Env <code>env</code>",
+	"text": "<p>The function to return environment dictionary.</p> <pre><code>-&gt; (set add (fn [a b] (return (+ a b)) 77))\n-&gt; (set a 1)\n-&gt; (set b [1 2 3 4])\n-&gt; (env)\n{\n  add: @add\n  a: 1\n  b: [1 2 3 4]\n}\n</code></pre>"
+},
+{
+	"location": "content/env/let.html",
+	"title": "Let <code>let</code>",
+	"text": "<p><code>let</code> is a special form that allows you to define local variables. It is used to create a new variable and assign a value to it. The variable is only available within the scope of the <code>let</code> form.</p> <pre><code>-&gt; (do (let a 123) (+ a 1))\n124\n&gt; a\n•• [E003] error: object evaluation failed\n╭─[0]─┬ repl:1..1 in function: @anonymous\n│ 1   │ a\n│     ┴ ‾ undefined symbol: &apos;a\n</code></pre> <p>In the example above, the variable <code>a</code> is defined within the <code>let</code> form and is not available outside of it.</p> <p><code>let</code> can also be used to define local variables inside a function body.</p> <pre><code>-&gt; (set add (fn [a b] (let c (+ a b)) c))\n-&gt; (add 1 2)\n3\n</code></pre>"
+},
+{
+	"location": "content/env/memstat.html",
+	"title": "Memstat <code>memstat</code>",
+	"text": "<p>Returns memory statistics for the current Rayforce process.</p> <pre><code>-&gt; (memstat)\n{\n  msys: 67338240\n  heap: 67108864\n  free: 652\n  syms: 177\n}\n</code></pre>"
+},
+{
+	"location": "content/env/set.html",
+	"title": "Set <code>set</code>",
+	"text": "<p><code>set</code> is being used for various purposes in the language. It can be used to define a new variable, assign a value to an existing variable, or to update a variable. Another important usecase of <code>set</code> is to save inmemory data onto the disk.</p> <pre><code>-&gt; (set x 123)\n123\n-&gt; x\n123\n-&gt; (set \"/tmp/v.dat\" [1 2 3])\n\"/tmp/v.dat\"\n-&gt; (get \"/tmp/v.dat\")\n[1 2 3]\n</code></pre>"
+},
+{
+	"location": "content/format/format.html",
+	"title": "Format <code>format</code>",
+	"text": "<p>Accepts any Rayforce object and returns a string representation of it.</p> <pre><code>-&gt; (format 1)\n\"1\"\n-&gt; (format \"% %\" 1 3)\n\"1 3\"\n-&gt; (format \"% %\" 1 [1 2 3])\n\"1 [1 2 3]\"\n</code></pre>"
+},
+{
+	"location": "content/format/print.html",
+	"title": "Print <code>print</code>",
+	"text": "<p><code>print</code> prints formatted value to a output without a newline.</p> <pre><code>-&gt; (print \"% %\" 1 [2 3 4])\n1 [2 3 4]\n</code></pre>"
+},
+{
+	"location": "content/format/println.html",
+	"title": "Println <code>println</code>",
+	"text": "<p><code>println</code> prints formatted value to a output with a newline.</p> <pre><code>-&gt; (println \"% %\" 1 [2 3 4])\n1 [2 3 4]\n</code></pre>"
+},
+{
+	"location": "content/format/show.html",
+	"title": "Show <code>show</code>",
+	"text": "<p>Prints the full object into a console without a care of terminal dimensions.</p> <pre><code>-&gt; (show (til 100))\n[0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99]\n</code></pre>"
+},
+{
+	"location": "content/interfacing/loadfn.html",
+	"title": "Load a function from the shared library <code>loadfn</code>",
+	"text": "<p>Somethimes it is necessary to create a plugin when current functionality is not enough. In this case, you can use the <code>loadfn</code> function to load a function from a shared library.</p> <p>First, you need to create a shared library with the function you want to use. For example, let&apos;s create a shared library with a function that adds two numbers:</p> <pre><code>#include &lt;stdio.h&gt;\n#include \"../core/rayforce.h\"\n\nobj_p myfn(obj_p a, obj_p b) {\n    if (is_null(a) || is_null(b))\n        return null(0);\n\n    if (a-&gt;type != -TYPE_I64 || b-&gt;type != -TYPE_I64)\n        return error(ERR_TYPE, \"Expected two i64 arguments, found: &apos;%s, &apos;%s\", type_name(a-&gt;type), type_name(b-&gt;type));\n\n    return i64(a-&gt;i64 + b-&gt;i64);\n}\n</code></pre> <p>Then, let&apos;s create the Makefile with the following content:</p> <pre><code>CC = clang\nTARGET = libexample.so\nCFLAGS = -fPIC -Wall -Wextra -std=c17 -Ofast -march=native -fassociative-math -ftree-vectorize\\\n -fno-math-errno -funsafe-math-optimizations -ffinite-math-only -funroll-loops -m64\n\ndefault:\n    $(CC) $(CFLAGS) -shared -fPIC -I../core -o $(TARGET) example.c\n\nclean:\n    rm -f $(TARGET)\n</code></pre> <p>After that, you can compile the shared library with the following command:</p> <pre><code>make\n</code></pre> <p>Now, you can use the <code>loadfn</code> function to load the function from the shared library:</p> <pre><code>-&gt; (set f (loadfn \"ext/libexample.so\" \"myfn\" 2))\n@fn\n-&gt; (f 1 2)\n3\n-&gt; (f 1 0Ni)\n•• [E005] error: type mismatch\n╭─[0]─┬ repl:1..1 in function: @anonymous\n│ 1   │ (f 1 0Ni)\n│     ┴ ‾‾‾‾‾‾‾‾‾ Expected two i64 arguments, found: &apos;i64, &apos;i32\n</code></pre>"
+},
+{
+	"location": "content/io/get.html",
+	"title": "Get <code>get</code>",
+	"text": "<p>Accepts a symbol and returns the value of the env variable named by the symbol.</p> <pre><code>-&gt; (set a 1)\n1\n-&gt; (get &apos;a)\n1\n</code></pre> <p>Or load an object, stored in a disk file, into memory.</p> <pre><code>-&gt; (set \"/tmp/vec\" (til 10))\n\"/tmp/vec\"\n-&gt; (get \"/tmp/vec\")\n[0 1 2 3 4 5 6 7 8 9]\n</code></pre>"
+},
+{
+	"location": "content/io/get_parted.html",
+	"title": "Load parted table <code>get-parted</code>",
+	"text": "<p>Accepts two arguments: string path to a parted tables root and a symbol name of a table. </p> <pre><code>(set t (get-parted \"/tmp/db/\" &apos;tab))\n</code></pre>"
+},
+{
+	"location": "content/io/get_splayed.html",
+	"title": "Load splayed table <code>get-splayed</code>",
+	"text": "<p>Accepts two arguments: string path to a splayed table and a string path to a symfile of the table. </p> <pre><code>(set t (get-splayed \"/tmp/db/tab/\" \"/tmp/db/tab.sym\"))\n</code></pre> <p>Second argument is optional. If provided, it will be used as the symfile. Otherwise, the symfile will be inferred from the path to the table.</p> <pre><code>(set t (get-splayed \"/tmp/db/tab/\"))\n</code></pre> <p>Tip</p> <p>Pay attention to the trailing slash in the path to the table. It is required.</p>"
+},
+{
+	"location": "content/io/hclose.html",
+	"title": "Close handle <code>hclose</code>",
+	"text": "<p>Closes a handle opened with hopen.</p> <pre><code>-&gt; (hclose h)\n</code></pre>"
+},
+{
+	"location": "content/io/hopen.html",
+	"title": "Hopen <code>hopen</code>",
+	"text": "<p>Open a IO handle to a remote process or to a journal log.</p>"
+},
+{
+	"location": "content/io/read.html",
+	"title": "Read <code>read</code>",
+	"text": "<p>Reads a file into a string.</p> <pre><code>(read \"/tmp/data\")\n</code></pre>"
+},
+{
+	"location": "content/io/read_csv.html",
+	"title": "Read CSV file <code>read-csv</code>",
+	"text": "<p>Reads a CSV file into a table. Accepts two arguments: vector of symbols representing column types and a string path to a CSV file.</p> <pre><code>(set t (read-csv [I64 I64 Symbol Timestamp] \"/tmp/data.csv\"))\n</code></pre>"
+},
+{
+	"location": "content/io/set_splayed.html",
+	"title": "Set splayed <code>set-splayed</code>",
+	"text": "<p>Store a table as a splayed table into a disk.</p> <pre><code>(set-splayed \"/tmp/db/tab/\" t)\n</code></pre> <p>Where <code>t</code> is a table.</p> <p>Optionally accepts a string path to a symfile of the table.</p> <pre><code>(set-splayed \"/tmp/db/tab/\" t \"/tmp/db/sym\")\n</code></pre>"
+},
+{
+	"location": "content/items/at.html",
+	"title": "At <code>at</code>",
+	"text": "<p>The <code>at</code> function returns the element at the specified index.</p> <pre><code>-&gt; (at [1 2 3 4 5] 2)\n3\n(at (dict [a b c] (list [1 2] [3 4] [5 6])) &apos;b)\n[3 4]\n</code></pre>"
+},
+{
+	"location": "content/items/enum.html",
+	"title": "Enum <code>enum</code>",
+	"text": "<p>Enumerates one symbol vector over another.</p> <pre><code>-&gt; (set a [a b c])\n[a b c]\n-&gt; (enum &apos;a [a b c a c c c c a])\n&apos;a#[a b c a c c c c a]\n</code></pre> <p>Useful for saving space when storing repeated symbols and for splayed tables with symbolic columns.</p>"
+},
+{
+	"location": "content/items/except.html",
+	"title": "Except <code>except</code>",
+	"text": "<p>Returns the items in the first collection that are not in the second collection.</p>"
+},
+{
+	"location": "content/items/filter.html",
+	"title": "Filter <code>filter</code>",
+	"text": "<p>Filter a list by a boolean vector mask.</p> <pre><code>-&gt; (filter [1 2 3 4 5] [true false true false true])\n[1 3 5]\n-&gt; (filter \"test\" [true false true false])\n\"ts\"\n-&gt; (filter [&apos;a &apos;b &apos;c &apos;dd] [true false false true])\n[a dd]\n</code></pre> <p>Info</p> <ul> <li>First argument is the collection to filter</li> <li>Second argument is a boolean mask of the same length</li> <li>Returns only elements where the corresponding mask value is <code>true</code></li> <li>Both arguments must have the same length</li> </ul> <p>Tip</p> <p>Use <code>filter</code> to select elements based on a boolean condition mask</p>"
+},
+{
+	"location": "content/items/find.html",
+	"title": "Find <code>find</code>",
+	"text": "<p><code>find</code> is a function that returns the index of the first occurrence of a value in a list.</p> <pre><code>(find [1 2 3 4 5] 3)\n2\n(find [1 2 3 4 5] 6)\n0Nl\n</code></pre>"
+},
+{
+	"location": "content/items/first.html",
+	"title": "First <code>first</code>",
+	"text": "<p><code>first</code> is a function that returns the first item in a list.</p> <pre><code>(first [1 2 3 4 5])\n1\n</code></pre>"
+},
+{
+	"location": "content/items/in.html",
+	"title": "In <code>in</code>",
+	"text": "<p>Checks if an element (or elements) exists in a collection. Returns a boolean or array of booleans.</p> <p>Syntax: <code>(in element collection)</code></p> <pre><code>-&gt; (in 2 [1 2 3])\ntrue\n-&gt; (in 5 [1 2 3])\nfalse\n-&gt; (in [1 2] [1 2 3 4 5])\n[true true]\n-&gt; (in \"asd\" \"asd\")\n[true true true]\n-&gt; (in &apos;a&apos; \"test\")\nfalse\n-&gt; (in &apos;e&apos; \"test\")\ntrue\n</code></pre> <p>Info</p> <ul> <li>First argument is the element(s) to search for</li> <li>Second argument is the collection to search in</li> <li>Returns <code>true</code> if element is found, <code>false</code> otherwise</li> <li>When first argument is a collection, returns an array of booleans</li> <li>Works with: integers, floats, strings, chars, symbols, dates, times, timestamps, guids</li> </ul> <p>Warning</p> <p>The order of arguments matters: <code>(in element collection)</code>, not <code>(in collection element)</code></p>"
+},
+{
+	"location": "content/items/key.html",
+	"title": "Key <code>key</code>",
+	"text": "<p>Returns a key for mappable objects like dict or table, otherwise return the value itself.</p> <pre><code>-&gt; (key [1 2])\n[1 2]\n-&gt; (key (dict [a b] [1 2]))\n[a b]\n</code></pre>"
+},
+{
+	"location": "content/items/last.html",
+	"title": "Last <code>last</code>",
+	"text": "<p><code>last</code> returns the last element of a list.</p> <pre><code>(last [1 2 3 4 5])\n5\n</code></pre>"
+},
+{
+	"location": "content/items/sect.html",
+	"title": "Sect <code>sect</code>",
+	"text": "<p>Return the intersection of two lists.</p> <pre><code>(sect [1 2 3 4 5] [3 4 5 6 7])\n[3 4 5]\n</code></pre>"
+},
+{
+	"location": "content/items/take.html",
+	"title": "Take <code>take</code>",
+	"text": "<p><code>(take x y)</code> returns the first <code>x</code> elements of a <code>y</code>. If <code>x</code> &lt; 0, returns the last <code>x</code> elements of a <code>y</code>.</p> <pre><code>(take 3 [1 2 3 4 5])\n[1 2 3]\n\n(take -3 [1 2 3 4 5])\n[3 4 5]\n</code></pre> <p>If a <code>y</code> is atom, it will be repeat <code>x</code> times:</p> <pre><code>(take 2 &apos;a&apos;)\n\"aa\"\n\n(take 0 &apos;a&apos;)\n\"\"\n</code></pre> <p>If <code>x</code> &gt; (count <code>y</code>), <code>y</code> is treated as circular:</p> <pre><code>(take 5 (list 1 &apos;a&apos; \"abc\"))\n(\n  1\n  a\n  abc\n  1\n  a\n)\n</code></pre>"
+},
+{
+	"location": "content/items/union.html",
+	"title": "Union <code>union</code>",
+	"text": "<p><code>union</code> returns the union of two lists.</p> <pre><code>-&gt; (union [1 2 3] [4 5 6])\n[1 2 3 4 5 6]\n</code></pre>"
+},
+{
+	"location": "content/items/value.html",
+	"title": "Value <code>value</code>",
+	"text": "<p>Returns the value of a key in a mappable object like a dict or table, otherwise return the value itself.</p> <pre><code>(value [1 2])\n[1 2]\n(value (dict [a b] [1 2]))\n[1 2]\n</code></pre>"
+},
+{
+	"location": "content/items/where.html",
+	"title": "Where <code>where</code>",
+	"text": "<p>Returns vector of indices where the elements of a boolean vector are true.</p> <pre><code>(where [true false true])\n[0 2]\n</code></pre>"
+},
+{
+	"location": "content/items/within.html",
+	"title": "Within <code>within</code>",
+	"text": "<p><code>within</code> is a function that returns a boolean list indicating whether the elements of the first list are within the corresponding elements of the second list.</p> <pre><code>(within 6 [1 20])\n[true]\n-&gt; (within [1 2 3] [1 100])\n[true true true]\n</code></pre>"
+},
+{
+	"location": "content/iter/apply.html",
+	"title": "Apply <code>apply</code>",
+	"text": "<p>Applies a function to each element of a list.</p> <pre><code>-&gt; (apply (fn [x y] (+ x y)) 1 [1 2 34])\n[2 3 35]\n-&gt; (apply (fn [x y] (+ x y)) [1 2 3] [4 5 6])\n[5 7 9]\n</code></pre>"
+},
+{
+	"location": "content/iter/fold.html",
+	"title": "Fold <code>fold</code>",
+	"text": "<p>Performs a traditional left fold (reduce) operation, accumulating elements from a vector using a lambda function.</p>"
+},
+{
+	"location": "content/iter/map.html",
+	"title": "Map <code>map</code>",
+	"text": "<p>Applies a function to each element of a list and returns a new list with the results.</p>"
+},
+{
+	"location": "content/join/asof_join.html",
+	"title": "Asof Join <code>asof-join</code>",
+	"text": "<p>Returns a table with records from the left-join of t1 and t2. Join columns (but last one) are matched for equality. The last one matches by the greatest value of resulting set.</p> <pre><code>(set n 10000000)\n10000000\n-&gt; (set trades (table [Sym Ts Qty Price] (list (take n (as &apos;Symbol (map-right as &apos;String (til 8000)))) (as &apos;Time (+ 2 (* 1000 (til n)))) (til n) (as &apos;F64 (til n)))))\n┌──────┬───────────────┬─────────┬──────────────┐\n│ Sym  │ Ts            │ Qty     │ Price        │\n├──────┼───────────────┼─────────┼──────────────┤\n│ 0    │ 00:00:00.002  │ 0       │ 0.00         │\n│ 1    │ 00:00:01.002  │ 1       │ 1.00         │\n│ 2    │ 00:00:02.002  │ 2       │ 2.00         │\n│ 3    │ 00:00:03.002  │ 3       │ 3.00         │\n│ 4    │ 00:00:04.002  │ 4       │ 4.00         │\n│ 5    │ 00:00:05.002  │ 5       │ 5.00         │\n│ 6    │ 00:00:06.002  │ 6       │ 6.00         │\n│ 7    │ 00:00:07.002  │ 7       │ 7.00         │\n│ 8    │ 00:00:08.002  │ 8       │ 8.00         │\n│ 9    │ 00:00:09.002  │ 9       │ 9.00         │\n┆ …    ┆ …             ┆ …       ┆ …            ┆\n│ 7990 │ 135:40:55.410 │ 9999990 │ 9.999990e+06 │\n│ 7991 │ 135:40:56.410 │ 9999991 │ 9.999991e+06 │\n│ 7992 │ 135:40:57.410 │ 9999992 │ 9.999992e+06 │\n│ 7993 │ 135:40:58.410 │ 9999993 │ 9.999993e+06 │\n│ 7994 │ 135:40:59.410 │ 9999994 │ 9.999994e+06 │\n│ 7995 │ 135:41:00.410 │ 9999995 │ 9.999995e+06 │\n│ 7996 │ 135:41:01.410 │ 9999996 │ 9.999996e+06 │\n│ 7997 │ 135:41:02.410 │ 9999997 │ 9.999997e+06 │\n│ 7998 │ 135:41:03.410 │ 9999998 │ 9.999998e+06 │\n│ 7999 │ 135:41:04.410 │ 9999999 │ 9.999999e+06 │\n├──────┴───────────────┴─────────┴──────────────┤\n│ 10000000 rows (20 shown) 4 columns (4 shown)  │\n└───────────────────────────────────────────────┘\n-&gt; (set quotes (table [Sym Ts Bid Ask] (list (take n (as &apos;Symbol (map-right as &apos;String (til 18000)))) (as &apos;Time (* 1000 (til n))) (as &apos;F64 (til n)) (as &apos;F64 (til n)))))\n┌──────┬───────────────┬──────────────┬──────────────┐\n│ Sym  │ Ts            │ Bid          │ Ask          │\n├──────┼───────────────┼──────────────┼──────────────┤\n│ 0    │ 00:00:00.000  │ 0.00         │ 0.00         │\n│ 1    │ 00:00:01.000  │ 1.00         │ 1.00         │\n│ 2    │ 00:00:02.000  │ 2.00         │ 2.00         │\n│ 3    │ 00:00:03.000  │ 3.00         │ 3.00         │\n│ 4    │ 00:00:04.000  │ 4.00         │ 4.00         │\n│ 5    │ 00:00:05.000  │ 5.00         │ 5.00         │\n│ 6    │ 00:00:06.000  │ 6.00         │ 6.00         │\n│ 7    │ 00:00:07.000  │ 7.00         │ 7.00         │\n│ 8    │ 00:00:08.000  │ 8.00         │ 8.00         │\n│ 9    │ 00:00:09.000  │ 9.00         │ 9.00         │\n┆ …    ┆ …             ┆ …            ┆ …            ┆\n│ 9990 │ 135:40:55.408 │ 9.999990e+06 │ 9.999990e+06 │\n│ 9991 │ 135:40:56.408 │ 9.999991e+06 │ 9.999991e+06 │\n│ 9992 │ 135:40:57.408 │ 9.999992e+06 │ 9.999992e+06 │\n│ 9993 │ 135:40:58.408 │ 9.999993e+06 │ 9.999993e+06 │\n│ 9994 │ 135:40:59.408 │ 9.999994e+06 │ 9.999994e+06 │\n│ 9995 │ 135:41:00.408 │ 9.999995e+06 │ 9.999995e+06 │\n│ 9996 │ 135:41:01.408 │ 9.999996e+06 │ 9.999996e+06 │\n│ 9997 │ 135:41:02.408 │ 9.999997e+06 │ 9.999997e+06 │\n│ 9998 │ 135:41:03.408 │ 9.999998e+06 │ 9.999998e+06 │\n│ 9999 │ 135:41:04.408 │ 9.999999e+06 │ 9.999999e+06 │\n├──────┴───────────────┴──────────────┴──────────────┤\n│ 10000000 rows (20 shown) 4 columns (4 shown)       │\n└────────────────────────────────────────────────────┘\n-&gt; (asof-join [Sym Ts] trades quotes)\n┌──────┬───────────────┬──────────────┬──────────────┬─────────┬──────────────┐\n│ Sym  │ Ts            │ Bid          │ Ask          │ Qty     │ Price        │\n├──────┼───────────────┼──────────────┼──────────────┼─────────┼──────────────┤\n│ 0    │ 00:00:00.002  │ 4.284000e+06 │ 4.284000e+06 │ 0       │ 0.00         │\n│ 1    │ 00:00:01.002  │ 4.284001e+06 │ 4.284001e+06 │ 1       │ 1.00         │\n│ 2    │ 00:00:02.002  │ 4.284002e+06 │ 4.284002e+06 │ 2       │ 2.00         │\n│ 3    │ 00:00:03.002  │ 4.284003e+06 │ 4.284003e+06 │ 3       │ 3.00         │\n│ 4    │ 00:00:04.002  │ 4.284004e+06 │ 4.284004e+06 │ 4       │ 4.00         │\n│ 5    │ 00:00:05.002  │ 4.284005e+06 │ 4.284005e+06 │ 5       │ 5.00         │\n│ 6    │ 00:00:06.002  │ 4.284006e+06 │ 4.284006e+06 │ 6       │ 6.00         │\n│ 7    │ 00:00:07.002  │ 4.284007e+06 │ 4.284007e+06 │ 7       │ 7.00         │\n│ 8    │ 00:00:08.002  │ 4.284008e+06 │ 4.284008e+06 │ 8       │ 8.00         │\n│ 9    │ 00:00:09.002  │ 4.284009e+06 │ 4.284009e+06 │ 9       │ 9.00         │\n┆ …    ┆ …             ┆ …            ┆ …            ┆ …       ┆ …            ┆\n│ 7990 │ 135:40:55.410 │ 9.997990e+06 │ 9.997990e+06 │ 9999990 │ 9.999990e+06 │\n│ 7991 │ 135:40:56.410 │ 9.997991e+06 │ 9.997991e+06 │ 9999991 │ 9.999991e+06 │\n│ 7992 │ 135:40:57.410 │ 9.997992e+06 │ 9.997992e+06 │ 9999992 │ 9.999992e+06 │\n│ 7993 │ 135:40:58.410 │ 9.997993e+06 │ 9.997993e+06 │ 9999993 │ 9.999993e+06 │\n│ 7994 │ 135:40:59.410 │ 9.997994e+06 │ 9.997994e+06 │ 9999994 │ 9.999994e+06 │\n│ 7995 │ 135:41:00.410 │ 9.997995e+06 │ 9.997995e+06 │ 9999995 │ 9.999995e+06 │\n│ 7996 │ 135:41:01.410 │ 9.997996e+06 │ 9.997996e+06 │ 9999996 │ 9.999996e+06 │\n│ 7997 │ 135:41:02.410 │ 9.997997e+06 │ 9.997997e+06 │ 9999997 │ 9.999997e+06 │\n│ 7998 │ 135:41:03.410 │ 9.997998e+06 │ 9.997998e+06 │ 9999998 │ 9.999998e+06 │\n│ 7999 │ 135:41:04.410 │ 9.997999e+06 │ 9.997999e+06 │ 9999999 │ 9.999999e+06 │\n├──────┴───────────────┴──────────────┴──────────────┴─────────┴──────────────┤\n│ 10000000 rows (20 shown) 6 columns (6 shown)                                │\n└─────────────────────────────────────────────────────────────────────────────┘\n</code></pre>"
+},
+{
+	"location": "content/join/inner_join.html",
+	"title": "Inner Join <code>inner-join</code>",
+	"text": "<p>Performs an inner join between two tables based on matching key columns.</p> <pre><code>;; Create sample tables\n-&gt; (set x (table [a b c d] \n    (list (list \"aaaaaa\" \"bbbbbbbbbb\" \"cc\" \"dd\")\n          [&apos;I &apos;J &apos;K &apos;I] \n          [0 1 2 3]\n          [0 1 2 3])))\n\n-&gt; (set y (table [a b c d e] \n    (list (list \"aa\" \"bb\" \"cc\" \"dd\" \"ee\")\n          [&apos;I &apos;J &apos;K &apos;I &apos;J]\n          [0 1 2 3 4]\n          [0 1 2 3 4]\n          [0 1 2 3 4])))\n\n;; Inner join on single column\n-&gt; (inner-join [a] x y)\n┌──────┬───┬───┬───┬───┐\n│ a    │ b │ c │ d │ e │\n├──────┼───┼───┼───┼───┤\n│ cc   │ K │ 2 │ 2 │ 2 │\n│ dd   │ I │ 3 │ 3 │ 3 │\n└──────┴───┴───┴───┴───┘\n\n;; Inner join on multiple columns\n-&gt; (inner-join [a b] x y)\n┌──────┬───┬───┬───┬───┐\n│ a    │ b │ c │ d │ e │\n├──────┼───┼───┼───┼───┤\n│ cc   │ K │ 2 │ 2 │ 2 │\n└──────┴───┴───┴───┴───┘\n</code></pre> <p>Syntax</p> <p><pre><code>(inner-join columns left-table right-table)\n</code></pre> - <code>columns</code>: Vector of column names to join on - <code>left-table</code>: First table to join - <code>right-table</code>: Second table to join</p> <p>Note</p> <ul> <li>Only keeps rows where the join columns match</li> <li>Rows without matches are excluded</li> <li>Column names from both tables are preserved</li> <li>Join columns must exist in both tables</li> <li>Can join on multiple columns by providing a vector of column names</li> </ul> <p>Tip</p> <p>Use inner join when you only want rows that have matches in both tables</p>"
+},
+{
+	"location": "content/join/left_join.html",
+	"title": "Left Join <code>left-join</code>",
+	"text": "<p>Performs a left join between two tables, keeping all rows from the left table and matching rows from the right table.</p> <pre><code>;; Create sample tables\n-&gt; (set x (table [a b c d] \n    (list (list \"aaaaaa\" \"bbbbbbbbbb\" \"cc\" \"dd\")\n          [&apos;I &apos;J &apos;K &apos;I] \n          [0 1 2 3]\n          [0 1 2 3])))\n\n-&gt; (set y (table [a b c d e] \n    (list (list \"aa\" \"bb\" \"cc\" \"dd\" \"ee\")\n          [&apos;I &apos;J &apos;K &apos;I &apos;J]\n          [0 1 2 3 4]\n          [0 1 2 3 4]\n          [0 1 2 3 4])))\n\n;; Left join on single column\n-&gt; (left-join [a] x y)\n┌────────────┬───┬───┬───┬─────┐\n│ a          │ b │ c │ d │ e   │\n├────────────┼───┼───┼───┼─────┤\n│ aaaaaa     │ I │ 0 │ 0 │ null│\n│ bbbbbbbbbb │ J │ 1 │ 1 │ null│\n│ cc         │ K │ 2 │ 2 │ 2   │\n│ dd         │ I │ 3 │ 3 │ 3   │\n└────────────┴───┴───┴───┴─────┘\n\n;; Left join on multiple columns\n-&gt; (left-join [a b] x y)\n┌────────────┬───┬───┬───┬─────┐\n│ a          │ b │ c │ d │ e   │\n├────────────┼───┼───┼───┼─────┤\n│ aaaaaa     │ I │ 0 │ 0 │ null│\n│ bbbbbbbbbb │ J │ 1 │ 1 │ null│\n│ cc         │ K │ 2 │ 2 │ 2   │\n│ dd         │ I │ 3 │ 3 │ null│\n└────────────┴───┴───┴───┴─────┘\n</code></pre> <p>Syntax</p> <p><pre><code>(left-join columns left-table right-table)\n</code></pre> - <code>columns</code>: Vector of column names to join on - <code>left-table</code>: First table to join (all rows preserved) - <code>right-table</code>: Second table to join (matching rows only)</p> <p>Note</p> <ul> <li>Keeps all rows from left table</li> <li>Fills missing matches with null</li> <li>Column names from both tables are preserved</li> <li>Join columns must exist in both tables</li> <li>Can join on multiple columns by providing a vector of column names</li> </ul> <p>Tip</p> <p>Use left join when you want to keep all rows from the first table, even if they don&apos;t have matches</p>"
+},
+{
+	"location": "content/join/window_join.html",
+	"title": "Window Join <code>window-join</code>, <code>window-join1</code>",
+	"text": "<p>Returns a table with records from the left-join of t1 and t2. Join columns (but last one) are matched for equality. The resulting set matches for the last and values over the matching intervals in windows argument is passed to an aggregation functions set, producing additional columns in the resulting table.</p> <pre><code>-&gt; (set n 100000)\n100000\n-&gt; (set tsym (take n (concat (take 99 &apos;AAPL) (take 1 &apos;MSFT))))\n[AAPL AAPL AAPL AAPL AAPL AAPL AAPL AAPL AAPL AAPL AAPL AAPL AAPL AAPL AAPL AAPL..]\n-&gt; (set ttime (+ 09:00:00 (as &apos;Time (/ (* (til n) 3) 10))))\n[09:00:00.000 09:00:00.000 09:00:00.000 09:00:00.000 09:00:00.001 09:00:00.001 09:00:00.001..]\n-&gt; (set price (+ 10 (til n)))\n[10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36..]\n-&gt; (set bsym (take (* 2 n) (concat (concat (take 3 &apos;AAPL) (take 2 &apos;MSFT)) (take 1 &apos;GOOG))))\n[AAPL AAPL AAPL MSFT MSFT GOOG AAPL AAPL AAPL MSFT MSFT GOOG AAPL AAPL AAPL MSFT..]\n-&gt; (set btime (+ 09:00:00 (as &apos;Time (/ (* (til (* 2 n)) 2) 10))))\n[09:00:00.000 09:00:00.000 09:00:00.000 09:00:00.000 09:00:00.000 09:00:00.001 09:00:00.001..]\n-&gt; (set bid (+ 8 (/ (til (* 2 n))2)))\n[8 8 9 9 10 10 11 11 12 12 13 13 14 14 15 15 16 16 17 17 18 18 19 19 20 20 21 21..]\n-&gt; (set ask (+ 12 (/ (til (* 2 n))2)))\n[12 12 13 13 14 14 15 15 16 16 17 17 18 18 19 19 20 20 21 21 22 22 23 23 24 24 25..]\n-&gt; (set trades (table [Sym Ts Price] (list tsym ttime price)))\n┌──────┬──────────────┬──────────────────────┐\n│ Sym  │ Ts           │ Price                │\n├──────┼──────────────┼──────────────────────┤\n│ AAPL │ 09:00:00.000 │ 10                   │\n│ AAPL │ 09:00:00.000 │ 11                   │\n│ AAPL │ 09:00:00.000 │ 12                   │\n│ AAPL │ 09:00:00.000 │ 13                   │\n│ AAPL │ 09:00:00.001 │ 14                   │\n│ AAPL │ 09:00:00.001 │ 15                   │\n│ AAPL │ 09:00:00.001 │ 16                   │\n│ AAPL │ 09:00:00.002 │ 17                   │\n│ AAPL │ 09:00:00.002 │ 18                   │\n│ AAPL │ 09:00:00.002 │ 19                   │\n┆ …    ┆ …            ┆ …                    ┆\n│ AAPL │ 09:00:29.997 │ 100000               │\n│ AAPL │ 09:00:29.997 │ 100001               │\n│ AAPL │ 09:00:29.997 │ 100002               │\n│ AAPL │ 09:00:29.997 │ 100003               │\n│ AAPL │ 09:00:29.998 │ 100004               │\n│ AAPL │ 09:00:29.998 │ 100005               │\n│ AAPL │ 09:00:29.998 │ 100006               │\n│ AAPL │ 09:00:29.999 │ 100007               │\n│ AAPL │ 09:00:29.999 │ 100008               │\n│ MSFT │ 09:00:29.999 │ 100009               │\n├──────┴──────────────┴──────────────────────┤\n│ 100000 rows (20 shown) 3 columns (3 shown) │\n└────────────────────────────────────────────┘\n-&gt; (set quotes (table [Sym Ts Bid Ask] (list bsym btime bid ask)))\n┌──────┬──────────────┬────────┬─────────────┐\n│ Sym  │ Ts           │ Bid    │ Ask         │\n├──────┼──────────────┼────────┼─────────────┤\n│ AAPL │ 09:00:00.000 │ 8      │ 12          │\n│ AAPL │ 09:00:00.000 │ 8      │ 12          │\n│ AAPL │ 09:00:00.000 │ 9      │ 13          │\n│ MSFT │ 09:00:00.000 │ 9      │ 13          │\n│ MSFT │ 09:00:00.000 │ 10     │ 14          │\n│ GOOG │ 09:00:00.001 │ 10     │ 14          │\n│ AAPL │ 09:00:00.001 │ 11     │ 15          │\n│ AAPL │ 09:00:00.001 │ 11     │ 15          │\n│ AAPL │ 09:00:00.001 │ 12     │ 16          │\n│ MSFT │ 09:00:00.001 │ 12     │ 16          │\n┆ …    ┆ …            ┆ …      ┆ …           ┆\n│ MSFT │ 09:00:39.998 │ 100003 │ 100007      │\n│ GOOG │ 09:00:39.998 │ 100003 │ 100007      │\n│ AAPL │ 09:00:39.998 │ 100004 │ 100008      │\n│ AAPL │ 09:00:39.998 │ 100004 │ 100008      │\n│ AAPL │ 09:00:39.998 │ 100005 │ 100009      │\n│ MSFT │ 09:00:39.999 │ 100005 │ 100009      │\n│ MSFT │ 09:00:39.999 │ 100006 │ 100010      │\n│ GOOG │ 09:00:39.999 │ 100006 │ 100010      │\n│ AAPL │ 09:00:39.999 │ 100007 │ 100011      │\n│ AAPL │ 09:00:39.999 │ 100007 │ 100011      │\n├──────┴──────────────┴────────┴─────────────┤\n│ 200000 rows (20 shown) 4 columns (4 shown) │\n└────────────────────────────────────────────┘\n-&gt; (set intervals (map-left + [-1000 1000] (at trades &apos;Ts)))\n(\n  [08:59:59.000 08:59:59.000 08:59:59.000 08:59:59.000 08:59:59.001 08:59:59.001 08:59:59.001..]\n  [09:00:01.000 09:00:01.000 09:00:01.000 09:00:01.000 09:00:01.001 09:00:01.001 09:00:01.001..]\n)\n-&gt; (window-join [Sym Ts] intervals trades quotes {bid: (min Bid) ask: (max Ask)})\n┌──────┬──────────────┬────────┬───────┬───────┐\n│ Sym  │ Ts           │ Price  │ bid   │ ask   │\n├──────┼──────────────┼────────┼───────┼───────┤\n│ AAPL │ 09:00:00.000 │ 10     │ 8     │ 2514  │\n│ AAPL │ 09:00:00.000 │ 11     │ 8     │ 2514  │\n│ AAPL │ 09:00:00.000 │ 12     │ 8     │ 2514  │\n│ AAPL │ 09:00:00.000 │ 13     │ 8     │ 2514  │\n│ AAPL │ 09:00:00.001 │ 14     │ 8     │ 2515  │\n│ AAPL │ 09:00:00.001 │ 15     │ 8     │ 2515  │\n│ AAPL │ 09:00:00.001 │ 16     │ 8     │ 2515  │\n│ AAPL │ 09:00:00.002 │ 17     │ 8     │ 2518  │\n│ AAPL │ 09:00:00.002 │ 18     │ 8     │ 2518  │\n│ AAPL │ 09:00:00.002 │ 19     │ 8     │ 2518  │\n┆ …    ┆ …            ┆ …      ┆ …     ┆ …     ┆\n│ AAPL │ 09:00:29.997 │ 100000 │ 72501 │ 77506 │\n│ AAPL │ 09:00:29.997 │ 100001 │ 72501 │ 77506 │\n│ AAPL │ 09:00:29.997 │ 100002 │ 72501 │ 77506 │\n│ AAPL │ 09:00:29.997 │ 100003 │ 72501 │ 77506 │\n│ AAPL │ 09:00:29.998 │ 100004 │ 72504 │ 77509 │\n│ AAPL │ 09:00:29.998 │ 100005 │ 72504 │ 77509 │\n│ AAPL │ 09:00:29.998 │ 100006 │ 72504 │ 77509 │\n│ AAPL │ 09:00:29.999 │ 100007 │ 72507 │ 77511 │\n│ AAPL │ 09:00:29.999 │ 100008 │ 72507 │ 77511 │\n│ MSFT │ 09:00:29.999 │ 100009 │ 72507 │ 77510 │\n├──────┴──────────────┴────────┴───────┴───────┤\n│ 100000 rows (20 shown) 5 columns (5 shown)   │\n└──────────────────────────────────────────────┘\n-&gt; (window-join1 [Sym Ts] intervals trades quotes {bid: (min Bid) ask: (max Ask)})\n┌──────┬──────────────┬────────┬───────┬───────┐\n│ Sym  │ Ts           │ Price  │ bid   │ ask   │\n├──────┼──────────────┼────────┼───────┼───────┤\n│ AAPL │ 09:00:00.000 │ 10     │ 8     │ 2514  │\n│ AAPL │ 09:00:00.000 │ 11     │ 8     │ 2514  │\n│ AAPL │ 09:00:00.000 │ 12     │ 8     │ 2514  │\n│ AAPL │ 09:00:00.000 │ 13     │ 8     │ 2514  │\n│ AAPL │ 09:00:00.001 │ 14     │ 8     │ 2515  │\n│ AAPL │ 09:00:00.001 │ 15     │ 8     │ 2515  │\n│ AAPL │ 09:00:00.001 │ 16     │ 8     │ 2515  │\n│ AAPL │ 09:00:00.002 │ 17     │ 8     │ 2518  │\n│ AAPL │ 09:00:00.002 │ 18     │ 8     │ 2518  │\n│ AAPL │ 09:00:00.002 │ 19     │ 8     │ 2518  │\n┆ …    ┆ …            ┆ …      ┆ …     ┆ …     ┆\n│ AAPL │ 09:00:29.997 │ 100000 │ 72500 │ 77506 │\n│ AAPL │ 09:00:29.997 │ 100001 │ 72500 │ 77506 │\n│ AAPL │ 09:00:29.997 │ 100002 │ 72500 │ 77506 │\n│ AAPL │ 09:00:29.997 │ 100003 │ 72500 │ 77506 │\n│ AAPL │ 09:00:29.998 │ 100004 │ 72503 │ 77509 │\n│ AAPL │ 09:00:29.998 │ 100005 │ 72503 │ 77509 │\n│ AAPL │ 09:00:29.998 │ 100006 │ 72503 │ 77509 │\n│ AAPL │ 09:00:29.999 │ 100007 │ 72506 │ 77511 │\n│ AAPL │ 09:00:29.999 │ 100008 │ 72506 │ 77511 │\n│ MSFT │ 09:00:29.999 │ 100009 │ 72507 │ 77510 │\n├──────┴──────────────┴────────┴───────┴───────┤\n│ 100000 rows (20 shown) 5 columns (5 shown)   │\n└──────────────────────────────────────────────┘\n</code></pre> <p>Info</p> <p>The difference between window-join and window-join1 is how they interpret window intervals: window-join1 include interval bounds into aggregation. </p>"
+},
+{
+	"location": "content/logic/and.html",
+	"title": "And <code>and</code>",
+	"text": "<p>Performs a logical AND operation on its arguments. Returns <code>true</code> only if all arguments are <code>true</code>.</p> <pre><code>(and true false)\nfalse\n(and true true)\ntrue\n(and false false)\nfalse\n(and [true false true] [false true false])\n[false false false]\n(and [true false true] [false true false] [true false true])\n[false false false]\n(and [true false true] true)\n[true false true]\n</code></pre> <p>Info</p> <ul> <li>Works with scalar booleans and boolean arrays</li> <li>When applied to arrays, performs element-wise AND operation</li> <li>Supports multiple arguments (more than 2)</li> <li>Returns <code>false</code> if any argument is <code>false</code></li> </ul> <p>Tip</p> <p>Use <code>and</code> to combine multiple boolean conditions or filter data with multiple criteria</p>"
+},
+{
+	"location": "content/logic/or.html",
+	"title": "Or <code>or</code>",
+	"text": "<p>Performs a logical OR operation on its arguments. Returns <code>true</code> if at least one argument is <code>true</code>.</p> <pre><code>(or true false)\ntrue\n(or false true)\ntrue\n(or false false)\nfalse\n(or true true)\ntrue\n(or [true false true] [false true false])\n[true true true]\n(or [true false true] [false true false] [true false true])\n[true true true]\n(or [true false true] true)\n[true true true]\n</code></pre> <p>Info</p> <ul> <li>Works with scalar booleans and boolean arrays</li> <li>When applied to arrays, performs element-wise OR operation</li> <li>Supports multiple arguments (more than 2)</li> <li>Returns <code>true</code> if any argument is <code>true</code></li> </ul> <p>Tip</p> <p>Use <code>or</code> to combine boolean conditions where at least one must be true</p>"
+},
+{
+	"location": "content/math/avg.html",
+	"title": "Average <code>avg</code>",
+	"text": "<p>Calculates average value of the vector. Always returns a float value.</p> <pre><code>-&gt; (avg [1.0 2.0 3.0])\n2.0\n\n-&gt; (avg [-24 12 6])\n-2.0\n\n-&gt; (avg [1i 2i -3i])\n0.0\n\n-&gt; (avg 5i)\n5.0\n\n-&gt; (avg [-24 12 6 0Nl])\n-2.0\n</code></pre>"
+},
+{
+	"location": "content/math/ceil.html",
+	"title": "Ceil <code>ceil</code>",
+	"text": "<p>Returns a value rounded up to the nearest integer greater than or equal to the given value. Returns a float value (except for integer inputs which remain unchanged).</p> <pre><code>-&gt; (ceil 1.5)\n2.0\n\n-&gt; (ceil 1.4)\n2.0\n\n-&gt; (ceil -1.5)\n-1.0\n\n-&gt; (ceil [1.1 2.5 -1.1])\n[2.0 3.0 -1.0]\n\n-&gt; (ceil -5i)\n-5i\n\n-&gt; (ceil 0Nf)\n0Nf\n</code></pre>"
+},
+{
+	"location": "content/math/dev.html",
+	"title": "Standard deviation <code>dev</code>",
+	"text": "<p>The <code>dev</code> function returns the standard deviation of a given list of numbers. Always returns a float value.</p> <pre><code>-&gt; (dev [1 2 3 4 50])\n19.0263\n\n-&gt; (dev [1i 2i])\n0.5\n\n-&gt; (dev 1)\n0.0\n\n-&gt; (dev [1 0Nl 2])\n0.5\n\n-&gt; (dev [0Nf -2.0 10.0 11.0 5.0 0Nf])\n5.147815\n\n-&gt; (dev [0Nl 1 2 3 4 50 0Nl])\n19.0263\n</code></pre>"
+},
+{
+	"location": "content/math/div.html",
+	"title": "Division",
+	"text": "<p>This page documents both integer and floating-point division operations.</p>"
+},
+{
+	"location": "content/math/floor.html",
+	"title": "Floor <code>floor</code>",
+	"text": "<p>The <code>floor</code> function returns the largest integer less than or equal to a given number. Returns a float value (except for integer inputs which remain unchanged).</p> <pre><code>-&gt; (floor 1.5)\n1.0\n\n-&gt; (floor 1.4)\n1.0\n\n-&gt; (floor -1.5)\n-2.0\n\n-&gt; (floor [1.1 2.5 -1.1])\n[1.0 2.0 -2.0]\n\n-&gt; (floor -5i)\n-5i\n\n-&gt; (floor 0Nf)\n0Nf\n</code></pre>"
+},
+{
+	"location": "content/math/max.html",
+	"title": "Max <code>max</code>",
+	"text": "<p>Returns the maximum value of a vector.</p> <pre><code>-&gt; (max [1 2 3])\n3\n</code></pre>"
+},
+{
+	"location": "content/math/med.html",
+	"title": "Median <code>med</code>",
+	"text": "<p>The median is the middle value of a dataset. It is the value that separates the higher half from the lower half of the data. Always returns a float value.</p> <pre><code>-&gt; (med [3 1 2])\n2.0\n\n-&gt; (med [3 1 2 4])\n2.5\n\n-&gt; (med 2i)\n2.0\n\n-&gt; (med -5)\n-5.0\n\n-&gt; (med 0Nf)\n0Nf\n\n-&gt; (med [])\n0Nf\n</code></pre>"
+},
+{
+	"location": "content/math/min.html",
+	"title": "Min <code>min</code>",
+	"text": "<p>Returns the smallest value in a vector.</p> <pre><code>-&gt; (min [1 2 3])\n1\n</code></pre>"
+},
+{
+	"location": "content/math/mod.html",
+	"title": "Mod <code>%</code>",
+	"text": "<p>Makes a division of it&apos;s arguments, takes a remainder. Supports such types and their combinations: <code>i64</code>, <code>I64</code>, <code>f64</code>, <code>F64</code>.</p> <pre><code>-&gt; (% 1 2)\n1\n-&gt; (% 1.2 2.2)\n1.20\n-&gt; (% 2 3.4)\n2\n-&gt; (% [-1 -2 -3] 3)\n[2 1 0]\n-&gt; (% [10 -10 3] 2.1)\n[1.60 0.50 0.90]\n-&gt; (% 3.1 [1 2 -3])\n[0.10 1.10 -2.90]\n</code></pre>"
+},
+{
+	"location": "content/math/round.html",
+	"title": "Round <code>round</code>",
+	"text": "<p>The <code>round</code> function rounds a number to the nearest integer. If the number is halfway between two integers, it rounds away from zero. Returns a float value.</p> <pre><code>-&gt; (round -0.5)\n-1.0\n\n-&gt; (round [-1.5 -1.1 -0.0 0Nf 0.0 1.1 1.5])\n[-2.0 -1.0 0.0 0Nf 0.0 1.0 2.0]\n\n-&gt; (round 0Nf)\n0Nf\n\n-&gt; (round [])\n[]\n</code></pre>"
+},
+{
+	"location": "content/math/sum.html",
+	"title": "Sum <code>sum</code>",
+	"text": "<p>Makes a sum of it&apos;s argument. Supports such types: <code>i64</code>, <code>I64</code>, <code>f64</code>, <code>F64</code>.</p> <pre><code>-&gt; (sum 3)\n3\n-&gt; (sum [1.2 2.2 3.2])\n6.6\n-&gt; (sum [1 2 3])\n6\n</code></pre>"
+},
+{
+	"location": "content/math/xbar.html",
+	"title": "Xbar <code>xbar</code>",
+	"text": "<p>The <code>xbar</code> function rounds values down to the nearest multiple of a specified bin width. It&apos;s commonly used for bucketing or binning data into fixed-size intervals.</p>"
+},
+{
+	"location": "content/misc/count.html",
+	"title": "Count <code>count</code>",
+	"text": "<p>Returns the number of elements in a collection or the length of a string.</p> <pre><code>-&gt; (count [1 2 3 4 5])\n5\n-&gt; (count \"hello\")\n5\n-&gt; (count (list 1 2 \"three\" [4 5]))\n4\n-&gt; (count {a: 1 b: 2 c: 3})\n3\n</code></pre> <p>Info</p> <ul> <li>Works with arrays, lists, strings, and dictionaries</li> <li>For dictionaries, returns the number of key-value pairs</li> <li>For nested structures, counts only top-level elements</li> </ul> <p>Tip</p> <p>Use count to get the size of any collection or string</p>"
+},
+{
+	"location": "content/misc/gc.html",
+	"title": "Garbage Collect <code>gc</code>",
+	"text": "<p>Triggers manual garbage collection.</p> <pre><code>-&gt; (gc)\nnull\n</code></pre> <p>Info</p> <ul> <li>Frees memory by collecting unused objects</li> <li>Returns null</li> <li>Execution time depends on heap size</li> </ul> <p>Warning</p> <p>Manual garbage collection should be used sparingly, as the runtime automatically manages memory</p> <p>Tip</p> <p>Use gc when you need to explicitly free memory after large operations</p>"
+},
+{
+	"location": "content/misc/meta.html",
+	"title": "Meta <code>meta</code>",
+	"text": "<p>Returns metadata about a value.</p> <pre><code>-&gt; (meta [1 2 3])\n{\n  type: Array\n  length: 3\n  element_type: I64\n}\n-&gt; (meta \"hello\")\n{\n  type: String\n  length: 5\n}\n-&gt; (meta (table [a b] [[1 2] [3 4]]))\n{\n  type: Table\n  columns: [a b]\n  rows: 2\n}\n</code></pre> <p>Info</p> <ul> <li>Returns a dictionary containing type information</li> <li>Different types have different metadata fields</li> <li>Useful for runtime type inspection</li> </ul> <p>Tip</p> <p>Use meta to inspect object properties or implement generic functions</p>"
+},
+{
+	"location": "content/misc/rc.html",
+	"title": "Reference Count <code>rc</code>",
+	"text": "<p>Returns the reference count of an object.</p> <pre><code>-&gt; (set x [1 2 3])\n-&gt; (rc x)\n1\n-&gt; (set y x)\n-&gt; (rc x)\n2\n</code></pre> <p>Info</p> <ul> <li>Shows how many references point to an object</li> <li>Useful for debugging memory management</li> <li>Objects are freed when reference count reaches 0</li> </ul> <p>Warning</p> <p>This is a debugging tool and should not be relied upon in production code</p> <p>Tip</p> <p>Use rc to track object references when debugging memory issues</p>"
+},
+{
+	"location": "content/misc/type.html",
+	"title": "Type <code>type</code>",
+	"text": "<p>Returns the type of a value as a symbol.</p> <pre><code>-&gt; (type 42)\nI64\n-&gt; (type \"hello\")\nString\n-&gt; (type [1 2 3])\nArray\n-&gt; (type {a: 1})\nDict\n-&gt; (type (fn [x] x))\nFunction\n</code></pre> <p>Info</p> <ul> <li>Returns a symbol representing the value&apos;s type</li> <li>Works with all built-in types</li> <li>Useful for type checking and conditional logic</li> </ul> <p>Tip</p> <p>Use type for runtime type checking or implementing type-specific behavior</p>"
+},
+{
+	"location": "content/order/asc.html",
+	"title": "Ascending <code>asc</code>",
+	"text": "<p>Sorts elements in ascending order.</p> <pre><code>-&gt; (asc [3 1 4 1 5 9 2 6])\n[1 1 2 3 4 5 6 9]\n-&gt; (asc [\"banana\" \"apple\" \"cherry\"])\n[apple banana cherry]\n</code></pre> <p>Info</p> <ul> <li>Works with numbers, strings, and other comparable types</li> <li>Returns a new sorted array/list</li> <li>Maintains the original data type (array → array, list → list)</li> </ul> <p>Tip</p> <p>Use asc for simple ascending sorts of single collections</p>"
+},
+{
+	"location": "content/order/desc.html",
+	"title": "Descending <code>desc</code>",
+	"text": "<p>Sorts elements in descending order.</p> <pre><code>-&gt; (desc [3 1 4 1 5 9 2 6])\n[9 6 5 4 3 2 1 1]\n-&gt; (desc [\"banana\" \"apple\" \"cherry\"])\n[cherry banana apple]\n</code></pre> <p>Info</p> <ul> <li>Works with numbers, strings, and other comparable types</li> <li>Returns a new sorted array/list</li> <li>Maintains the original data type (array → array, list → list)</li> </ul> <p>Tip</p> <p>Use desc for simple descending sorts of single collections</p>"
+},
+{
+	"location": "content/order/iasc.html",
+	"title": "Index Ascending <code>iasc</code>",
+	"text": "<p>Returns indices that would sort the input in ascending order.</p> <pre><code>-&gt; (iasc [3 1 4 1 5])\n[1 3 0 2 4]\n-&gt; (iasc [\"banana\" \"apple\" \"cherry\"])\n[1 0 2]\n</code></pre> <p>Info</p> <ul> <li>Returns indices instead of sorting the actual data</li> <li>Result can be used to reorder multiple related arrays</li> <li>Works with any comparable types</li> </ul> <p>Tip</p> <p>Use iasc when you need to sort multiple arrays based on one array&apos;s order</p>"
+},
+{
+	"location": "content/order/idesc.html",
+	"title": "Index Descending <code>idesc</code>",
+	"text": "<p>Returns indices that would sort the input in descending order.</p> <pre><code>-&gt; (idesc [3 1 4 1 5])\n[4 2 0 1 3]\n-&gt; (idesc [\"banana\" \"apple\" \"cherry\"])\n[2 0 1]\n</code></pre> <p>Info</p> <ul> <li>Returns indices instead of sorting the actual data</li> <li>Result can be used to reorder multiple related arrays</li> <li>Works with any comparable types</li> </ul> <p>Tip</p> <p>Use idesc when you need to sort multiple arrays in reverse order based on one array&apos;s order</p>"
+},
+{
+	"location": "content/order/neg.html",
+	"title": "Negate <code>neg</code>",
+	"text": "<p>Returns the negative of a number or applies negation element-wise to arrays.</p> <pre><code>-&gt; (neg 5)\n-5\n-&gt; (neg -3)\n3\n-&gt; (neg [1 -2 3 -4])\n[-1 2 -3 4]\n</code></pre> <p>Info</p> <ul> <li>Works with both single numbers and arrays</li> <li>When used with arrays, applies element-wise</li> <li>Preserves the type (integer or float)</li> </ul> <p>Warning</p> <p>Only works with numeric types</p>"
+},
+{
+	"location": "content/order/xasc.html",
+	"title": "Cross Ascending <code>xasc</code>",
+	"text": "<p>Sorts a table in ascending order based on specified columns.</p> <pre><code>-&gt; (set t (table [name age score] (list [\"Bob\" \"Alice\" \"Charlie\"] [25 30 20] [85 90 95])))\n-&gt; (xasc [name] t)\n┌─────────┬─────┬───────┐\n│ name    │ age │ score │\n├─────────┼─────┼───────┤\n│ Alice   │ 30  │ 90    │\n│ Bob     │ 25  │ 85    │\n│ Charlie │ 20  │ 95    │\n└─────────┴─────┴───────┘\n</code></pre> <p>Info</p> <ul> <li>First argument is a vector of column names to sort by</li> <li>Supports multiple columns for hierarchical sorting</li> <li>Modifies the table in place</li> </ul> <p>Tip</p> <p>Use xasc for sorting tables by one or more columns</p>"
+},
+{
+	"location": "content/order/xdesc.html",
+	"title": "Cross Descending <code>xdesc</code>",
+	"text": "<p>Sorts a table in descending order based on specified columns.</p> <pre><code>-&gt; (set t (table [name age score] (list [\"Bob\" \"Alice\" \"Charlie\"] [25 30 20] [85 90 95])))\n-&gt; (xdesc [score] t)\n┌─────────┬─────┬───────┐\n│ name    │ age │ score │\n├─────────┼─────┼───────┤\n│ Charlie │ 20  │ 95    │\n│ Alice   │ 30  │ 90    │\n│ Bob     │ 25  │ 85    │\n└─────────┴─────┴───────┘\n</code></pre> <p>Info</p> <ul> <li>First argument is a vector of column names to sort by</li> <li>Supports multiple columns for hierarchical sorting</li> <li>Modifies the table in place</li> </ul> <p>Tip</p> <p>Use xdesc for sorting tables in descending order by one or more columns</p> <p>Note</p> <p>For multiple columns, each column is sorted in descending order</p>"
+},
+{
+	"location": "content/query/select.html",
+	"title": "Select <code>select</code>",
+	"text": "<p>Performs data selection and aggregation on tables or arrays.</p> <pre><code>;; Basic selection with multiple types\n-&gt; (set employees (table [name dept salary hire_date last_login] \n                       (list (list \"Alice\" \"Bob\" \"Charlie\")        ;; strings in lists\n                            [&apos;IT &apos;HR &apos;IT]                          ;; symbols in vectors\n                            [75000 65000 85000]                    ;; numbers in vectors\n                            [2021.01.15 2020.03.20 2019.11.30]     ;; dates\n                            [2024.03.15T09:30:00 2024.03.15T10:15:00 2024.03.15T11:45:00]))) ;; timestamps\n\n;; Select specific columns\n-&gt; (select {name: name dept: dept salary: salary from: employees})\n┌─────────┬──────┬────────┐\n│ name    │ dept │ salary │\n├─────────┼──────┼────────┤\n│ Alice   │ IT   │ 75000  │\n│ Bob     │ HR   │ 65000  │\n│ Charlie │ IT   │ 85000  │\n└─────────┴──────┴────────┘\n\n;; Selection with condition\n-&gt; (select {name: name salary: salary from: employees where: (&gt; salary 70000)})\n┌─────────┬────────┐\n│ name    │ salary │\n├─────────┼────────┤\n│ Alice   │ 75000  │\n│ Charlie │ 85000  │\n└─────────┴────────┘\n\n;; Aggregation by department\n-&gt; (select {dept: dept\n           avg_salary: (avg salary)\n           headcount: (count name)\n           earliest_hire: (min hire_date)\n           from: employees\n           by: dept})\n┌──────┬────────────┬───────────┬───────────────┐\n│ dept │ avg_salary │ headcount │ earliest_hire │\n├──────┼────────────┼───────────┼───────────────┤\n│ IT   │ 80000.0    │ 2         │ 2019.11.30    │\n│ HR   │ 65000.0    │ 1         │ 2020.03.20    │\n└──────┴────────────┴───────────┴───────────────┘\n</code></pre> <p>Syntax</p> <p><pre><code>(select {column1: expr1\n         column2: expr2\n         ...\n         from: source\n         [where: condition]\n         [by: grouping]})\n</code></pre> - All select parameters are part of a single dictionary - Column definitions and clauses are key-value pairs - <code>from</code> is required, <code>where</code> and <code>by</code> are optional</p> <p>Common Uses</p> <ul> <li>Data filtering and transformation</li> <li>Aggregation and analysis</li> <li>Complex data reshaping</li> <li>Report generation</li> </ul> <p>Warning</p> <ul> <li>Column names must be symbols</li> <li>Column names in the result must be unique</li> <li>Aggregations require compatible types</li> <li>Group by columns must be included in the result</li> <li>String arrays must be created using lists, not vectors</li> <li>Symbol arrays can use vector literal syntax without quotes</li> </ul> <p>Advanced Example</p> <pre><code>;; Multiple aggregations with filtering and temporal data\n-&gt; (set activity (table [user region login_time duration] \n                      (list (list \"Alice\" \"Bob\" \"Charlie\")\n                            [&apos;US &apos;EU &apos;US]\n                            [2024.03.15T08:00:00 2024.03.15T14:30:00 2024.03.15T09:15:00]\n                            [45 30 60])))\n-&gt; (select {region: region\n           users: (count user)\n           avg_duration: (avg duration)\n           last_login: (max login_time)\n           from: activity\n           where: (&gt; duration 20)\n           by: region})\n┌────────┬───────┬─────────────┬─────────────────────┐\n│ region │ users │ avg_duration│ last_login          │\n├────────┼───────┼─────────────┼─────────────────────┤\n│ US     │ 2     │ 52.5        │ 2024.03.15T09:15:00 │\n│ EU     │ 1     │ 30.0        │ 2024.03.15T14:30:00 │\n└────────┴───────┴─────────────┴─────────────────────┘\n</code></pre>"
+},
+{
+	"location": "content/repl/args.html",
+	"title": "Args <code>args</code>",
+	"text": "<p>Returns command line arguments passed to the script.</p> <pre><code>;; When script.rf is run as: rayforce script.rf arg1 arg2\n-&gt; (args)\n[\"arg1\" \"arg2\"]\n\n;; Check if arguments were provided\n-&gt; (&gt; (count (args)) 0)\ntrue\n\n;; Access specific argument\n-&gt; (at (args) 0)\n\"arg1\"\n</code></pre> <p>Syntax</p> <pre><code>(args)\n</code></pre> <p>Warning</p> <ul> <li>Returns list of strings</li> <li>Empty list if no arguments</li> <li>Does not include script name</li> <li>Only available in script mode</li> </ul>"
+},
+{
+	"location": "content/repl/eval.html",
+	"title": "Eval <code>eval</code>",
+	"text": "<p>Evaluates a string or expression.</p> <pre><code>;; Evaluate a string\n-&gt; (eval \"(+ 1 2)\")\n3\n\n;; Evaluate a list\n-&gt; (set expr (list + 1 2))\n[+ 1 2]\n-&gt; (eval expr)\n3\n\n;; Evaluate with variables \n-&gt; (set x 10)\n10\n-&gt; (eval \"(+ x 5)\")\n15\n\n;; Evaluate multiple expressions\n-&gt; (eval \"(set y 20) (+ x y)\")\n30\n</code></pre> <p>Syntax</p> <p><pre><code>(eval expr)\n</code></pre> - <code>expr</code>: String or expression to evaluate</p> <p>Warning</p> <ul> <li>String expressions must be valid Rayforce code</li> <li>Returns the result of evaluation</li> <li>Can evaluate both strings and expressions</li> </ul>"
+},
+{
+	"location": "content/repl/load.html",
+	"title": "Load <code>load</code>",
+	"text": "<p>Loads and evaluates code from a file.</p> <pre><code>;; Load a file\n-&gt; (load \"lib.rf\")\nnull\n\n;; Load with error handling\n-&gt; (try (load \"missing.rf\") {e: \"File not found\"})\n\"File not found\"\n</code></pre> <p>Syntax</p> <p><pre><code>(load filename)\n</code></pre> - <code>filename</code>: Path to file to load</p> <p>Warning</p> <ul> <li>File must contain valid Rayforce code</li> <li>Returns result of last evaluated expression</li> <li>Throws error if file not found or contains invalid code</li> </ul>"
+},
+{
+	"location": "content/repl/parse.html",
+	"title": "Parse <code>parse</code>",
+	"text": "<p>Parses a string into an expression without evaluating it.</p> <pre><code>;; Parse a simple expression\n-&gt; (parse \"(+ 1 2)\")\n[+ 1 2]\n\n;; Parse a function definition\n-&gt; (parse \"(fn [x] (* x 2))\")\n[fn [x] [* x 2]]\n\n;; Parse multiple expressions\n-&gt; (parse \"\n   (set x 10)\n   (+ x 20)\n   \")\n[[set x 10] [+ x 20]]\n</code></pre> <p>Syntax</p> <p><pre><code>(parse str)\n</code></pre> - <code>str</code>: String to parse</p> <p>Warning</p> <ul> <li>Input must be a string</li> <li>Returns parsed expression without evaluating</li> <li>Useful for inspecting code structure</li> </ul>"
+},
+{
+	"location": "content/repl/quote.html",
+	"title": "Quote <code>quote</code>",
+	"text": "<p>Prevents evaluation of an expression.</p> <pre><code>;; Quote a symbol\n-&gt; (quote x)\n&apos;x\n\n;; Quote a list\n-&gt; (quote [+ 1 2])\n[+ 1 2]\n\n;; Quote prevents evaluation\n-&gt; (set x 10)\n-&gt; (quote x)\n&apos;x  ;; Returns symbol rather than value\n\n;; Shorthand quote syntax\n-&gt; &apos;x\n&apos;x\n</code></pre> <p>Syntax</p> <p><pre><code>(quote expr)\n</code></pre> - <code>expr</code>: Expression to quote</p> <p>Warning</p> <ul> <li>Returns expression without evaluating</li> <li>Useful for manipulating code as data</li> <li>Can use &apos; as shorthand for quote</li> </ul>"
+},
+{
+	"location": "content/repl/resolve.html",
+	"title": "Resolve <code>resolve</code>",
+	"text": "<p>Resolves a symbol to its bound value.</p> <pre><code>;; Resolve a variable\n-&gt; (set x 10)\n-&gt; (resolve &apos;x)\n10\n\n;; Resolve a function\n-&gt; (resolve &apos;+)\n&lt;function:+&gt;\n\n;; Resolve an undefined symbol\n-&gt; (resolve &apos;undefined)\nnull\n</code></pre> <p>Syntax</p> <p><pre><code>(resolve sym)\n</code></pre> - <code>sym</code>: Symbol to resolve</p> <p>Warning</p> <ul> <li>Symbol must be quoted</li> <li>Returns bound value or null if unbound</li> <li>Works for variables and functions</li> </ul>"
+},
+{
+	"location": "content/repl/set_display_width.html",
+	"title": "Set Display Width <code>set-display-width</code>",
+	"text": "<p>Sets the maximum width for displaying tables and other formatted output.</p> <pre><code>;; Set display width to 40 characters\n-&gt; (set-display-width 40)\n40\n\n;; Create a wide table to demonstrate\n-&gt; (set t (table [name location department salary] \n                (list (list \"Alice Smith\" \"New York\" \"Engineering\" \"75000\")\n                      (list \"Bob Johnson\" \"San Francisco\" \"Marketing\" \"65000\"))))\n\n;; Display with width limit\n-&gt; t\n┌────────────┬──────────┬────────────┐\n│ name       │ location │ department │\n├────────────┼──────────┼────────────┤\n│ Alice Smith│ New York │Engineering │\n│Bob Johnson │San Fran..│ Marketing  │\n└────────────┴──────────┴────────────┘\n</code></pre> <p>Syntax</p> <p><pre><code>(set-display-width width)\n</code></pre> - <code>width</code>: Maximum display width in characters</p> <p>Warning</p> <ul> <li>Width must be a positive integer</li> <li>Affects all subsequent table displays</li> <li>Long values will be truncated with \"..\"</li> </ul>"
+},
+{
+	"location": "content/repl/set_fpr.html",
+	"title": "Set Floating Point Resolution <code>set-fpr</code>",
+	"text": "<p>Sets the number of decimal places shown for floating point numbers.</p> <pre><code>;; Set floating point resolution to 2 decimals\n-&gt; (set-fpr 2)\n2\n\n;; Demonstrate with calculations\n-&gt; (/ 10 3)\n3.33\n\n;; Set to higher precision\n-&gt; (set-fpr 4)\n4\n-&gt; (/ 10 3)\n3.3333\n</code></pre> <p>Syntax</p> <p><pre><code>(set-fpr precision)\n</code></pre> - <code>precision</code>: Number of decimal places to display</p> <p>Warning</p> <ul> <li>Precision must be a non-negative integer</li> <li>Only affects display, not internal precision</li> <li>Applies to all subsequent floating point output</li> </ul>"
+},
+{
+	"location": "content/repl/use_unicode_format.html",
+	"title": "Use Unicode Format <code>use-unicode-format</code>",
+	"text": "<p>Toggles between Unicode and ASCII characters for table borders and other formatting.</p> <pre><code>;; Enable Unicode formatting\n-&gt; (use-unicode-format true)\ntrue\n\n;; Create a sample table\n-&gt; (table [name value] (list (list \"A\" \"B\") [1 2]))\n┌──────┬───────┐\n│ name │ value │\n├──────┼───────┤\n│ A    │ 1     │\n│ B    │ 2     │\n└──────┴───────┘\n\n;; Disable Unicode formatting\n-&gt; (use-unicode-format false)\nfalse\n\n;; Same table with ASCII\n-&gt; (table [name value] (list (list \"A\" \"B\") [1 2]))\n+------+-------+\n| name | value |\n+------+-------+\n| A    | 1     |\n| B    | 2     |\n+------+-------+\n</code></pre> <p>Syntax</p> <p><pre><code>(use-unicode-format enabled)\n</code></pre> - <code>enabled</code>: Boolean to enable/disable Unicode formatting</p> <p>Warning</p> <ul> <li>Takes effect immediately for all subsequent output</li> <li>May not display correctly in all terminals</li> <li>Default is Unicode enabled</li> </ul>"
+},
+{
+	"location": "content/temporal/date.html",
+	"title": "Date",
+	"text": "<p>Represents a calendar date.</p> <pre><code>;; Get current date in local timezone\n-&gt; (date &apos;local)\n2024.03.15\n\n;; Get current date in UTC\n-&gt; (date &apos;utc) \n2024.03.15\n\n;; Create dates from numbers\n-&gt; (as &apos;date 2024.03.15)\n2024.03.15\n\n;; Date arithmetic\n-&gt; (+ 2024.03.15 1)  ;; Add one day\n2024.03.16\n\n;; Compare dates\n-&gt; (&lt; 2024.03.15 2024.03.16)\ntrue\n\n;; Extract from timestamp\n-&gt; (as &apos;date 2024.03.15T10:30:00)\n2024.03.15\n</code></pre> <p>Format</p> <ul> <li>Dates are stored as days since epoch (1970.01.01)</li> <li>Display format is YYYY.MM.DD</li> <li>Internally represented as 32-bit integers</li> </ul> <p>Warning</p> <ul> <li>Valid range is from 1970.01.01 to 2099.12.31</li> <li>Invalid dates return null</li> <li>Date arithmetic works in days</li> </ul>"
+},
+{
+	"location": "content/temporal/time.html",
+	"title": "Time",
+	"text": "<p>Represents time of day.</p> <pre><code>;; Get current time in local timezone\n-&gt; (time &apos;local)\n10:30:00\n\n;; Get current time in UTC\n-&gt; (time &apos;utc)\n14:30:00\n\n;; Create time from numbers\n-&gt; (as &apos;time 10:30:00)\n10:30:00\n\n;; Time arithmetic (in milliseconds)\n-&gt; (+ 10:30:00 3600000)  ;; Add one hour\n11:30:00\n\n;; Compare times\n-&gt; (&lt; 10:30:00 11:30:00)\ntrue\n\n;; Extract from timestamp\n-&gt; (as &apos;time 2024.03.15T10:30:00)\n10:30:00\n</code></pre> <p>Format</p> <ul> <li>Times are stored as milliseconds since midnight</li> <li>Display format is HH:MM:SS</li> <li>Internally represented as 32-bit integers</li> </ul> <p>Warning</p> <ul> <li>Valid range is 00:00:00 to 23:59:59.999</li> <li>Invalid times return null</li> <li>Time arithmetic works in milliseconds</li> </ul>"
+},
+{
+	"location": "content/temporal/timestamp.html",
+	"title": "Timestamp",
+	"text": "<p>Represents a point in time combining date and time.</p> <pre><code>;; Get current timestamp in local timezone\n-&gt; (timestamp &apos;local)\n2024.03.15T10:30:00\n\n;; Get current timestamp in UTC\n-&gt; (timestamp &apos;utc)\n2024.03.15T14:30:00\n\n;; Create timestamp from string\n-&gt; (as &apos;timestamp \"2024.03.15T10:30:00\")\n2024.03.15T10:30:00\n\n;; Timestamp arithmetic (in milliseconds)\n-&gt; (+ 2024.03.15T10:30:00 3600000)  ;; Add one hour\n2024.03.15T11:30:00\n\n;; Compare timestamps\n-&gt; (&lt; 2024.03.15T10:30:00 2024.03.15T11:30:00)\ntrue\n\n;; Extract components\n-&gt; (as &apos;date 2024.03.15T10:30:00)\n2024.03.15\n-&gt; (as &apos;time 2024.03.15T10:30:00)\n10:30:00\n</code></pre> <p>Format</p> <ul> <li>Timestamps combine date and time</li> <li>Display format is YYYY.MM.DDThhss</li> <li>Internally represented as 64-bit integers (milliseconds since epoch)</li> </ul> <p>Warning</p> <ul> <li>Valid range is from 1970.01.01T00:00:00 to 2099.12.31T23:59:59.999</li> <li>Invalid timestamps return null</li> <li>Timestamp arithmetic works in milliseconds</li> <li>Timezone conversions respect local system settings</li> </ul>"
+},
+{
+	"location": "content/time/timeit.html",
+	"title": "Timeit <code>timeit</code>",
+	"text": "<p>Measures execution time of an expression.</p> <pre><code>;; Measure simple calculation\n-&gt; (timeit (+ 1 2))\n0.015\n\n;; Measure function execution\n-&gt; (timeit (map {x: (* x 2)} [1 2 3 4 5]))\n0.245\n\n;; Measure with error handling\n-&gt; (timeit (try (/ 1 0) {e: \"Division by zero\"}))\n0.032\n\n;; Multiple expressions\n-&gt; (timeit (do \n            (set x 10)\n            (+ x 20)\n            (* x 2)))\n0.128\n</code></pre> <p>Syntax</p> <p><pre><code>(timeit expr)\n</code></pre> - <code>expr</code>: Expression to measure - Returns execution time in milliseconds</p> <p>Warning</p> <ul> <li>Time includes parsing and evaluation</li> <li>Results may vary between runs</li> <li>Precision depends on system timer resolution</li> <li>Special form - does not evaluate argument first</li> </ul>"
+},
+{
+	"location": "content/time/timer.html",
+	"title": "Timer <code>timer</code>",
+	"text": "<p>Creates and manages recurring timers.</p> <pre><code>;; Create a timer that runs every 1000ms (1 second)\n-&gt; (timer 1000 0 {t: (println \"Timer tick:\" t)})\n0  ;; Returns timer ID\n\n;; Create a timer that runs 5 times\n-&gt; (timer 1000 5 {t: (println \"Count:\" t)})\n1  ;; Returns different timer ID\n\n;; Remove a timer by ID\n-&gt; (timer 0)\nnull\n\n;; Create infinite timer (runs until removed)\n-&gt; (timer 5000 0 {t: (do\n                     (println \"Background task at:\" t)\n                     (gc))})  ;; Run garbage collection every 5 seconds\n2\n</code></pre> <p>Syntax</p> <p><pre><code>;; Create timer\n(timer interval times callback)\n;; Remove timer\n(timer id)\n</code></pre> - <code>interval</code>: Time between executions in milliseconds - <code>times</code>: Number of executions (0 for infinite) - <code>callback</code>: Lambda to execute (receives current time as argument) - <code>id</code>: Timer ID to remove</p> <p>Warning</p> <ul> <li>Minimum interval is system-dependent</li> <li>Callback execution time affects next interval</li> <li>Timer continues until removed or count reached</li> <li>Timers are cleared when process exits</li> </ul>"
+},
+{
+	"location": "content/update/alter.html",
+	"title": "Alter <code>alter</code>",
+	"text": "<p>Modifies elements in a collection based on a condition.</p> <pre><code>-&gt; (set arr [1 2 3 4 5])\n-&gt; (alter arr (&gt; arr 3) (* arr 2))\n[1 2 3 8 10]\n\n-&gt; (set t (table [name age] [[\"Alice\" \"Bob\" \"Charlie\"] [25 30 35]]))\n-&gt; (alter t (&gt; age 28) {age: (+ age 1)})\n┌─────────┬─────┐\n│ name    │ age │\n├─────────┼─────┤\n│ Alice   │ 25  │\n│ Bob     │ 31  │\n│ Charlie │ 36  │\n└─────────┴─────┘\n</code></pre> <p>Info</p> <ul> <li>First argument: collection to modify</li> <li>Second argument: condition for selecting elements</li> <li>Third argument: transformation to apply</li> <li>Modifies the collection in place</li> </ul> <p>Warning</p> <p>The condition and transformation must be compatible with the collection&apos;s type</p> <p>Tip</p> <p>Use alter for conditional updates on arrays or tables</p>"
+},
+{
+	"location": "content/update/insert.html",
+	"title": "Insert <code>insert</code>",
+	"text": "<p>Adds new rows to a table.</p> <pre><code>-&gt; (set t (table [name age] [[\"Alice\" \"Bob\"] [25 30]]))\n-&gt; (insert t {name: \"Charlie\" age: 35})\n┌─────────┬─────┐\n│ name    │ age │\n├─────────┼─────┤\n│ Alice   │ 25  │\n│ Bob     │ 30  │\n│ Charlie │ 35  │\n└─────────┴─────┘\n\n-&gt; (insert t [{name: \"David\" age: 40} {name: \"Eve\" age: 45}])\n┌─────────┬─────┐\n│ name    │ age │\n├─────────┼─────┤\n│ Alice   │ 25  │\n│ Bob     │ 30  │\n│ Charlie │ 35  │\n│ David   │ 40  │\n│ Eve     │ 45  │\n└─────────┴─────┘\n</code></pre> <p>Info</p> <ul> <li>Can insert a single row or multiple rows</li> <li>Rows are added at the end of the table</li> <li>Modifies the table in place</li> </ul> <p>Warning</p> <p>New rows must have all required columns with correct types</p> <p>Tip</p> <p>Use insert when adding new data to existing tables</p>"
+},
+{
+	"location": "content/update/update.html",
+	"title": "Update <code>update</code>",
+	"text": "<p>Updates existing rows in a table based on a condition.</p> <pre><code>-&gt; (set t (table [name age] [[\"Alice\" \"Bob\" \"Charlie\"] [25 30 35]]))\n-&gt; (update t (= name \"Bob\") {age: 31})\n┌─────────┬─────┐\n│ name    │ age │\n├─────────┼─────┤\n│ Alice   │ 25  │\n│ Bob     │ 31  │\n│ Charlie │ 35  │\n└─────────┴─────┘\n\n-&gt; (update t (&gt; age 30) {age: (+ age 1)})\n┌─────────┬─────┐\n│ name    │ age │\n├─────────┼─────┤\n│ Alice   │ 25  │\n│ Bob     │ 32  │\n│ Charlie │ 36  │\n└─────────┴─────┘\n</code></pre> <p>Info</p> <ul> <li>First argument: table to modify</li> <li>Second argument: condition for selecting rows</li> <li>Third argument: updates to apply</li> <li>Modifies the table in place</li> </ul> <p>Warning</p> <p>Updates must maintain column types and constraints</p> <p>Tip</p> <p>Use update for conditional modifications of existing rows</p>"
+},
+{
+	"location": "content/update/upsert.html",
+	"title": "Upsert <code>upsert</code>",
+	"text": "<p>Updates existing rows or inserts new ones based on a key.</p> <pre><code>-&gt; (set t (table [id name age] [[1 2] [\"Alice\" \"Bob\"] [25 30]]))\n-&gt; (upsert t id {id: 2 name: \"Robert\" age: 31})\n┌────┬────────┬─────┐\n│ id │ name   │ age │\n├────┼────────┼─────┤\n│ 1  │ Alice  │ 25  │\n│ 2  │ Robert │ 31  │\n└────┴────────┴─────┘\n\n-&gt; (upsert t id {id: 3 name: \"Charlie\" age: 35})\n┌────┬─────────┬─────┐\n│ id │ name    │ age │\n├────┼─────────┼─────┤\n│ 1  │ Alice   │ 25  │\n│ 2  │ Robert  │ 31  │\n│ 3  │ Charlie │ 35  │\n└────┴─────────┴─────┘\n</code></pre> <p>Info</p> <ul> <li>First argument: table to modify</li> <li>Second argument: key column(s) for matching</li> <li>Third argument: row data to upsert</li> <li>Updates existing row if key matches, otherwise inserts new row</li> </ul> <p>Warning</p> <p>Key columns must uniquely identify rows</p> <p>Tip</p> <p>Use upsert when you want to update existing rows or add new ones in a single operation</p>"
+}
+]

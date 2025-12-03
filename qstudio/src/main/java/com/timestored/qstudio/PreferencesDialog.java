@@ -38,6 +38,7 @@ import javax.swing.JTextField;
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.timestored.swingxx.SwingUtils;
 import com.timestored.theme.Theme;
 
 /**
@@ -46,10 +47,6 @@ import com.timestored.theme.Theme;
 class PreferencesDialog extends JDialog {
 	
 	private static final long serialVersionUID = 1L;
-
-	private final int WIDTH = 600;
-	private final int HEIGHT = 700;
-
 	private final MyPreferences myPreferences;
 	private final List<PreferencesPanel> prefPanels = Lists.newArrayList();
 	
@@ -61,7 +58,7 @@ class PreferencesDialog extends JDialog {
 		
 		this.myPreferences = Preconditions.checkNotNull(myPreferences);
 		setTitle("Preferences");
-		setSize(WIDTH, HEIGHT);
+		SwingUtils.setSensibleDimensions(frame, this);
 		setIconImage(Theme.CIcon.PREFERENCES.get().getImage());
 		setLayout(new BorderLayout());
 		setModalityType(JDialog.ModalityType.APPLICATION_MODAL);
@@ -69,7 +66,7 @@ class PreferencesDialog extends JDialog {
 		// construct appearance
 		JTabbedPane tabpane = new JTabbedPane();
 
-		AppearancePreferencesPanel appearancePreferencesPanel = new AppearancePreferencesPanel(myPreferences, this);
+		AppearancePreferencesPanel appearancePreferencesPanel = new AppearancePreferencesPanel(myPreferences, frame);
 		tabpane.add("Appearance", appearancePreferencesPanel);
 		prefPanels.add(appearancePreferencesPanel);
 		
@@ -80,7 +77,10 @@ class PreferencesDialog extends JDialog {
 		PreferencesPanel miscPanel = new MiscPreferencesPanel(myPreferences, this);
 		tabpane.add("Misc", miscPanel);
 		prefPanels.add(miscPanel);
-
+		
+		EditorThemePreferencesPanel editorThemePanel = new EditorThemePreferencesPanel(myPreferences, this);
+		tabpane.add("Editor Theme", editorThemePanel);
+		prefPanels.add(editorThemePanel);
 		
 		add(tabpane, BorderLayout.CENTER);
 		add(getCloseSaveBox(), BorderLayout.SOUTH);
@@ -132,7 +132,6 @@ class PreferencesDialog extends JDialog {
 		
 		private static final long serialVersionUID = 1L;
 		private final JCheckBox saveWithWindowsLineEndingsCheckBox;
-		private final JCheckBox sendTelemetryCheckBox;
 		private final JTextField hideNsTextField;
 		private final JTextField hideFoldersTextField;
 		private final JTextField openaiKeyField;
@@ -169,12 +168,6 @@ class PreferencesDialog extends JDialog {
 			tooltipText = "<html>This key will be used to generate AI queries.</html>";
 			panel.add(getFormRow(openaiKeyField, "OpenAI Key:", null));
 			panel.add(Box.createVerticalStrut(10));	
-
-			sendTelemetryCheckBox = new JCheckBox();
-			String sendTelemetryTooltipText = "<html>Help TimeStored improve its products by sending anonymous data<br/>" +
-					" about features and plugins used.</html>";
-			panel.add(getFormRow(sendTelemetryCheckBox, "Send Usage Statistics:", sendTelemetryTooltipText));
-			panel.add(Box.createVerticalStrut(10));
 			
 			setLayout(new BorderLayout());
 			add(panel, BorderLayout.NORTH);
@@ -184,7 +177,6 @@ class PreferencesDialog extends JDialog {
 
 		@Override void refresh() {
 			saveWithWindowsLineEndingsCheckBox.setSelected(myPreferences.isSaveWithWindowsLineEndings());
-			sendTelemetryCheckBox.setSelected(myPreferences.isSendTelemetry());
 
 			String hid = Joiner.on(" ").join(myPreferences.getHiddenNamespaces());
 			hideNsTextField.setText(hid);
@@ -195,7 +187,6 @@ class PreferencesDialog extends JDialog {
 
 		@Override void saveSettings() {
 			myPreferences.setSaveWithWindowsLineEndings(saveWithWindowsLineEndingsCheckBox.isSelected());
-			myPreferences.setSendTelemetry(sendTelemetryCheckBox.isSelected());
 			String[] ns = hideNsTextField.getText().split(" ");
 			myPreferences.setHiddenNamespaces(ns);
 			myPreferences.setOpenAIkey(openaiKeyField.getText().trim());

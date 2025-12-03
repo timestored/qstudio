@@ -265,6 +265,10 @@ class ObjectTreePanel extends JPanel {
 				setText("<html><b>" + sqe.getName() + "</b></html>");
 			}
 		}
+		
+		@Override public String toString() {
+			return sqe.getFullName();
+		}
 
 		@Override public void doSelectionAction() {
 			adminModel.setSelectedElement(serverName, sqe.getNamespace(), sqe);

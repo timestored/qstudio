@@ -1,5 +1,6 @@
 package com.timestored.sqldash;
 
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.event.MouseAdapter;
@@ -8,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JCheckBox;
@@ -18,6 +19,7 @@ import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
+import javax.swing.UIManager;
 
 import org.jdesktop.swingx.combobox.MapComboBoxModel;
 
@@ -78,10 +80,13 @@ public class ChartControlPanel extends JPanel implements Widget.Listener {
 		for(ChartTheme ct : chartThemes) {
 			descToChartTheme.put(ct.getTitle(), ct);
 		}
-		chartThemeComboBoxModel = new MapComboBoxModel<String, ChartTheme>(descToChartTheme);	
+		chartThemeComboBoxModel = new MapComboBoxModel<String, ChartTheme>(descToChartTheme);
 		
-		setBorder(BorderFactory.createTitledBorder("Control Panel"));
 		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+		Color bg = UIManager.getColor("PopupMenu.background");
+		if (bg != null) {
+		    setBackground(bg.darker());
+		}
 
 		// Chart Type panel
 		InputLabeller IL = Theme.getInputLabeller();
@@ -97,17 +102,21 @@ public class ChartControlPanel extends JPanel implements Widget.Listener {
 
 		// Chart Type panel
 		chartThemeComboBox = new JComboBox(chartThemeComboBoxModel);
-		veryLargeChartsCheckBox = new JCheckBox("Render Very Large Charts");
+		chartThemeComboBox.setRenderer(
+			    new ThemeListRenderer(hoveredIndex -> {
+			        if (hoveredIndex >= 0 && hoveredIndex < chartThemeComboBoxModel.getSize()) {
+			        	String key = (String) chartThemeComboBoxModel.getElementAt(hoveredIndex);
+			        	ChartTheme th = chartThemeComboBoxModel.getValue(key);
 
-		// Chart Refresh panel
-//		JPanel refreshPanel = new JPanel();
-//		JLabel refreshLabel = new JLabel("Auto Refresh");
-//		refreshPanel.add(refreshLabel);
-//		refreshTextField = new JFormattedTextField(NumberFormat.getInstance());
-//		refreshPanel.add(refreshTextField);
-//		refreshTextField.setColumns(10);
-//		JLabel lblNewLabel = new JLabel("ms");
-//		refreshPanel.add(lblNewLabel);
+			            System.out.println("Hovered theme: " + th + " at index " + hoveredIndex);
+			            if (th != null && !app.getChartTheme().equals(th)) {
+			                app.setChartTheme(th);
+			            }
+			        }
+			    })
+			);
+		
+		veryLargeChartsCheckBox = new JCheckBox("Render Very Large Charts");
 		
 		if(app!=null) {
 			chartComboBox.setSelectedItem(app.getViewStrategy().getDescription());
@@ -115,9 +124,6 @@ public class ChartControlPanel extends JPanel implements Widget.Listener {
 			chartComboBox.addActionListener(as -> {
 				int i = chartComboBox.getSelectedIndex();
 				ViewStrategy vs = chartStratComboBoxModel.getValue(i);
-				if(vs != null) {
-					UpdateHelper.registerEvent("cha_select"+vs.getPulseName());
-				}
 				if(!app.getViewStrategy().equals(vs)) {
 					app.setViewStrategy(vs);
 				}
@@ -141,11 +147,20 @@ public class ChartControlPanel extends JPanel implements Widget.Listener {
 			veryLargeChartsCheckBox.setEnabled(false);
 		}
 
+		// Row containing both combo boxes
+		JPanel comboRow = new JPanel();
+		comboRow.setLayout(new BoxLayout(comboRow, BoxLayout.X_AXIS));
+		comboRow.setOpaque(false); // follow parent background
+
+		comboRow.add(IL.get("", chartComboBox, "chartComboBox", new CurrentViewInfoLinkLabel()));
+		comboRow.add(IL.get("", chartThemeComboBox, "chartThemeComboBox"));
+
+		add(comboRow);
+
+		
 		JLabel largeLabel = new JLabel(Theme.CIcon.INFO.get());
 		largeLabel.setToolTipText("<html>If the data has many rows or columns it won't automatically render to prevent slowness."
-				+ "<br />Check this box to try and render all data of any size.</html>");
-		add(IL.get("Type:", chartComboBox, "chartComboBox", new CurrentViewInfoLinkLabel()));
-		add(IL.get("Theme:", chartThemeComboBox, "chartThemeComboBox"));
+				+ "<br />Check this box to try and render all data of any size.</html>");		
 		add(IL.get("", veryLargeChartsCheckBox, "veryLargeChartsCheckBox"));
 		
 		if(app != null) {
@@ -244,5 +259,30 @@ public class ChartControlPanel extends JPanel implements Widget.Listener {
 	        return label; 
 	    } 
 	}
+	
+	
+	class ThemeListRenderer extends DefaultListCellRenderer {
+	    private static final long serialVersionUID = 1L;
+	    private final Consumer<Integer> callback;
+
+	    public ThemeListRenderer(Consumer<Integer> callback) {
+	        this.callback = Preconditions.checkNotNull(callback);
+	    }
+
+	    @Override 
+	    public Component getListCellRendererComponent(
+	            JList list, Object value, int index,
+	            boolean isSelected, boolean cellHasFocus) {
+
+	        JLabel label = (JLabel) super.getListCellRendererComponent(
+	                list, value, index, isSelected, cellHasFocus);
+
+	        if (isSelected)
+	            callback.accept(index);
+
+	        return label;
+	    }
+	}
+
 
 }

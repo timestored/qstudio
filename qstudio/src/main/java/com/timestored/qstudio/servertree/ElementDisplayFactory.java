@@ -37,13 +37,13 @@ import kx.c.KException;
 
 import com.timestored.connections.JdbcTypes;
 import com.timestored.connections.ServerConfig;
-import com.timestored.cstore.CAtomTypes;
-import com.timestored.qstudio.kdb.KdbTableFactory;
+import com.timestored.qstudio.kdb.CAtomTypes;
 import com.timestored.qstudio.model.AdminModel;
 import com.timestored.qstudio.model.QueryManager;
 import com.timestored.qstudio.model.ServerQEntity;
 import com.timestored.qstudio.model.ServerQEntity.QQuery;
 import com.timestored.sqldash.chart.ChartTheme;
+import com.timestored.sqldash.chart.TableFactory;
 import com.timestored.theme.Theme;
 
 /**
@@ -55,7 +55,7 @@ class ElementDisplayFactory {
 	
 	private static final Logger LOG = Logger.getLogger(ElementDisplayFactory.class.getName());
 
-	private static Box getActionButtons(QueryManager queryManager, List<QQuery> qQueryies) {
+	public static Box getActionButtons(QueryManager queryManager, List<QQuery> qQueryies) {
 		Box b = Box.createHorizontalBox();
 		for(QQuery qQuery : qQueryies) {
 			if(!qQuery.getTitle().toLowerCase().contains("delete")) {
@@ -77,15 +77,15 @@ class ElementDisplayFactory {
 		return b;
 	}
 
-	public static Component getPanel(AdminModel adminModel, QueryManager queryManager, ChartTheme chartTheme) {
+	public static Component getPanel(AdminModel adminModel, QueryManager queryManager, ChartTheme chartTheme, boolean negativeShownRed) {
 		
 		Component retComponent = null;
 		try {
-			retComponent  = getCustomizedEditor(adminModel, queryManager, chartTheme);
+			retComponent  = getCustomizedEditor(adminModel, queryManager, chartTheme, negativeShownRed);
 		} catch (KException e) {
-			retComponent = handleException(adminModel, queryManager, chartTheme);
+			retComponent = handleException(adminModel, queryManager, chartTheme, negativeShownRed);
 		} catch (IOException e) {
-			retComponent = handleException(adminModel, queryManager, chartTheme);
+			retComponent = handleException(adminModel, queryManager, chartTheme, negativeShownRed);
 		}
 	
 		if(retComponent == null) {
@@ -94,13 +94,13 @@ class ElementDisplayFactory {
 		return retComponent;
 	}
 
-	private static Component handleException(AdminModel adminModel, QueryManager queryManager, ChartTheme chartTheme) {
+	private static Component handleException(AdminModel adminModel, QueryManager queryManager, ChartTheme chartTheme, boolean negativeShownRed) {
 
 		Component retComponent = null;
 		// problems = refresh tree and try once more
 		adminModel.refresh();
 		try {
-			retComponent = getCustomizedEditor(adminModel, queryManager, chartTheme);
+			retComponent = getCustomizedEditor(adminModel, queryManager, chartTheme, negativeShownRed);
 		} catch (KException e) {
 			LOG.log(Level.WARNING, "error using proposed Element Display Strategy", e);
 			// fall through
@@ -119,7 +119,7 @@ class ElementDisplayFactory {
 		return retComponent;
 	}
 
-	private static Component getCustomizedEditor(AdminModel adminModel, QueryManager queryManager, ChartTheme chartTheme) throws IOException,
+	private static Component getCustomizedEditor(AdminModel adminModel, QueryManager queryManager, ChartTheme chartTheme, boolean negativeShownRed) throws IOException,
 			KException {
 		ServerQEntity elementDetails = adminModel.getSelectedElement();
 		String queryName = elementDetails.getFullName();
@@ -135,7 +135,7 @@ class ElementDisplayFactory {
 				return new FunctionEditingPanel(adminModel, queryName);
 			}
 		} else if (elementDetails.isTable() || adminModel.getServerModel().getServerConfig().getJdbcType().equals(JdbcTypes.DOLPHINDB)) {
-			return new NonkdbTablePanel(adminModel, queryManager, elementDetails, chartTheme);
+			return new NonkdbTablePanel(adminModel, queryManager, elementDetails, chartTheme, negativeShownRed);
 		}
 		return null;
 	}
@@ -143,7 +143,7 @@ class ElementDisplayFactory {
 	private static class NonkdbTablePanel extends JPanel {
 		private static final long serialVersionUID = 1L;
 
-		public NonkdbTablePanel(AdminModel adminModel, QueryManager queryManager, ServerQEntity serverEntity, ChartTheme chartTheme) {
+		public NonkdbTablePanel(AdminModel adminModel, QueryManager queryManager, ServerQEntity serverEntity, ChartTheme chartTheme, boolean negativeShownRed) {
 			setLayout(new BorderLayout());
 
 			try {
@@ -155,7 +155,7 @@ class ElementDisplayFactory {
 						QQuery qQuery = serverEntity.getQQueries().get(0);
 						String sqlQuery = qQuery.getQuery();
 						CachedRowSet r = adminModel.getConnectionManager().executeQuery(sc, sqlQuery );
-						add(KdbTableFactory.getTable(r, 10000), BorderLayout.CENTER);
+						add(TableFactory.getTable(r, 10000, negativeShownRed), BorderLayout.CENTER);
 						revalidate();
 					}
 				}

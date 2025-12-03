@@ -72,7 +72,6 @@ import com.timestored.connections.ConnectionShortFormat;
 import com.timestored.connections.JdbcTypes;
 import com.timestored.connections.ServerConfig;
 import com.timestored.connections.ServerConfigBuilder;
-import com.timestored.cstore.CAtomTypes;
 import com.timestored.docs.Document;
 import com.timestored.docs.OpenDocumentsModel;
 import com.timestored.jgrowl.Growler;
@@ -81,6 +80,7 @@ import com.timestored.messages.Msg.Key;
 import com.timestored.misc.AIFacade;
 import com.timestored.misc.HtmlUtils;
 import com.timestored.misc.AIFacade.AIresult;
+import com.timestored.qstudio.kdb.CAtomTypes;
 import com.timestored.qstudio.model.QueryAdapter;
 import com.timestored.qstudio.model.QueryManager;
 import com.timestored.qstudio.model.QueryResult;
@@ -105,6 +105,7 @@ public class CommonActions implements CommandProvider {
 	
 	private final Action qAction;
 	private final Action qLineAction;
+	private final Action qFileAction;
 	private final Action generateAIQueryAction;
 	private final Action aIExplainAction;
 	private final Action generateAIAction;
@@ -170,7 +171,6 @@ public class CommonActions implements CommandProvider {
 				} else {
 					sendQuery(openDocumentsModel.getSelectedDocument().getContent());
 				}
-				UpdateHelper.registerEvent("com_queryselection");
 			}
 		};
 		
@@ -181,7 +181,6 @@ public class CommonActions implements CommandProvider {
 				if(serverName != null) {
 					new ConnectionManagerDialog(connectionManager, parent, serverName).setVisible(true);
 				}
-				UpdateHelper.registerEvent("com_editserver");
 			}
 			
 			@Override public boolean isEnabled() {
@@ -201,7 +200,6 @@ public class CommonActions implements CommandProvider {
 						clpbrd.setContents(new StringSelection(hopenCommand ), null);
 						growler.showInfo("Copied to clipboard:\r\n" + hopenCommand, "Clipboard Set");
 					}
-					UpdateHelper.registerEvent("com_copyhopen");
 				}
 				
 			}
@@ -220,13 +218,24 @@ public class CommonActions implements CommandProvider {
 
 			@Override public void actionPerformed(ActionEvent e) {
 				sendQuery(openDocumentsModel.getSelectedDocument().getCurrentLine());
-				UpdateHelper.registerEvent("com_queryline");
 			}
 		};
 		
+		qFileAction = new AAction("Query Full File", Theme.CIcon.SCRIPT_GO.get16(), al -> {
+			sendQuery(openDocumentsModel.getSelectedDocument().getContent());
+		});
+        KeyStroke shortcut = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, KeyEvent.SHIFT_DOWN_MASK | Toolkit.getDefaultToolkit().getMenuShortcutKeyMask());
+        qFileAction.putValue(Action.ACCELERATOR_KEY, shortcut);
+        qFileAction.putValue(Action.SHORT_DESCRIPTION, "Run the full file.");
+        
+		// On Mac Cmd+Q = Quit application.
+        boolean isMac = System.getProperty("os.name").toLowerCase().indexOf("mac") >= 0;
+        KeyStroke ks = KeyStroke.getKeyStroke(KeyEvent.VK_Q, Toolkit.getDefaultToolkit().getMenuShortcutKeyMask());
+        if(isMac) {
+            ks = KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.ALT_DOWN_MASK | Toolkit.getDefaultToolkit().getMenuShortcutKeyMask());
+        }
 		qCurrentStatementAction = new ShortcutAction("Query Current Statement",
-        		Theme.CIcon.BLUE_PLAY, "Send current statement as query",
-        		KeyEvent.VK_Q, KeyEvent.VK_Q) {
+        		Theme.CIcon.BLUE_PLAY, "Send current statement as query", KeyEvent.VK_Q, ks) {
 					private static final long serialVersionUID = 1L;
 
 			@Override public void actionPerformed(ActionEvent e) {
@@ -237,7 +246,6 @@ public class CommonActions implements CommandProvider {
 				} else {
 					sendQuery(openDocumentsModel.getSelectedDocument().getCurrentStatement());
 				}
-				UpdateHelper.registerEvent("com_querycurrent");
 			}
 		};
 		
@@ -265,7 +273,6 @@ public class CommonActions implements CommandProvider {
 				String qry = doc.getCurrentLine();
 				sendQuery("{x}"+qry, qry);
 				doc.gotoNextLine();
-				UpdateHelper.registerEvent("com_querylineandmove");
 			}
 		};
 		qLineAndMoveAction.putValue(AbstractAction.SHORT_DESCRIPTION, qlDesc);
@@ -281,7 +288,6 @@ public class CommonActions implements CommandProvider {
 
 			@Override public void actionPerformed(ActionEvent e) {
 				queryManager.cancelQuery();
-				UpdateHelper.registerEvent("com_querycancel");
 			}
 		};
 
@@ -309,20 +315,9 @@ public class CommonActions implements CommandProvider {
 				}
 			}
 		};
-//		
-//		watchDocExpressionAction = new ShortcutAction("Add as Watched Expression",
-//						CIcon.EYE, "Add the selected text as a watched expression.") {
-//							private static final long serialVersionUID = 1L;
-//
-//					@Override public void actionPerformed(ActionEvent e) {
-//						String qry = openDocumentsModel.getSelectedDocument()
-//								.getSelectedText();
-//						queryManager.addWatchedExpression(qry);
-//					}
-//				};				
 				
 		queryActions = Collections.unmodifiableList(Arrays.asList(disconnectAllAction, qAction,  
-				qLineAction, qCurrentStatementAction, qLineAndMoveAction, sendClipboardQuery, qCancelQueryAction));
+				qLineAction, qFileAction, qCurrentStatementAction, qLineAndMoveAction, sendClipboardQuery, qCancelQueryAction));
 		
 		aiActions = Collections.unmodifiableList(Arrays.asList(generateAIAction, aIExplainAction, generateAIQueryAction, googleAction));
 		
@@ -355,8 +350,6 @@ public class CommonActions implements CommandProvider {
 				cd.setLocationRelativeTo(null);
 				cd.setName("ServerNameDialog");
 				cd.setVisible(true);
-
-				UpdateHelper.registerEvent("com_addserverlist");
 			}
 		};
 		 
@@ -366,8 +359,6 @@ public class CommonActions implements CommandProvider {
 				if(choice == JOptionPane.YES_OPTION) {
 					connectionManager.removeServers();
 				}
-
-				UpdateHelper.registerEvent("com_removeallservers");
 			});
 		
 		copyServerListAction = new AAction(Msg.get(Key.COPY_SERVER_LIST_TO_CLIPBOARD), CIcon.EDIT_COPY.get16(), e-> {
@@ -375,7 +366,6 @@ public class CommonActions implements CommandProvider {
 						JdbcTypes.KDB);
 				StringSelection sel = new StringSelection(s);
 				Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, sel);
-				UpdateHelper.registerEvent("com_copyserverlist");
 			});
 
 		serverActions = Collections.unmodifiableList(Arrays.asList(addServerAction, serverSelectAction, 
@@ -452,7 +442,6 @@ public class CommonActions implements CommandProvider {
 
 	/**
 	 * Send a query to the currently selected server and notify listeners of the result.
-	 * Watched expressions will also be updated.
 	 * @param qry The actual kdb query that is sent.
 	 * @param queryTitle The query reported as being sent, useful for hiding long internal queries.
 	 * 	null makes this default to actual query.
@@ -488,7 +477,7 @@ public class CommonActions implements CommandProvider {
 		} catch(Exception ex) {
 			LOG.log(Level.WARNING, "Send Query Error", ex);
 			growler.showSevere("Problem sending query to server", Msg.get(Key.ERROR)); 
-			queryManager.sendQRtoListeners(sc, QueryResult.exceptionResult(sc, qryToRun, null, ex));
+			queryManager.sendQRtoListeners(sc, QueryResult.exceptionResult(sc, qryToRun, null, ex, 0));
 		}
 	}
 	
@@ -531,7 +520,6 @@ public class CommonActions implements CommandProvider {
 	    	throw new IOException("Non-zero exit value for runArgs:" + sb + System.getProperty("line.separator") + errSb);
 	    }
 
-		UpdateHelper.registerEvent("com_compileprql");
 		return sb.toString();
 	}
 
@@ -699,7 +687,6 @@ public class CommonActions implements CommandProvider {
 			connectionManager.addServer(sc2);
 			ConnectionManagerDialog cmd = new ConnectionManagerDialog(connectionManager, parent, newName);
 			cmd.setVisible(true);
-			UpdateHelper.registerEvent("com_cloneserver");
 		}
 	}
 	
@@ -755,7 +742,6 @@ public class CommonActions implements CommandProvider {
 				}
 	    	};
 	    	performOpenAIQueryReplace(txtc, queryReplace, true);
-			UpdateHelper.registerEvent("com_generateai");
 		}
 	}
 
@@ -778,7 +764,6 @@ public class CommonActions implements CommandProvider {
 			} catch (UnsupportedEncodingException e1) {
 				LOG.warning("Problem googling:" + e1);
 			}
-			UpdateHelper.registerEvent("com_google");
 		}
 	}
 	
@@ -890,7 +875,6 @@ public class CommonActions implements CommandProvider {
 	    	};
 	    	
 	    	performOpenAIQueryReplace(txtc, queryReplace, true);
-			UpdateHelper.registerEvent("com_genaiquery");
 		}
 	}
 
@@ -923,7 +907,6 @@ public class CommonActions implements CommandProvider {
 	    	};
 	    	
 	    	performOpenAIQueryReplace(txtc, queryReplace, false);
-			UpdateHelper.registerEvent("com_aiexplain");
 		}
 	}
 }

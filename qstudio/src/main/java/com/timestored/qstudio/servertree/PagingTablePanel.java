@@ -35,7 +35,7 @@ import kx.c.KException;
 import com.google.common.base.Preconditions;
 import com.timestored.kdb.KdbConnection;
 import com.timestored.qstudio.QStudioLauncher;
-import com.timestored.qstudio.kdb.KdbTableFactory;
+import com.timestored.qstudio.kdb.KdbHelper;
 import com.timestored.qstudio.model.AdminModel;
 import com.timestored.theme.Theme;
 
@@ -175,7 +175,7 @@ public class PagingTablePanel extends JPanel {
 				long np = (offset + ROWS_SHOWN);
 				posText = offset + "-" + ((np > count) ? count :  np)+ " of " + count;
 				
-				sp = KdbTableFactory.getJXTable(resArray[1]);
+				sp = KdbHelper.getJXTable(resArray[1]);
 			} else {
 				String txt = "Could not establish a connection to server: " + adminModel.getSelectedServerName();
 				sp = Theme.getErrorBox("No Connection", Theme.getTextArea("errTxt", txt));

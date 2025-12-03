@@ -27,8 +27,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.timestored.connections.JdbcTypes;
 import com.timestored.connections.MetaInfo;
-import com.timestored.cstore.CAtomTypes;
 import com.timestored.misc.HtmlUtils;
+import com.timestored.qstudio.kdb.CAtomTypes;
 import com.timestored.qstudio.model.ServerQEntity.QQuery;
 import com.timestored.theme.Theme.CIcon;
 

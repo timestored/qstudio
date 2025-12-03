@@ -6,6 +6,8 @@ import static org.junit.Assert.fail;
 import java.io.File;
 import java.io.IOException;
 import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.function.Supplier;
@@ -52,7 +54,7 @@ public class KdbTestHelper {
 	public static KdbConnection getNewKdbConnection() throws KException, IOException, InterruptedException {
 		killAnyOpenProcesses();
 		startQ();
-		kdbConn = new CConnection(QHOST, QPORT);
+		kdbConn = new KdbConnection(QHOST, QPORT);
 		return kdbConn;
 	}
 
@@ -94,7 +96,7 @@ public class KdbTestHelper {
 		} else {
 			// check not left open from previous run
 			try {
-				closeConn(new CConnection(QHOST, QPORT));
+				closeConn(new KdbConnection(QHOST, QPORT));
 			} catch (IOException e1) {
 				// hopefully we can't connect so this error should occur
 			} catch (KException e) {
@@ -239,5 +241,14 @@ public class KdbTestHelper {
 		}
 		assertEquals(end, s.length() >= end.length() ? s.substring(s.length() - end.length()) : s);
 		return s.endsWith(end);
+	}
+
+	private static Connection CACHED_CONN = null;
+	public static ResultSet queryKdb(String sqlQuery) throws SQLException, IOException {
+		if(CACHED_CONN == null) {
+			CACHED_CONN = getNewConn();
+		}
+		Statement stmt = CACHED_CONN.createStatement();
+		return stmt.executeQuery(sqlQuery); // This leaks resources but it's only for tests.
 	}
 }

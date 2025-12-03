@@ -24,6 +24,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.Font;
@@ -34,6 +35,7 @@ import java.awt.Image;
 import java.awt.Insets;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
+import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
@@ -84,8 +86,6 @@ import javax.swing.WindowConstants;
 import javax.swing.event.MenuEvent;
 import javax.swing.event.MenuListener;
 
-import org.simplericity.macify.eawt.ApplicationEvent;
-
 import com.formdev.flatlaf.fonts.jetbrains_mono.FlatJetBrainsMonoFont;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -114,13 +114,11 @@ import com.timestored.jgrowl.GrowlerFactory;
 import com.timestored.messages.Msg;
 import com.timestored.messages.Msg.Key;
 import com.timestored.misc.AIFacade;
-import com.timestored.misc.AbstractApplicationListener;
 import com.timestored.misc.AppLaunchHelper;
 import com.timestored.misc.HtmlUtils;
 import com.timestored.misc.IOUtils;
-import com.timestored.misc.Mac;
+import com.timestored.qstudio.EditorConfigFactory.EditorConfig;
 import com.timestored.qstudio.kdb.KdbHelper;
-import com.timestored.qstudio.kdb.KdbTableFactory;
 import com.timestored.qstudio.model.AdminModel;
 import com.timestored.qstudio.model.AdminModel.Category;
 import com.timestored.qstudio.model.QEntity;
@@ -131,6 +129,7 @@ import com.timestored.qstudio.model.ServerModel;
 import com.timestored.qstudio.servertree.PagingTablePanel;
 import com.timestored.qstudio.servertree.ServerTreePanel;
 import com.timestored.sqldash.chart.ChartTheme;
+import com.timestored.sqldash.chart.TableFactory;
 import com.timestored.sqldash.chart.ViewStrategyFactory;
 import com.timestored.swingxx.AAction;
 import com.timestored.swingxx.DockerHelper;
@@ -156,6 +155,7 @@ import bibliothek.gui.dock.action.DefaultDockActionSource;
 import bibliothek.gui.dock.action.actions.SimpleButtonAction;
 import bibliothek.gui.dock.station.split.DockableSplitDockTree;
 import bibliothek.gui.dock.station.split.SplitDockTree;
+import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 
@@ -176,14 +176,14 @@ public class QStudioFrame extends JFrame {
 	private static final int SERVER_NAME_WIDTH = 190;
 	private static final long serialVersionUID = 1L;
 	private static final String UNIQUE_ID = "UNIQ_ID";
-	public static final String VERSION = "4.01";
+	public static final String VERSION = "4.40";
 	
 	private final QStudioModel qStudioModel;
 	private final ConnectionManager conMan;
-	private final OpenDocumentsModel openDocsModel;
+	@Getter private final OpenDocumentsModel openDocsModel;
 	private final QueryManager queryManager;
 	private final Persistance persistance;
-	private final DockFrontend frontend;
+	@Getter private final DockFrontend frontend;
 	private final AdminModel adminModel;
 	private final KDBResultPanel kdbResultPanel;
 	private final MyPreferences myPreferences;
@@ -191,6 +191,7 @@ public class QStudioFrame extends JFrame {
 	private final QueryHistoryPanel queryHistorypanel;
 	private final FileTreePanel fileTreePanel;
 	private final ConsolePanel consolePanel;
+	private final SearchAllFilesPanel searchAllFilesPanel;
 	private final Growler growler;
 	private final CommandManager commandManager;
 	
@@ -216,7 +217,8 @@ public class QStudioFrame extends JFrame {
 
 	private final AbstractAction commandPaletteAction;
 
-	private ShortcutAction openFilesAction;
+	private final ShortcutAction openFilesAction;
+	private final AbstractAction searchFilesAction;
 
 
 	public QStudioFrame(final QStudioModel qStudioModel) {
@@ -236,9 +238,6 @@ public class QStudioFrame extends JFrame {
         this.persistance = qStudioModel.getPersistance();
 		this.commandManager = new CommandManager();
         
-    	// set mac properties to customize menu bars icons etc
-        Mac.configureIfMac(new QStudioAppListener(), Theme.CIcon.QSTUDIO_LOGO);
-		
         // check if this is first ever opening and persist it as having happened.
         final boolean firstEverOpen = persistance.getBoolean(Persistance.Key.FIRST_OPEN, true);
         if(firstEverOpen) {
@@ -316,7 +315,12 @@ public class QStudioFrame extends JFrame {
 		frontend.addRoot(UNIQUE_ID, station);
 		frontend.setShowHideAction(true);
 		
-		FlatJetBrainsMonoFont.install(); // @TODO This .install is taking 400ms!!! https://github.com/JFormDesigner/FlatLaf/issues/901
+		if(myPreferences.getCodeFont().toLowerCase().contains("jetbrains")) {
+			// @TODO This .install is taking 400ms!!! https://github.com/JFormDesigner/FlatLaf/issues/901
+			FlatJetBrainsMonoFont.install(); 
+		}
+		
+		
 		boolean isDarkTheme = AppLaunchHelper.isLafDark(MyPreferences.INSTANCE.getCodeTheme());
 		// This is a repeat of later code as the config must ideally be set before editor is ever created.
 		EditorConfigFactory.TCOLOR tcolor = isDarkTheme  ? EditorConfigFactory.TCOLOR.DARK : EditorConfigFactory.TCOLOR.LIGHT; 
@@ -326,7 +330,7 @@ public class QStudioFrame extends JFrame {
 		qDocController = new QDocController(qStudioModel);
 		serverDocumentPanel = new ServerDocumentPanel(commonActions, documentActions, 
 				openDocsModel, this, qDocController, files -> handleArgsFiles(files));
-        
+		serverDocumentPanel.setEditorFont(myPreferences.getCodeFontFont());
 		serverDocumentPanel.setAssumedFileEnding(conMan.isEmpty() || conMan.containsKdbServer() ? "q" : "sql");
 
 		ActionMap am = getRootPane().getActionMap();
@@ -348,29 +352,22 @@ public class QStudioFrame extends JFrame {
 		DefaultDockable documentsDockable = createDockable(Msg.get(Key.DOCUMENTS), CIcon.PAGE_CODE, serverDocumentPanel, null);
 
 		// customized dock actions
-		// @TODO watchedExpPanel creation is taking 83ms!
-		WatchedExpressionPanel wePanel = new WatchedExpressionPanel(queryManager);
-		ActionListener refreshAL = ae -> queryManager.refreshWatchedExpressions();
-//		DefaultDockable expWatcherDockable = createDockable(Msg.get(Key.EXPRESSIONS), CIcon.EYE, wePanel, refreshAL);
-
 		kdbResultPanel = new KDBResultPanel(adminModel, queryManager);
+		kdbResultPanel.setName("kdbResultPanelTop");
 		kdbResultPanel.setTransferHandler(myTransferHandler);
-		ActionListener refreshResendQueryAL = new ActionListener() {
-			@Override public void actionPerformed(ActionEvent arg0) {
-				queryManager.resendLastQuery();
-			}
-		};
-
+		ActionListener refreshResendQueryAL = ae -> queryManager.resendLastQuery();
+		
+		
 		pivotButton = makeButton("Pulse Pivot", Theme.CIcon.TABLE_PIVOT, ae -> kdbResultPanel.togglePivotFormVisible());
 		DefaultDockActionSource actions = new DefaultDockActionSource();
 		xlsButton = makeButton("Export to Excel", Theme.CIcon.XLSX, (ActionEvent ae) -> {
 			if(lastQueryResult != null && lastQueryResult.rs != null) {
-				TableExporter.saveToExcelAndOpen(lastQueryResult.rs, lastQueryResult.query, new KdbTableFactory.KdbStringValuer());
+				TableExporter.saveToExcelAndOpen(lastQueryResult.rs, lastQueryResult.query, new TableFactory.KdbStringValuer());
 			}
 		});
 		emailButton = makeButton("Send Excel Attachment", Theme.CIcon.EMAIL_ATTACH, (ActionEvent ae) -> {
 			if(lastQueryResult != null && lastQueryResult.rs != null) {
-				TableExporter.emailExcelForUser(lastQueryResult.rs, lastQueryResult.query, new KdbTableFactory.KdbStringValuer());
+				TableExporter.emailExcelForUser(lastQueryResult.rs, lastQueryResult.query, new TableFactory.KdbStringValuer());
 			}
 		});
 		saveToDuckButton = makeButton("Export to QDuckDB Table", Theme.CIcon.DUCK, (ActionEvent ae) -> {
@@ -408,20 +405,20 @@ public class QStudioFrame extends JFrame {
 		fileTreePanel.addListener((File selectedFile) -> {
 				if(!selectedFile.isDirectory()) { // Don't open folder as they may just be expanding tree
 					FileTreePanel.openFileOrBrowseTo(selectedFile, fl -> handleArgsFiles(fl));
-					UpdateHelper.registerEvent("filetree-openfile");
 				}
 			});
 		DefaultDockable fileTreeDockable = createDockable(Msg.get(Key.FILE_TREE), 
 				CIcon.DOCUMENT_OPEN, fileTreePanel, ae -> fileTreePanel.refreshGui());
         
         consolePanel = new ConsolePanel();
+        consolePanel.setCodeFont(myPreferences.getCodeFontFont());
 		queryManager.addQueryListener(consolePanel);
 		DefaultDockable consoleDockable = createDockable(Msg.get(Key.CONSOLE), 
 				CIcon.TERMINAL, consolePanel, refreshResendQueryAL);
 
         sTreePanel = new ServerTreePanel(qStudioModel, commonActions, this);
         sTreePanel.setTransferHandler(myTransferHandler);
-		refreshAL = ae -> BackgroundExecutor.EXECUTOR.execute(() ->  adminModel.refresh());
+        ActionListener refreshAL = ae -> BackgroundExecutor.EXECUTOR.execute(() ->  adminModel.refresh());
 		DefaultDockable serverTreeDockable = createDockable(Msg.get(Key.SERVER_TREE), 
 				CIcon.SERVER, sTreePanel, refreshAL);
 	      
@@ -432,8 +429,13 @@ public class QStudioFrame extends JFrame {
 		DefaultDockable chartDockable = createDockable(Msg.get(Key.CHART), 
 				CIcon.CHART_CURVE,chartResultPanel, refreshResendQueryAL);
         queryHistorypanel = new QueryHistoryPanel(queryManager);
+        queryHistorypanel.addListener(queryResult -> chartResultPanel.showQueryResult(queryResult));
+        
 		DefaultDockable historyDockable = createDockable(Msg.get(Key.HISTORY), 
 				CIcon.TABLE_MULTIPLE, queryHistorypanel, refreshResendQueryAL);
+		searchAllFilesPanel = new SearchAllFilesPanel(openDocsModel);
+		DefaultDockable searchFilesDockable = createDockable(Msg.get(Key.SEARCH_FILES),
+				CIcon.EDIT_FIND, searchAllFilesPanel, null);
 
 		/*
 		 * Register the various Command Providers so that the Command Palette works
@@ -457,13 +459,25 @@ public class QStudioFrame extends JFrame {
 				cd.setMinimumSize(new Dimension(600, 400));
 				cd.setLocationRelativeTo(QStudioFrame.this);
 				cd.setVisible(true);
-				UpdateHelper.registerEvent("qsf_commandbar");
 			}
 		};
 		KeyStroke COMMAND_PALETTE_KS = KeyStroke.getKeyStroke(KeyEvent.VK_P, 
 				Toolkit.getDefaultToolkit().getMenuShortcutKeyMask());
 		am.put("commandPalette", commandPaletteAction);
 		im.put(COMMAND_PALETTE_KS, "commandPalette");
+		
+		searchFilesAction = new AbstractAction("Find All...", CIcon.EDIT_FIND.get()) {
+			private static final long serialVersionUID = 1L;
+			@Override public void actionPerformed(ActionEvent e) {
+				frontend.hide(searchFilesDockable);
+				frontend.show(searchFilesDockable);
+				searchAllFilesPanel.focusSearchField();
+			}
+		};
+		KeyStroke SEARCH_FILES_KS = KeyStroke.getKeyStroke(KeyEvent.VK_F,
+				Toolkit.getDefaultToolkit().getMenuShortcutKeyMask() | KeyEvent.SHIFT_DOWN_MASK);
+		am.put("searchFiles", searchFilesAction);
+		im.put(SEARCH_FILES_KS, "searchFiles");
 
         myPreferences.addListener(() -> pushPreferencesToModels());
 		pushPreferencesToModels();
@@ -476,7 +490,7 @@ public class QStudioFrame extends JFrame {
 
 		SplitDockTree<Dockable>.Key docsGroup = tree.put(new Dockable[]{ documentsDockable }, documentsDockable );
 		SplitDockTree<Dockable>.Key resultsGroup = tree.put(new Dockable[]{ kdbResDockable, 
-				chartDockable, historyDockable,  consoleDockable }, kdbResDockable ); // expWatcherDockable,
+				chartDockable, historyDockable,  consoleDockable, searchFilesDockable }, kdbResDockable ); // expWatcherDockable,
 		SplitDockTree<Dockable>.Key rightSide = tree.vertical( docsGroup, resultsGroup, 0.55 );
 		SplitDockTree<Dockable>.Key leftSide = tree.vertical( serverTreeDockable, fileTreeDockable, 0.6 );
 		SplitDockTree<Dockable>.Key root = tree.horizontal( leftSide, rightSide, 1.0/5.0 );
@@ -498,6 +512,7 @@ public class QStudioFrame extends JFrame {
 		panelsMenu.add(new ToggleDockableMenuItem(kdbResDockable, frontend, "wKdbResMenuItem"));
 		panelsMenu.add(new ToggleDockableMenuItem(chartDockable, frontend, "wChartMenuItem"));
 		panelsMenu.add(new ToggleDockableMenuItem(historyDockable, frontend, "wHistoryMenuItem"));
+		panelsMenu.add(new ToggleDockableMenuItem(searchFilesDockable, frontend, "wSearchFilesMenuItem"));
 		panelsMenu.addSeparator();
 		panelsMenu.add(new AAction("Restore Default Layout", ae -> DockerHelper.loadLayout(defaultLayoutXml, frontend)));
 		menuBar.add(panelsMenu);
@@ -576,7 +591,6 @@ public class QStudioFrame extends JFrame {
 			@Override public void sendingQuery(ServerConfig sc, String query) {
 			    setC(Cursor.WAIT_CURSOR);
 				queryCount++;
-				UpdateHelper.registerEvent("qsf_qry");
 			}
 		});
 		
@@ -655,7 +669,7 @@ public class QStudioFrame extends JFrame {
 			
 		});
 
-		BackgroundExecutor.EXECUTOR.execute(() -> { TimeStored.fetchOnlineNews(isDarkTheme); });
+		BackgroundExecutor.EXECUTOR.execute(() -> { TimeStored.fetchOnlineNews(); });
         
 		LOG.info("Finished QStudioFrame Constructor");
 	}
@@ -690,49 +704,18 @@ public class QStudioFrame extends JFrame {
 	
 	
 
-	/*
-	 * This class MUST be kept public as the Mac stuff relies on it being so. 
-	 * Previously using anonymous class variable prevented program starting
-	 */
-	public class QStudioAppListener extends AbstractApplicationListener {
-
-		public QStudioAppListener() { super(QStudioFrame.this); }
-
-    	@Override public void handlePreferences(ApplicationEvent event) {
-    		new PreferencesDialog(MyPreferences.INSTANCE, QStudioFrame.this);
-    	}
-    	
-    	@Override public void handleOpenFile(ApplicationEvent event) {
-    		handleArgsFiles(new File(event.getFilename()));
-    	}
-    	
-    	@Override public void handleAbout(ApplicationEvent event) {
-    		showAboutDialog();
-    	}
-	}
-
 	/** 
-	 * A temporary hack used to delay before showing a popup on the eventqueue
+	 * A workaround used to delay before showing a popup on the eventqueue.
 	 * Used as the windowing toolkit uses timers to request focus,
 	 * which meant popup windows were getting sent to back.
 	 */
-	private void showPopup(final Component component, final String title,
-			final Image icon) {
-
-		new Thread(new Runnable() {
-			@Override public void run() {
-				try {
-					Thread.sleep(200);
-				} catch (InterruptedException e) { }
-				EventQueue.invokeLater(new Runnable() {
-					
-					@Override public void run() {
-						final JFrame f = SwingUtils.getPopupFrame(QStudioFrame.this, title, 
-								component, icon);
-						f.setVisible(true);						
-					}
-				});
-			}
+	public static void showPopup(final Window frame, final Component component, final String title, final Image icon) {
+		new Thread(() -> {
+			try { Thread.sleep(200); } catch (InterruptedException e) { }
+			EventQueue.invokeLater(() -> {
+					final JFrame f = SwingUtils.getPopupFrame(frame, title, component, icon);
+					f.setVisible(true);						
+			});
 		}).start();
 	}
 	
@@ -803,6 +786,14 @@ public class QStudioFrame extends JFrame {
 
 
 		ImageIcon codeImage = Theme.CIcon.PAGE_CODE.get16();
+        helpMenu.add(new AAction("Open QStudio Folder", Theme.CIcon.FOLDER.get16(), e-> {
+        		File p = QStudioModel.APP_HOME;
+				try {
+					Desktop.getDesktop().open(p);
+				} catch (IOException e1) {
+					JOptionPane.showMessageDialog(null, "Error opening folder: " +  (p == null ? "null" : p.getAbsolutePath()));
+				}
+			}));
         helpMenu.add(new AAction(Msg.get(Key.OPEN_EXAMPLE_CHARTS), codeImage, e-> {
 				QStudioFrame.this.openExampleFile(QStudioFrame.class, KDB_EXAMPLE_FILE);
 			}));
@@ -816,7 +807,7 @@ public class QStudioFrame extends JFrame {
         }
     	
 	    helpMenu.addSeparator();
-        helpMenu.add(new AAction(Msg.get(Key.ABOUT), e -> showAboutDialog()));
+        helpMenu.add(new AAction(Msg.get(Key.ABOUT), e -> showAboutDialog(QStudioFrame.this)));
 		return helpMenu;
 	}
 
@@ -828,7 +819,6 @@ public class QStudioFrame extends JFrame {
 			File f = new File(tempf, file);
 			IOUtils.writeStringToFile(welcomeCode, f);
 			openDocsModel.openDocument(f);
-			UpdateHelper.registerEvent("qsf_openeg");
 		} catch(IOException e) {
 			String msg = Msg.get(Key.COULD_NOT_LOAD_FILE) + file;
 			LOG.severe(msg);
@@ -940,9 +930,8 @@ public class QStudioFrame extends JFrame {
 						if(gi.getIcon() != null) {
 							ic = gi.getIcon(); 
 						}
-						showPopup(gi.getComponent(), title, ic.getBufferedImage());	
+						showPopup(QStudioFrame.this, gi.getComponent(), title, ic.getBufferedImage());	
 					}
-					UpdateHelper.registerEvent("qsf_popout"+uniqueTitle.replace(" ", ""));
 				}
 			});
 			actions.add(button);
@@ -981,14 +970,14 @@ public class QStudioFrame extends JFrame {
 		sTreePanel.setHiddenNamespaces(myPreferences.getHiddenNamespaces());
 		consolePanel.setMaxLength(myPreferences.getMaxConsoleLength());
 
-		int sz = myPreferences.getCodeFontSize();
-		Font f = new Font(myPreferences.getCodeFont(), Font.PLAIN, sz);
-		double scale = sz > 12 ? sz / 12.0 : 1.0;
-		System.setProperty( "sun.java2d.uiScale", ""+scale);
-		System.setProperty( "flatlaf.uiScale", ""+scale);
+		Font f = myPreferences.getCodeFontFont();
 		if(f != null) {
 			serverDocumentPanel.setEditorFont(f);
 			consolePanel.setCodeFont(f);
+		}
+		int uiScale = myPreferences.getUIScale();
+		if(uiScale > 0) {
+			System.setProperty( "flatlaf.uiScale", ""+(uiScale/100.0));
 		}
 
 		String lfname = myPreferences.getCodeTheme();
@@ -997,15 +986,26 @@ public class QStudioFrame extends JFrame {
 		AppLaunchHelper.setTheme(lfname);
 		SwingUtilities.updateComponentTreeUI(this);
 		ChartTheme chartTheme = isDarkTheme ? ViewStrategyFactory.DARK_THEME : ViewStrategyFactory.LIGHT_THEME;
-		chartResultPanel.setChartTheme(chartTheme);
-		ServerDocumentPanel.setEditorConfig(EditorConfigFactory.get(tcolor));
+		chartResultPanel.setChartTheme(chartTheme);		
+		
+		EditorConfig editorConfig = EditorConfigFactory.getByName(myPreferences.getCodeEditorTheme(), isDarkTheme);
+		ServerDocumentPanel.setEditorConfig(editorConfig);
+		
+		TabLayoutPolicy tabLayout = TabLayoutPolicy.fromString(myPreferences.getUiTabLayout());
+		serverDocumentPanel.setTabLayoutPolicy(tabLayout);
+		queryHistorypanel.setTabLayoutPolicy(tabLayout);
 		
 		int mr = myPreferences.getMaxRowsShown();
 		mr = mr==0 ? Integer.MAX_VALUE : mr;
 		PagingTablePanel.setMaximumRowsShown(mr);
 		kdbResultPanel.setMaximumRowsShown(mr);
+		kdbResultPanel.setNegativeShownRed(myPreferences.isNegativeShownRed());
+		queryHistorypanel.setNegativeShownRed(myPreferences.isNegativeShownRed());
+		KdbHelper.setNegativeShownRed(myPreferences.isNegativeShownRed());
 		queryHistorypanel.setMaximumRowsShown(mr);
 		KdbHelper.setMaximumFractionDigits(myPreferences.getMaximumFractionDigits());
+		KdbHelper.setGroupingSize(myPreferences.getNumberGroupingSize());
+		
 
         documentActions.setSaveWithWindowsLineEndings(myPreferences.isSaveWithWindowsLineEndings());
         try {
@@ -1116,9 +1116,7 @@ public class QStudioFrame extends JFrame {
         	
         	@Override public void menuSelected(MenuEvent e) {
         		editMenu.removeAll();
-        		editMenu.add(documentActions.getUndoAction());
-        		editMenu.add(documentActions.getRedoAction());
-        		editMenu.addSeparator();
+        		editMenu.add(searchFilesAction);
                 for(Action a: documentActions.getEditorActions()) {
                 	if(a == null) {
                 		editMenu.addSeparator();
@@ -1126,6 +1124,9 @@ public class QStudioFrame extends JFrame {
                 		editMenu.add(new JMenuItem(a));
                 	}
                 }
+        		editMenu.addSeparator();
+        		editMenu.add(documentActions.getUndoAction());
+        		editMenu.add(documentActions.getRedoAction());
         	}
         	
         	@Override public void menuCanceled(MenuEvent e) { }
@@ -1325,10 +1326,10 @@ public class QStudioFrame extends JFrame {
 		return conMan;
 	}
 
-	private void showAboutDialog() {
+	public static void showAboutDialog(JFrame frame) {
 		Icon icon = Theme.CIcon.QSTUDIO_LOGO;
 		String htmlTitle = "<h1><font color='#2580A2'>q</font><font color='#25A230'>Studio</font></h1>";
-		new AboutDialog(QStudioFrame.this, QStudioModel.APP_TITLE, icon, htmlTitle, VERSION).setVisible(true);
+		new AboutDialog(frame, QStudioModel.APP_TITLE, icon, htmlTitle, VERSION).setVisible(true);
 	}
 
 	public void handleArgs(List<String> args) {

@@ -17,18 +17,14 @@
 package com.timestored.docs;
 
 import static com.timestored.theme.Theme.CIcon.DOCUMENT_NEW;
-import static com.timestored.theme.Theme.CIcon.DOCUMENT_OPEN;
 import static java.awt.event.KeyEvent.VK_C;
 import static java.awt.event.KeyEvent.VK_D;
 import static java.awt.event.KeyEvent.VK_F3;
 import static java.awt.event.KeyEvent.VK_F4;
-import static java.awt.event.KeyEvent.VK_U;
-import static java.awt.event.KeyEvent.VK_L;
 import static java.awt.event.KeyEvent.VK_F;
 import static java.awt.event.KeyEvent.VK_G;
 import static java.awt.event.KeyEvent.VK_H;
 import static java.awt.event.KeyEvent.VK_N;
-import static java.awt.event.KeyEvent.VK_O;
 import static java.awt.event.KeyEvent.VK_S;
 import static java.awt.event.KeyEvent.VK_SLASH;
 import static java.awt.event.KeyEvent.VK_PERIOD;
@@ -36,6 +32,8 @@ import static java.awt.event.KeyEvent.VK_V;
 import static java.awt.event.KeyEvent.VK_X;
 import static java.awt.event.KeyEvent.VK_Y;
 import static java.awt.event.KeyEvent.VK_Z;
+import static java.awt.event.KeyEvent.VK_LEFT;
+import static java.awt.event.KeyEvent.VK_RIGHT;
 
 
 import java.awt.Toolkit;
@@ -113,7 +111,9 @@ public class DocumentActions {
 	private final Action newFileAction;
 	private final List<Action> fileActions;
 	private final Action nextDocumentAction;
-	private final Action prevDocumentAction;
+	private final Action prevDocumentAction;	
+	private final Action navigateBackAction;
+	private final Action navigateForwardAction;
 	
 	private final Action cutAction;
 	private final Action copyAction;
@@ -197,7 +197,6 @@ public class DocumentActions {
 		        } else {
 		        	LOG.info(Msg.get(Key.OPEN_CANCELLED));
 		        }
-				UpdateHelper.registerEvent("doc_openfolder");
 		   }
 		};
 		
@@ -210,7 +209,6 @@ public class DocumentActions {
 
 			@Override public void actionPerformed(ActionEvent arg0) {
 				openDocumentsModel.addDocument();
-				UpdateHelper.registerEvent("doc_newfile");
 		   }
 		};
 			
@@ -221,7 +219,6 @@ public class DocumentActions {
 
 			@Override public void actionPerformed(ActionEvent arg0) {
 	            closeWithConfirmation(openDocumentsModel.getSelectedDocument());
-				UpdateHelper.registerEvent("doc_closefile");
 		   }
 		};
 
@@ -246,7 +243,6 @@ public class DocumentActions {
 					LOG.info(msg);
 					JOptionPane.showMessageDialog(null, msg, Msg.get(Key.SAVE_ERROR), JOptionPane.ERROR_MESSAGE);
 				}
-				UpdateHelper.registerEvent("doc_savefile");
 			}
 		};
 
@@ -255,7 +251,6 @@ public class DocumentActions {
 			private static final long serialVersionUID = 1L;
 			@Override public void actionPerformed(ActionEvent ae) {
 				openDocumentsModel.gotoNextDocument();
-				UpdateHelper.registerEvent("doc_nextdoc");
 			}
 		};
 
@@ -263,9 +258,32 @@ public class DocumentActions {
 			private static final long serialVersionUID = 1L;
 			@Override public void actionPerformed(ActionEvent ae) {
 				openDocumentsModel.gotoPrevDocument();
-				UpdateHelper.registerEvent("doc_prevdoc");
 			}
 		};
+		
+		// Navigation back/forward actions (like browser back/forward)
+		navigateBackAction = new AbstractAction("Navigate Back", Theme.CIcon.GREEN_BACK.get16()) {
+			private static final long serialVersionUID = 1L;
+			{
+				putValue(Action.SHORT_DESCRIPTION, "Navigate Back (Alt+Left)");
+				putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(VK_LEFT, java.awt.event.InputEvent.ALT_DOWN_MASK));
+			}
+			@Override public void actionPerformed(ActionEvent ae) {
+				openDocumentsModel.navigateBack();
+			}
+		};
+
+		navigateForwardAction = new AbstractAction("Navigate Forward", Theme.CIcon.GREEN_FORWARD.get16()) {
+			private static final long serialVersionUID = 1L;
+			{
+				putValue(Action.SHORT_DESCRIPTION, "Navigate Forward (Alt+Right)");
+				putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(VK_RIGHT, java.awt.event.InputEvent.ALT_DOWN_MASK));
+			}
+			@Override public void actionPerformed(ActionEvent ae) {
+				openDocumentsModel.navigateForward();
+			}
+		};
+		
 		
 		fileActions = Collections.unmodifiableList(Arrays.asList(openFolderAction, closeFileAction, 
 				closeAllFileAction, closeFolderAction, saveFileAction, saveAsFileAction));
@@ -296,6 +314,8 @@ public class DocumentActions {
 		acts.add(getAction(Msg.get(Key.FIND) + "...", CIcon.EDIT_FIND, new FindReplaceAction(), VK_H));
 		acts.add(findNextAction);
 		acts.add(getAction(Msg.get(Key.GOTO_LINE) + "...", CIcon.EDIT_GOTO_LINE, new GotoLineAction(), VK_G));
+		acts.add(navigateBackAction);
+		acts.add(navigateForwardAction);
 		acts.add(null);
 		acts.add(selectCurrentStatementAction);
 		acts.add(formatAction);
@@ -345,7 +365,6 @@ public class DocumentActions {
         public UpperAction() { super("UPPERCASE"); }
         public void actionPerformed(ActionEvent e) {
             replaceSelected(getTextComponent(e), String::toUpperCase);
-			UpdateHelper.registerEvent("doc_upper");
         }
     }
 	
@@ -353,7 +372,7 @@ public class DocumentActions {
         public FormatAction() { 
         	super("Format SQL");
     		Toolkit tk = Toolkit.getDefaultToolkit();
-    		KeyStroke k = KeyStroke.getKeyStroke(VK_F, tk.getMenuShortcutKeyMask() | java.awt.Event.SHIFT_MASK);
+    		KeyStroke k = KeyStroke.getKeyStroke(VK_F, tk.getMenuShortcutKeyMask() | java.awt.Event.ALT_MASK);
     		putValue(Action.ACCELERATOR_KEY, k);
         }
         public void actionPerformed(ActionEvent e) {
@@ -364,7 +383,6 @@ public class DocumentActions {
         		tc.setSelectionEnd(tc.getText().length()-1);
         	}
             replaceSelected(getTextComponent(e), s -> SqlFormatter.format(s, cfg));	
-			UpdateHelper.registerEvent("doc_format");
         }
     }
     
@@ -384,7 +402,6 @@ public class DocumentActions {
         public LowerAction() { super("lowercase"); }
         public void actionPerformed(ActionEvent e) {
             replaceSelected(getTextComponent(e), String::toLowerCase);
-			UpdateHelper.registerEvent("doc_lower");
         }
     }
     
@@ -516,7 +533,6 @@ public class DocumentActions {
 			for(Document d : openDocumentsModel.getDocuments()) {
 				closeWithConfirmation(d);
 			}
-			UpdateHelper.registerEvent("doc_closeall");
 	   }
 	}
 
@@ -540,7 +556,6 @@ public class DocumentActions {
 					foundMe = foundMe || d.equals(document);
 				}
 			}
-			UpdateHelper.registerEvent("doc_closeallright");
 	   }
 	}
 
@@ -619,6 +634,8 @@ public class DocumentActions {
 		lowerAction.setEnabled(d.isTextSelected());
 		upperAction.setEnabled(d.isTextSelected());
 		formatAction.setEnabled(true);
+		navigateBackAction.setEnabled(openDocumentsModel.canNavigateBack());
+		navigateForwardAction.setEnabled(openDocumentsModel.canNavigateForward());
 	}
 
 	/** Let user undo action in latest editor */

@@ -46,7 +46,13 @@ public class TimeStored {
 		return !ONLINE_ENTRIES.isEmpty();
 	}
 	
-	public static List<String> fetchOnlineNews(boolean isDarkTheme) {
+	public static List<String> getOnlineNews(boolean isDarkTheme) {
+		final String htmlReplace = isDarkTheme ? DARK_HTML_BODY : LIGHT_HTML_BODY; 
+		return ONLINE_ENTRIES.stream().filter(s -> isDarkTheme ? !s.contains("-light") : !s.contains("-dark"))
+					.map(s -> s.replace("<html>", htmlReplace)).collect(Collectors.toList());
+	}
+	
+	public static void fetchOnlineNews() {
 		if(ONLINE_ENTRIES.size() == 0) {
 			String U = TimeStored.URL + "/qstudio/addon/news";
 			try(Scanner sc = new java.util.Scanner(new URL(U).openStream(), "UTF-8")) {
@@ -67,10 +73,6 @@ public class TimeStored {
 				// DO nothing. Revert to hardcoded entries elsehwere.
 			}
 		}
-		
-		final String htmlReplace = isDarkTheme ? DARK_HTML_BODY : LIGHT_HTML_BODY; 
-		return ONLINE_ENTRIES.stream().filter(s -> isDarkTheme ? !s.contains("-light") : !s.contains("-dark"))
-					.map(s -> s.replace("<html>", htmlReplace)).collect(Collectors.toList());
 	}
 	
 	private static final String DARK_HTML_BODY = "<html><body bgcolor='#111111' text='#EEEEEE' link='#EEEEEE'>";
@@ -119,7 +121,8 @@ public class TimeStored {
 		QSTUDIO_CHANGES("/qstudio/help/releases"),
 		QSTUDIO_HELP_KEYBOARD("/qstudio/help/keyboard-shortcuts"),
 		QDOC_FEATURE_REQUEST("/r?qdoc=feature-request"),
-		QDOC_REPORT_ISSUE("/r?qdoc=report-issue");
+		QDOC_REPORT_ISSUE("/r?qdoc=report-issue"), 
+		QSTUDIO_HELP_SSL("/qstudio/help/ssl-configuration");
 		
 		final private String loc;
 		
@@ -229,7 +232,7 @@ public class TimeStored {
 
 	/** @return A 3-4 sentence html paragraph with hyperlinks to a page on the web site **/
 	public static String getRandomLongNewsHtml(boolean isDarkTheme) {
-		List<String> online = fetchOnlineNews(isDarkTheme);
+		List<String> online = getOnlineNews(isDarkTheme);
 		if(online.size() > 3) {
 			return online.get(R.nextInt(online.size()));
 		}

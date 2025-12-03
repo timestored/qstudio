@@ -6,7 +6,7 @@ import java.util.Comparator;
  *  Comparator that tries to use number or sensible kdb data types ordering
  *  where possible but falls back to alphabetical.
  */
-class DataComparator implements Comparator {
+public class DataComparator implements Comparator {
 
 	@Override
 	public int compare(Object o1, Object o2)  {

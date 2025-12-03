@@ -17,14 +17,18 @@
 package com.timestored.qdoc;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.swing.ImageIcon;
 
 import com.google.common.base.Preconditions;
 import com.timestored.misc.HtmlUtils;
 import com.timestored.theme.Theme;
+
+import lombok.Getter;
 
 /**
  * Allows combining  documented entities with the same fullname but difference sources into
@@ -37,6 +41,8 @@ class CombinedDocumentedEntity implements DocumentedEntity {
 	private List<DocumentedEntity> docs;
 	private String source = "";
 
+	@Getter private ImageIcon icon;
+
 	/**
 	 * @param docs must contain more than one item.
 	 */
@@ -47,6 +53,9 @@ class CombinedDocumentedEntity implements DocumentedEntity {
 			Preconditions.checkArgument(namesEqual);
 			source += de.getSource() + " ";
 		}
+		Optional<DocumentedEntity> srverE = docs.stream().filter(de -> de.getSourceType().equals(SourceType.SERVER)).findFirst();
+		this.icon = srverE.isPresent() ? srverE.get().getIcon() : Theme.CIcon.TEXT_HTML.get16();
+				
 		this.docs = docs;
 	}
 
@@ -96,12 +105,6 @@ class CombinedDocumentedEntity implements DocumentedEntity {
 		return s;
 	}
 	
-
-	
-
-	@Override public ImageIcon getIcon() {
-		return Theme.CIcon.TEXT_HTML.get16();
-	}
 
 	@Override public SourceType getSourceType() {
 		return SourceType.MIXED;

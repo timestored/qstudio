@@ -12,31 +12,34 @@ public class ViewStrategyFactory {
 	private static final List<ViewStrategy> STRATEGIES
 		= Collections.unmodifiableList(Arrays.asList(new ViewStrategy[] {
 				NoRedrawViewStrategy.INSTANCE,
+				TimeseriesViewStrategy.INSTANCE,
+				StepChartViewStrategy.INSTANCE,
 				AreaChartViewStrategy.INSTANCE,
 				BarChartViewStrategy.INSTANCE,
 				StackedBarChartViewStrategy.INSTANCE,
 				BubbleChartViewStrategy.INSTANCE,
 				CandleStickViewStrategy.INSTANCE,
-				DataTableViewStrategy.getInstance(false),
 				HeatMapViewStrategy.INSTANCE,
 				HistogramViewStrategy.INSTANCE,
 				LineChartViewStrategy.INSTANCE,
 				PieChartViewStrategy.INSTANCE,
 				ScatterPlotViewStrategy.INSTANCE,
-				TimeseriesViewStrategy.INSTANCE,
-				StepChartViewStrategy.INSTANCE,
-				DotViewStrategy.INSTANCE
+				DataTableViewStrategy.getInstance(),
 		}));
 
 
-	public static final ChartTheme LIGHT_THEME = DefaultTheme.getInstance(new LightColorScheme(), "Light", "Primary colours on a white background");
-	public static final ChartTheme DARK_THEME = DefaultTheme.getInstance(new DarkColorScheme(), "Dark", "Primary colours on a black background");
-	public static final ChartTheme PASTEL_THEME = DefaultTheme.getInstance(new PastelColorScheme(), "Pastel", "Pastel colours on a black background");
-
+	public static final ChartTheme LIGHT_THEME = DefaultTheme.getInstance(new LightColorScheme(), "Light", "Modern Excel-inspired colors on white background");
+	public static final ChartTheme DARK_THEME = DefaultTheme.getInstance(new DarkColorScheme(), "Dark", "VS Code-inspired colors on dark background");
+	public static final ChartTheme DARK_ORIGINAL_THEME = DefaultTheme.getInstance(new DarkOriginalColorScheme(), "Dark Original", "Original qStudio dark theme");
+	public static final ChartTheme DARK_FIN_THEME = DefaultTheme.getInstance(new DarkFinColorScheme(), "Dark Finance", "Dark theme for trading/financial dashboards");
+	public static final ChartTheme EXCEL_THEME = DefaultTheme.getInstance(new ExcelColorScheme(), "Excel", "Classic Microsoft Excel chart colors");
+	public static final ChartTheme POWERBI_THEME = DefaultTheme.getInstance(new PowerBIColorScheme(), "PowerBI", "Microsoft Power BI dashboard colors");
+	public static final ChartTheme HIGH_CONTRAST_THEME = DefaultTheme.getInstance(new HighContrastColorScheme(), "High Contrast", "Colorblind-safe high contrast palette");
+	public static final ChartTheme TABULAR_THEME = DefaultTheme.getInstance(new TableauColorScheme(), "Tabular", "Tableau-inspired color palette");
 
 	private static final List<ChartTheme> THEMES
 		= Collections.unmodifiableList(Arrays.asList(new ChartTheme[] {
-				LIGHT_THEME,DARK_THEME,PASTEL_THEME	}));
+				LIGHT_THEME, DARK_THEME, DARK_ORIGINAL_THEME, DARK_FIN_THEME, EXCEL_THEME, POWERBI_THEME, HIGH_CONTRAST_THEME, TABULAR_THEME }));
 	
 	
 	public static List<ViewStrategy> getStrategies() {

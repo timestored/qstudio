@@ -130,7 +130,7 @@ class DocEditorPane extends JEditorPane {
 	@Override public String getToolTipText(MouseEvent e) {
 		// override this to allow custom tooltip providers based on carat position of mouse.
 		// Most tooltips are kdb specific. Only show for q/k/unknown file types
-		if(tooltipProvider!=null) {
+		if(tooltipProvider!=null && MyPreferences.INSTANCE.isShowTooltips()) {
 		    Point pt = new Point(e.getX(), e.getY());
 			return tooltipProvider.getToolTipText(e, viewToModel(pt));
 		}

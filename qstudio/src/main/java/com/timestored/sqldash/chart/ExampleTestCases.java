@@ -46,9 +46,64 @@ public class ExampleTestCases {
 	private static final double[] SALES = { 10, 12, 14, 18, 26, 42, 74, 90, 110, 130, 155, 167 };
 
 	
+	/*
+	 * DuckDB SQL queries for common test cases
+	 */
+	private static final String DUCKDB_COUNTRY_STATS = 
+			"SELECT * FROM (\r\nVALUES\r\n" +
+			"('NorthAmerica','US',313847,15080,48300,77.14),\r\n" +
+			"('Asia','China',1343239,11300,8400,72.22),\r\n" +
+			"('Asia','Japan',127938,4444,34700,80.93),\r\n" +
+			"('Europe','Germany',81308,3114,38100,78.42),\r\n" +
+			"('Europe','UK',63047,2228,36500,78.16),\r\n" +
+			"('Africa','Zimbabwe',13010,9.9,413,39.01),\r\n" +
+			"('Asia','Bangladesh',152518,113,1788,61.33),\r\n" +
+			"('Africa','Nigeria',166629,196,732,51.01),\r\n" +
+			"('Asia','Vietnam',87840,104,3359,70.05)\r\n" +
+			")t(Continent,Country,Population,GDP,GDPperCapita,LifeExpectancy)";
+	
+	private static final String DUCKDB_COUNTRY_STATS_ADJUSTED = 
+			"WITH b AS (\r\n" + DUCKDB_COUNTRY_STATS + ")\r\n" +
+			"SELECT Continent,Country,Population,GDP,GDPperCapita/20 AS GDPperCapita,LifeExpectancy FROM b";
+	
+	private static final String DUCKDB_COUNTRY_STATS_WITHOUT_CONTINENT = 
+			"SELECT * FROM (\r\nVALUES\r\n" +
+			"('US',313847,15080,48300),\r\n" +
+			"('China',1343239,11300,8400),\r\n" +
+			"('Japan',127938,4444,34700),\r\n" +
+			"('Germany',81308,3114,38100),\r\n" +
+			"('UK',63047,2228,36500),\r\n" +
+			"('Zimbabwe',13010,9.9,413),\r\n" +
+			"('Bangladesh',152518,113,1788),\r\n" +
+			"('Nigeria',166629,196,732),\r\n" +
+			"('Vietnam',87840,104,3359)\r\n" +
+			")t(Country,Population,GDP,GDPperCapita)";
+	
+	private static final String DUCKDB_COUNTRY_STATS_GDP_ONLY = 
+			"SELECT * FROM (\r\nVALUES\r\n" +
+			"('US',15080),('China',11300),('Japan',4444),\r\n" +
+			"('Germany',3114),('UK',2228),('Zimbabwe',9.9),\r\n" +
+			"('Bangladesh',113),('Nigeria',196),('Vietnam',104)\r\n" +
+			")t(Country,GDP)";
+	
+	private static final String DUCKDB_MONTHLY_COSTS_SALES = 
+			"WITH b AS (\r\nSELECT \r\n" +
+			"    DATE '2000-01-01' + INTERVAL '1 month' * i AS Month,\r\n" +
+			"    (ARRAY[30,40,45,55,58,63,55,65,78,80,75,90])[i+1] AS Costs,\r\n" +
+			"    (ARRAY[10,12,14,18,26,42,74,90,110,130,155,167])[i+1] AS Sales\r\n" +
+			"FROM generate_series(0,11) t(i))\r\nSELECT * FROM b";
+	
+	private static final String DUCKDB_MONTHLY_COSTS_SALES_MANY_YEARS = 
+			"WITH b AS (\r\nSELECT \r\n" +
+			"    DATE '2000-01-01' + INTERVAL '1 month' * i AS Month,\r\n" +
+			"    (ARRAY[30,40,45,55,58,63,55,65,78,80,75,90])[(i%12)+1] AS Costs,\r\n" +
+			"    (ARRAY[10,12,14,18,26,42,74,90,110,130,155,167])[(i%12)+1] + (i/12)*10 AS Sales\r\n" +
+			"FROM generate_series(0,35) t(i))\r\nSELECT * FROM b";
+	
 	static {
 		
 		String query;
+		String duckdbQuery;
 		String[] colTitles;
 		ResultSet rs;
 		/*
@@ -64,33 +119,33 @@ public class ExampleTestCases {
 		colTitles = new String[] { "Continent", "Country", "Population", "GDP", "GDPperCapita", "LifeExpectancy" };
 		Object[] colValues = new Object[] {CONTINENT, COUNTRIES, POPULATION, GDP, GDP_PER_CAPITA, LIFE_EXP};
 		rs = new SimpleResultSet(colTitles, colValues);
-		COUNTRY_STATS = new TestCase("COUNTRY_STATS", rs, countryQuery);
+		COUNTRY_STATS = new TestCase("COUNTRY_STATS", rs, countryQuery, DUCKDB_COUNTRY_STATS);
 
 		// adjusted GDPperCapita to make XYZ / bubble chart have sensible z/bubble size
 		query = "update GDPperCapita%20 from " + countryQuery;
 		colValues = new Object[] {CONTINENT, COUNTRIES, POPULATION, 
 				GDP, KdbFunctions.mul(GDP_PER_CAPITA, 0.05), LIFE_EXP};
 		rs = new SimpleResultSet(colTitles, colValues);
-		COUNTRY_STATS_ADJUSTED_POP = new TestCase("COUNTRY_STATS", rs, query);
+		COUNTRY_STATS_ADJUSTED_POP = new TestCase("COUNTRY_STATS", rs, query, DUCKDB_COUNTRY_STATS_ADJUSTED);
 
 		
 		query = "([] " + countryCol + numCols;
 		colTitles = new String[] { "Country", "Population", "GDP", "GDPperCapita" };
 		rs = new SimpleResultSet(colTitles, new Object[] {COUNTRIES, POPULATION, GDP, GDP_PER_CAPITA});
-		COUNTRY_STATS_WITHOUT_CONTINENT = new TestCase("COUNTRY_STATS_WITHOUT_CONTINENT", rs, query);
+		COUNTRY_STATS_WITHOUT_CONTINENT = new TestCase("COUNTRY_STATS_WITHOUT_CONTINENT", rs, query, DUCKDB_COUNTRY_STATS_WITHOUT_CONTINENT);
 		
 		
 		query = "([] Country:" + toQ(COUNTRIES) + "; \r\n\t GDP:" + toQ(GDP) + ")";
 		colTitles = new String[] { "Country", "GDP" };
 		rs = new SimpleResultSet(colTitles, new Object[] { COUNTRIES, GDP});
-		COUNTRY_STATS_GDP_ONLY = new TestCase("COUNTRY_STATS_GDP_ONLY", rs, query);
+		COUNTRY_STATS_GDP_ONLY = new TestCase("COUNTRY_STATS_GDP_ONLY", rs, query, DUCKDB_COUNTRY_STATS_GDP_ONLY);
 		
 		
 		query = "([Month:2000.01m + til 12]  \r\n\t Costs:" + toQ(COSTS) +
 				"; \r\n\t Sales:" + toQ(SALES) + ")";
 		colTitles = new String[] { "Month", "Costs", "Sales" };
 		rs = new SimpleResultSet(colTitles, new Object[] { MONTHS, COSTS, SALES});
-		MONTHLY_COSTS_SALES = new TestCase("MONTHLY_COSTS_SALES", rs, query);
+		MONTHLY_COSTS_SALES = new TestCase("MONTHLY_COSTS_SALES", rs, query, DUCKDB_MONTHLY_COSTS_SALES);
 
 		query = "([Month:2000.01m + til 36]  \r\n\t Costs:36#" + toQ(COSTS) +
 				"; \r\n\t Sales:raze 0 10 20+\\:" + toQ(SALES) + ")";
@@ -110,7 +165,7 @@ public class ExampleTestCases {
 		}
 		
 		rs = new SimpleResultSet(colTitles, new Object[] { getMonths(2000, 0, 36), threeYearCosts, increasingSales});
-		MONTHLY_COSTS_SALES_OVER_MANY_YEARS = new TestCase("MONTHLY_COSTS_SALES_OVER_MANY_YEARS", rs, query);
+		MONTHLY_COSTS_SALES_OVER_MANY_YEARS = new TestCase("MONTHLY_COSTS_SALES_OVER_MANY_YEARS", rs, query, DUCKDB_MONTHLY_COSTS_SALES_MANY_YEARS);
 	}
 
 	

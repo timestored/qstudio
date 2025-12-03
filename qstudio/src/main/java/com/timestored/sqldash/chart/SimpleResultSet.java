@@ -50,6 +50,8 @@ public class SimpleResultSet extends BaseResultSet {
 			return java.sql.Types.SMALLINT;
 		} else if(o instanceof int[]) {
 			return java.sql.Types.INTEGER;
+		} else if(o instanceof Integer[]) {
+			return java.sql.Types.INTEGER;
 		} else if(o instanceof long[]) {
 			return java.sql.Types.BIGINT;
 		} else if(o instanceof float[]) {

@@ -2,6 +2,7 @@ package com.timestored.swingxx;
 
 import java.awt.Desktop;
 import java.awt.Toolkit;
+import java.awt.Window;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
@@ -20,12 +21,17 @@ import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
-import javax.swing.JTable;
+import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
 import javax.swing.TransferHandler;
 
+import org.jdesktop.swingx.JXTable;
 import org.jdesktop.swingx.renderer.StringValue;
 
+import com.timestored.qstudio.QStudioFrame;
+import com.timestored.sqldash.chart.ColumnFormatManager;
+import com.timestored.sqldash.chart.TableFactory;
+import com.timestored.sqldash.chart.TableFactory.TransposedTableModel;
 import com.timestored.theme.Theme;
 
 
@@ -36,23 +42,26 @@ import com.timestored.theme.Theme;
 public class SaveTableMouseAdapter extends MouseAdapter {
 
 	private static final Logger LOG = Logger.getLogger(SaveTableMouseAdapter.class.getName());
+
+	private static final int TRANSPOSE_ROW_LIMIT = 500;
 	
-	private final JTable table;
+	private final JXTable table;
 	private final StringValue stringValue;
 	private final ImageIcon csvIcon;
+	private final boolean negativeShownRed;
+	private final ColumnFormatManager formatManager;
 
-	public SaveTableMouseAdapter(JTable table, ImageIcon csvIcon) {
-		this(table, csvIcon, null);
-	}
 		
 	/**
 	 * @param stringValue optionally can be used to control how table values are converted to string.
 	 */
-	public SaveTableMouseAdapter(final JTable table, ImageIcon csvIcon, StringValue stringValue) {
+	public SaveTableMouseAdapter(final JXTable table, ImageIcon csvIcon, StringValue stringValue, boolean negativeShownRed) {
 		this.table = table;
 		this.stringValue = stringValue;
 		this.csvIcon = csvIcon;
-		
+		this.negativeShownRed = negativeShownRed;
+		this.formatManager = new ColumnFormatManager(table, negativeShownRed);
+
 		// override so that copied contents are the converted presentation values
 		String property = stringValue!= null ? stringValue.toString() : null;
 		table.setTransferHandler(new TransferHandler(property) {
@@ -74,9 +83,37 @@ public class SaveTableMouseAdapter extends MouseAdapter {
 	@Override
 	public void mouseReleased(MouseEvent e) {
 		if(SwingUtilities.isRightMouseButton(e)) {
+			int row = table.rowAtPoint(e.getPoint());
+			int col = table.columnAtPoint(e.getPoint());
+			if(table.getSelectedColumnCount() <= 1 && table.getSelectedRowCount() <= 1) {
+				table.setColumnSelectionInterval(col, col);
+				table.setRowSelectionInterval(row, row);
+			}
+			
 			JPopupMenu menu = new JPopupMenu();
 			boolean areaSelected = table.getSelectedRow() != -1;
+			String colName = table.getModel().getColumnName(table.convertColumnIndexToModel(col));
+			ColumnFormatManager.ColType type = formatManager.detectType(table, table.convertColumnIndexToModel(col));
+			menu.add(formatManager.buildFlatMenu(colName, type));
 			
+			menu.addSeparator();
+			ImageIcon icon = Theme.CIcon.TABLE_PIVOT.get16();
+			menu.add(new AAction("Transpose Row(s)", icon, ae -> {
+				int[] rows = table.getSelectedRows();
+				int rowsUsed = Math.min(rows.length, TRANSPOSE_ROW_LIMIT);
+				if(rowsUsed == TRANSPOSE_ROW_LIMIT) {
+					LOG.warning("Maximum rows transposed possible. More than 500 columns is useless to look at.");
+				}
+				int[] translatedRows = new int[rowsUsed];
+				for(int i=0; i<translatedRows.length; i++) {
+					translatedRows[i] = table.convertRowIndexToModel(rows[i]);
+				}
+				TransposedTableModel tranTableModel = new TransposedTableModel(table, rows);
+	            JScrollPane tranTableSc = TableFactory.getTable(tranTableModel, null, negativeShownRed);
+	            Window w = SwingUtilities.getWindowAncestor(table);
+	            QStudioFrame.showPopup(w, tranTableSc, "Transposed", icon.getImage());
+			}));
+			menu.addSeparator();
 			menu.add(new CopyToClipboardAction("Copy Table", false, true));
 			menu.add(new CopyToClipboardAction("Copy Selection", true, false)).setEnabled(areaSelected);
 			menu.add(new CopyToClipboardAction("Copy Selection with Column Titles", true, true)).setEnabled(areaSelected);

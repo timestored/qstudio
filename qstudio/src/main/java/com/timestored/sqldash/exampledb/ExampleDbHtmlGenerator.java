@@ -46,7 +46,7 @@ public class ExampleDbHtmlGenerator {
 		outDir.mkdirs();
 		Map<String,ExampleChartQuery> charts = generate(outDir, exampleChartDB);
 
-		String title = exampleChartDB.getName() + " Database Example sqlDashboards Charts";
+		String title = exampleChartDB.getName() + " Database Example QStudio Charts";
 
 		String sqlFilename = exampleChartDB.getName().replace(' ', '-').toLowerCase() + ".sql";
 		

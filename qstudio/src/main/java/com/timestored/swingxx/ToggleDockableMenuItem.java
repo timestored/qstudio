@@ -5,8 +5,6 @@ import java.awt.event.ActionListener;
 
 import javax.swing.JCheckBoxMenuItem;
 
-import com.timestored.qstudio.UpdateHelper;
-
 import bibliothek.gui.DockFrontend;
 import bibliothek.gui.Dockable;
 import bibliothek.gui.dock.event.DockFrontendAdapter;
@@ -33,14 +31,12 @@ public class ToggleDockableMenuItem extends JCheckBoxMenuItem {
 			@Override public void shown(DockFrontend f, Dockable dockable) {
 				if (dockable == observed) {
 					ToggleDockableMenuItem.this.setSelected(true);
-					UpdateHelper.registerEvent("dok_show"+name);
 				}
 			}
 
 			@Override public void hidden(DockFrontend f, Dockable dockable) {
 				if (dockable == observed) {
 					ToggleDockableMenuItem.this.setSelected(false);
-					UpdateHelper.registerEvent("dok_hide"+name);
 				}
 			}
 		});
@@ -50,7 +46,6 @@ public class ToggleDockableMenuItem extends JCheckBoxMenuItem {
 		 */
 		addActionListener(new ActionListener() {
 			@Override public void actionPerformed(ActionEvent e) {
-				UpdateHelper.registerEvent("dok_" + (isSelected() ? "show" : "hide") +name);
 				if (isSelected()) {
 					frontend.show(observed);
 				} else {

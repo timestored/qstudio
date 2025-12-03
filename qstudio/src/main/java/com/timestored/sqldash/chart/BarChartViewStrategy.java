@@ -23,12 +23,17 @@ import com.timestored.sqldash.theme.DBIcons;
 	private BarChartViewStrategy() { super("Bar Chart", DBIcons.CHART_BAR); }
 	
 	@Override public UpdateableView getView(ChartTheme theme) {
-			
+		return getView(theme, null);
+	}
+	
+	@Override public UpdateableView getView(ChartTheme theme, ChartAppearanceConfig appearanceConfig) {
 		final JFreeChart chart = ChartFactory.createBarChart("", "", 
 				"values", null, PlotOrientation.VERTICAL, theme.showChartLegend(), 
 				true, false);
-		return new CategoryDatasetUpdateableView(theme, chart);
+		return new CategoryDatasetUpdateableView(theme, chart, appearanceConfig);
 	}
+	
+	@Override public boolean supportsAppearanceConfig() { return true; }
 	
 	@Override public String toString() {
 		return BarChartViewStrategy.class.getSimpleName() + "[" + getDescription() + "]";

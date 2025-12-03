@@ -16,7 +16,6 @@
  */
 package com.timestored.misc;
 
-import java.awt.AlphaComposite;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
@@ -40,6 +39,8 @@ public class SaveableFrame extends JFrame {
 
 	private static final Logger LOG = Logger.getLogger(SaveableFrame.class.getName());
 	private static final long serialVersionUID = 1L;
+	private static final int DEF_WIDTH = 900;
+	private static final int DEF_HEIGHT = 300;
 	
 	public SaveableFrame(Component cp, final int width, final int height) {
 		setLayout(new BorderLayout());
@@ -56,13 +57,15 @@ public class SaveableFrame extends JFrame {
 	}
 
 
+	public static void saveComponentImage(Component a, final File file) throws IOException {
+		saveComponentImage(a, DEF_WIDTH, DEF_HEIGHT, file);
+	}
+
 	/**
 	 * Save a .png image of the component to a selected file.
 	 * @param width - the width of the component / image. 
 	 */
-	public static void saveComponentImage(Component a, final int width, final int height, 
-			final File file, boolean includeWatermark) throws IOException {
-		
+	public static void saveComponentImage(Component a, final int width, final int height, final File file) throws IOException {
 		Dimension d = new Dimension(width, height);
 		a.setSize(d);
 		a.setPreferredSize(d);
@@ -71,14 +74,6 @@ public class SaveableFrame extends JFrame {
 		BufferedImage bi = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB); 
 		Graphics2D g = bi.createGraphics();
 		a.paint(g);  //this == JComponent
-		
-		if(includeWatermark) {
-			BufferedImage waterMark = ImageIO.read(SaveableFrame.class
-					.getResourceAsStream("/com/timestored/swingxx/timestored-small.png"));
-			// draw in top left corner, 50% transp
-			g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
-			g.drawImage(waterMark, 50, 10, null);
-		}
 		
 		g.dispose();
 		
@@ -119,7 +114,7 @@ public class SaveableFrame extends JFrame {
 			public void run() {
 				f.requestFocus();
 				try {
-					saveComponentImage(f, f.getSize().width, f.getSize().height, file, false);
+					saveComponentImage(f, f.getSize().width, f.getSize().height, file);
 				} catch (IOException e) {
 					LOG.log(Level.SEVERE, "eframe.saveToFile(filepath)", e);
 				}

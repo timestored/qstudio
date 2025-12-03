@@ -54,7 +54,7 @@ public enum JdbcTypes {
 	},
 	
 	POSTGRES("Postgres", "org.postgresql.Driver", 5432, "jdbc:postgresql://{host}:{port}/{database}?", "http://postgresql.com", "", ""),
-	CLICKHOUSE("Clickhouse", "ru.yandex.clickhouse.ClickHouseDriver", 8123, "jdbc:clickhouse://{host}:{port}/{database}", "http://clickhouse.com", "", ""),	
+	CLICKHOUSE("Clickhouse", "com.clickhouse.jdbc.ClickHouseDriver",8123,"jdbc:ch:{host}:{port}[/{database}]","https://github.com/ClickHouse/clickhouse-java","maven:/com.clickhouse:clickhouse-jdbc:RELEASE[0.8.6]","com/clickhouse/clickhouse-jdbc/0.8.6/clickhouse-jdbc-0.8.6.jar"),	
 	
 	CUSTOM(getProperty("jdbc.niceName","Custom JDBC Driver"), getProperty("jdbc.driver","DriverNotSpecified"), getProperty("jdbc.port",5000), getProperty("jdbc.dbRequired", getProperty("jdbc.urlFormat","DriverUrlPrefixNotSpecified"))) {
 
@@ -180,7 +180,7 @@ public enum JdbcTypes {
 	APACHE_CALCITE_AVATICA("Apache Calcite Avatica","org.apache.calcite.avatica.remote.Driver",8082,"jdbc:avatica:remote:url=http://{host}:{port}/druid/v2/sql/avatica/","https://calcite.apache.org/avatica/docs/client_reference.html","maven:/org.apache.calcite.avatica:avatica-core:RELEASE[1.17.0]","org/apache/calcite/avatica/avatica-core/1.17.0/avatica-core-1.17.0.jar"),
 	APACHE_KYLIN("Apache Kylin","org.apache.kylin.jdbc.Driver",443,"jdbc:kylin://{host}:{port}/{database}","https://kylin.apache.org/docs23/howto/howto_jdbc.html","maven:/org.apache.kylin:kylin-jdbc:RELEASE","org/apache/kylin/kylin-jdbc/5.0.0-alpha/kylin-jdbc-5.0.0-alpha.jar"),
 	SNOWFLAKE("Snowflake","net.snowflake.client.jdbc.SnowflakeDriver",443,"jdbc:snowflake://{host}[:port]/?[db={database}]","https://docs.snowflake.net/manuals/user-guide/jdbc-configure.html","maven:/net.snowflake:snowflake-jdbc:RELEASE[3.13.6]","net/snowflake/snowflake-jdbc/3.13.6/snowflake-jdbc-3.13.6.jar"),
-	CLICKHOUSE_COM("ClickHouse.com","com.clickhouse.jdbc.ClickHouseDriver",8123,"jdbc:ch:{host}:{port}[/{database}]","https://github.com/ClickHouse/clickhouse-java","maven:/com.clickhouse:clickhouse-jdbc:RELEASE[0.6.0]","com/clickhouse/clickhouse-jdbc/0.6.0/clickhouse-jdbc-0.6.0.jar"),
+	CLICKHOUSE_COM("ClickHouse.com","com.clickhouse.jdbc.ClickHouseDriver",8123,"jdbc:ch:{host}:{port}[/{database}]","https://github.com/ClickHouse/clickhouse-java","maven:/com.clickhouse:clickhouse-jdbc:RELEASE[0.8.6]","com/clickhouse/clickhouse-jdbc/0.8.6/clickhouse-jdbc-0.8.6.jar"),
 	ELASTICSEARCH("Elasticsearch","org.elasticsearch.xpack.sql.jdbc.EsDriver",9200,"jdbc:es://{host}:{port}/","https://www.elastic.co/guide/en/elasticsearch/reference/current/sql-jdbc.html","maven:/org.elasticsearch.plugin:x-pack-sql-jdbc:7.9.1","org/elasticsearch/plugin/x-pack-sql-jdbc/7.9.1/x-pack-sql-jdbc-7.9.1.jar"),
 
 	DOLPHINDB("DolphinDB","com.dolphindb.jdbc.Driver",9200,"jdbc:dolphindb://{host}:{port}","https://dolphindb.com/","maven:/com.dolphindb:jdbc:3.00.0.1","com/dolphindb/jdbc/3.00.0.1/jdbc-3.00.0.1-jar-with-dependencies.jar"),

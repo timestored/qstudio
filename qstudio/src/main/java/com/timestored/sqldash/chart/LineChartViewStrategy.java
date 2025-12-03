@@ -21,12 +21,18 @@ public class LineChartViewStrategy  extends AbstractCategoryViewStrategy {
 	private LineChartViewStrategy() { super("Line Chart", DBIcons.CHART_LINE); }
 
 	@Override public UpdateableView getView(ChartTheme theme) {
+		return getView(theme, null);
+	}
+	
+	@Override public UpdateableView getView(ChartTheme theme, ChartAppearanceConfig appearanceConfig) {
 		JFreeChart chart = ChartFactory.createLineChart("", "", "", null,
 				PlotOrientation.VERTICAL, theme.showChartLegend(), true, false);
 		chart.setBackgroundPaint(Color.white);
 		chart.getPlot().setForegroundAlpha(0.8F);
-		return new CategoryDatasetUpdateableView(theme, chart);
+		return new CategoryDatasetUpdateableView(theme, chart, appearanceConfig);
 	}
+
+	@Override public boolean supportsAppearanceConfig() { return true; }
 
 	@Override public String toString() {
 		return LineChartViewStrategy.class.getSimpleName() + "[" + getDescription() + "]";

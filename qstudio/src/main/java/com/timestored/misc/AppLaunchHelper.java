@@ -16,8 +16,14 @@
  */
 package com.timestored.misc;
 
+import java.awt.Image;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +33,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
+import javax.imageio.ImageIO;
 import javax.swing.UIManager;
 import javax.swing.UIManager.LookAndFeelInfo;
 import javax.swing.UnsupportedLookAndFeelException;
@@ -69,7 +76,9 @@ public class AppLaunchHelper {
 		        	break;
 		        }		        
 		    }
-		} catch (Exception e) {}
+		} catch (Exception e) {
+			LOG.warning("Problem initialising AppLaunchHelper static. " + e.toString());
+		}
 
 		NAMES.add(SPACER_PREFIX + " Core Themes " + SPACER_PREFIX);
 		add("Light", defaultClassName);
@@ -132,14 +141,74 @@ public class AppLaunchHelper {
 	 * For the title setting to work this function must be called before any Swing classes loaded.
 	 * @param title The application title to display on the mac.
 	 */
-	public static void setMacAndWindowsAppearance(String title) {
+	public static void setMacAndWindowsAppearance(String title, BufferedImage image) {
 		
 		// set mac properties to put menu bar at top etc
 		if(System.getProperty("os.name").toLowerCase().indexOf("mac") >= 0) {
+			System.setProperty( "apple.awt.application.name", title );
+			System.setProperty( "apple.awt.application.appearance", "system" );
 			System.setProperty("apple.laf.useScreenMenuBar", "true");
 			System.setProperty("com.apple.mrj.application.apple.menu.about.name", title);
+			if(image != null) {
+		    	try {
+					setApplicationIconImagePrivate(image);
+				} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException
+						| SecurityException | ClassNotFoundException e) {
+					LOG.warning("problem setting mac image: " + e.toString());
+				}
+			}
 		}
 	}
+	
+    private static void setApplicationIconImagePrivate(BufferedImage image) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException, ClassNotFoundException {
+        Class appClass = Class.forName("com.apple.eawt.Application");
+        Object application = appClass.getMethod("getApplication", new Class[0]).invoke(null, new Object[0]);
+        if (application != null) {
+            try {
+                Method setDockIconImage = application.getClass().getMethod("setDockIconImage", Image.class);
+                try {
+                    setDockIconImage.invoke(application, image);
+                } catch (IllegalAccessException | InvocationTargetException e) {}
+            } catch (NoSuchMethodException mnfe) {
+                ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                try {
+                    ImageIO.write(image, "png", stream);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+
+                try {
+                    Class nsDataClass = Class.forName("com.apple.cocoa.foundation.NSData");
+                    Constructor constructor = nsDataClass.getConstructor(new Class[]{new byte[0].getClass()});
+                    Object nsData = constructor.newInstance(new Object[]{stream.toByteArray()});
+                    Class nsImageClass = Class.forName("com.apple.cocoa.application.NSImage");
+                    Object nsImage = nsImageClass.getConstructor(new Class[]{nsDataClass}).newInstance(new Object[]{nsData});
+
+                    Object napplication = getNSApplication();
+
+                    napplication.getClass().getMethod("setApplicationIconImage", new Class[]{nsImageClass}).invoke(application, new Object[]{nsImage});
+
+                } catch (ClassNotFoundException e) {
+
+                } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException  | InstantiationException e) {
+                    throw new RuntimeException(e);
+                }
+
+            }
+
+        }
+    }
+
+
+    private static Object getNSApplication() throws ClassNotFoundException {
+        try {
+            Class applicationClass = Class.forName("com.apple.cocoa.application.NSApplication");
+            return applicationClass.getMethod("sharedApplication", new Class[0]).invoke(null, new Object[0]);
+        } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 
 	public static boolean setTheme(String theme) {
 		try {

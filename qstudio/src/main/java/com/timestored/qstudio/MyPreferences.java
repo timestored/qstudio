@@ -17,6 +17,7 @@
 package com.timestored.qstudio;
 
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.GraphicsEnvironment;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -51,7 +52,7 @@ enum MyPreferences {
 		QUERY_WRAPPED, CODE_FONT, QUERY_WRAP_PRE, QUERY_WRAP_POST, CONNECTION_PERSISTENT,
 		FRACTION_DIGITS, QUERY_LOGGING, QUERY_LOGGING_FOLDER, CODE_THEME, LOGIN_USERNAME, LOGIN_PASSWORD, 
 		CRITICAL_KEYWORDS, CRITICAL_COLOR, SAVE_WITH_WINDOWS_LINE_ENDINGS, IGNORE_FOLDER_REGEX, OPENAI_KEY,
-		SEND_TELEMETRY;
+		SEND_TELEMETRY, SHOW_TOOLTIPS, NUMBER_GROUPING_SIZE, UISCALE, UI_TABLAYOUT, NEGATIVE_RED, CODE_EDITOR_THEME;
 	}
 	
 	private static final Preferences PREF = Preferences.userNodeForPackage(MyPreferences.class);
@@ -60,15 +61,20 @@ enum MyPreferences {
 	private static final long DEFAULT_MAX_RET = 10*1024*1024; // 10 MB
 	private static final boolean DEFAULT_QUERY_WRAPPED = true;
 	private static final boolean DEFAULT_SAVE_WITH_WINDOWS_LINE_ENDINGS = isWindows();
-	private static final boolean DEFAULT_SEND_TELEMETRY = true;
 	private static final int DEFAULT_MAX_ROWS_SHOWN = 10000;
 	private static final int DEFAULT_CONSOLE_LENGTH = 16000;
 	private static final int KDB_IPC_LIMIT_MB = 2000;
-	private static final int DEFAULT_CODE_FONT_SIZE = 13;
-	private static final String DEFAULT_CODE_FONT = "JetBrains Mono";
+	private static final int DEFAULT_CODE_FONT_SIZE = 13; // Careful changing this as certain sizes cause caret bugs.
+	private static final String DEFAULT_CODE_FONT = "Monospaced";
 	private static final String DEFAULT_CODE_THEME = "Darcula";
+	private static final String DEFAULT_CODE_EDITOR_THEME = "Dark";
 	private static final boolean DEFAULT_CONNECTION_PERSISTENT = true;
+	private static final boolean DEFAULT_SHOW_TOOLTIPS = false;
+	private static final int DEFAULT_UISCALE = 100;
+	private static final String DEFAULT_UI_TABLAYOUT = "Horizontal_Scroll";
 	private static final int DEFAULT_FRACTION_DIGITS = 7;
+	private static final int DEFAULT_NUMBER_GROUPING_SIZE = 0;
+	private static final boolean DEFAULT_NEGATIVE_RED = true;
 	private static final String DEFAULT_CRITICAL_KEYWORDS = "prod,PROD,preprod,preprd";
 	private static final String DEFAULT_IGNORE_FOLDER_REGEX = "^\\..*|^target$";
 	
@@ -103,7 +109,13 @@ enum MyPreferences {
 	
 	/** @return font size used for code. */
 	public int getCodeFontSize() {
-		return PREF.getInt(Key.CODE_FONT_SIZE.toString(), DEFAULT_CODE_FONT_SIZE);
+		int def_font = DEFAULT_CODE_FONT_SIZE;
+		try {
+			int w = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDisplayMode().getWidth();
+			// Careful changing this as certain sizes cause caret bugs.
+			def_font = w > 1920 ? 20 : w == 1920 ? 13 : def_font;
+		} catch(Exception e) {}
+		return PREF.getInt(Key.CODE_FONT_SIZE.toString(), def_font);
 	}
 	
 	/** 
@@ -120,7 +132,10 @@ enum MyPreferences {
 		PREF.putInt(Key.CODE_FONT_SIZE.toString(), fontSize);
 	}
 
-	
+	public Font getCodeFontFont() {
+		return new Font(getCodeFont(), Font.PLAIN, getCodeFontSize());
+	}
+
 	/** @return font used for code. */
 	public String getCodeFont() {
 		return PREF.get(Key.CODE_FONT.toString(), DEFAULT_CODE_FONT);
@@ -135,6 +150,15 @@ enum MyPreferences {
 		PREF.put(Key.CODE_THEME.toString(), codeTheme);
 	}
 
+	/** @return font theme for code. */
+	public String getCodeEditorTheme() {
+		return PREF.get(Key.CODE_EDITOR_THEME.toString(), DEFAULT_CODE_EDITOR_THEME);
+	}
+	
+	public void setCodeEditorTheme(String codeTheme) {
+		PREF.put(Key.CODE_EDITOR_THEME.toString(), codeTheme);
+	}
+	
 	/** 
 	 * Set font used for code.
 	 */
@@ -256,10 +280,50 @@ enum MyPreferences {
 	public void setConnectionPersistent(boolean connectionPersistent) {
 		PREF.putBoolean(Key.CONNECTION_PERSISTENT.toString(), connectionPersistent);
 	}
+
+	public boolean isShowTooltips() {
+		return PREF.getBoolean(Key.SHOW_TOOLTIPS.toString(), DEFAULT_SHOW_TOOLTIPS);
+	}
+
+	/** true if qStudio should try to maintain a connection for subsequent queries */
+	public void setShowTooltips(boolean showTooltips) {
+		PREF.putBoolean(Key.SHOW_TOOLTIPS.toString(), showTooltips);
+	}
+	
+	/**
+	 * @return number between 25 and 400 that represents percentage to resize the UI
+	 */
+	public int getUIScale() {
+		int def = DEFAULT_UISCALE;
+		try {
+			int w = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDisplayMode().getWidth();
+			def = w > 2000 ? 150 : 100;
+		} catch(Exception e) {}
+		return PREF.getInt(Key.UISCALE.toString(), def);
+	}
+
+	/** true if qStudio should try to maintain a connection for subsequent queries */
+	public void setUIScale(int UIScale) {
+		PREF.putInt(Key.UISCALE.toString(), UIScale);
+	}
+
+	/**
+	 * @return number between 25 and 400 that represents percentage to resize the UI
+	 */
+	public String getUiTabLayout() {
+		return PREF.get(Key.UI_TABLAYOUT.toString(), DEFAULT_UI_TABLAYOUT);
+	}
+
+	/** true if qStudio should try to maintain a connection for subsequent queries */
+	public void setUiTabLayout(String tabLayout) {
+		PREF.put(Key.UI_TABLAYOUT.toString(), tabLayout);
+	}
+	
+	
 	
 	/** 
 	 * Set max number of characters that should be shown in the console.
-	 * @param maxLength maximu length of console, must be >= 1000.  
+	 * @param maxLength maximum length of console, must be >= 1000.  
 	 */
 	public void setMaxConsoleLength(int maxLength) {
 		Preconditions.checkArgument(maxLength >= 1000);
@@ -328,6 +392,29 @@ enum MyPreferences {
 	public int getMaximumFractionDigits() {
 		return PREF.getInt(Key.FRACTION_DIGITS.toString(), DEFAULT_FRACTION_DIGITS);
 	}
+	
+	public void setNumberGroupingSize(int groupingSize) {
+		if(groupingSize < 0) {
+			groupingSize = 0;
+		}
+		PREF.putInt(Key.NUMBER_GROUPING_SIZE.toString(), groupingSize);
+	}
+	
+	/**  @return the maximum number of decimal places that should be displayed. */
+	public int getNumberGroupingSize() {
+		return PREF.getInt(Key.NUMBER_GROUPING_SIZE.toString(), DEFAULT_NUMBER_GROUPING_SIZE);
+	}
+	
+	/** If true, show negative numbers in red. */
+	public void setNegativeShownRed(boolean on) {
+		PREF.putBoolean(Key.NEGATIVE_RED.toString(), on);
+	}
+	
+	/** @return true if qStudio should show negative numbers in tables a red color */
+	public boolean isNegativeShownRed() {
+		return PREF.getBoolean(Key.NEGATIVE_RED.toString(), DEFAULT_NEGATIVE_RED);
+	}
+	
 
 	/** If true, all user queries will be logged a folder/file. */
 	public void setQueryLogging(boolean on) {
@@ -365,16 +452,6 @@ enum MyPreferences {
 	public boolean isSaveWithWindowsLineEndings() {
 		return PREF.getBoolean(Key.SAVE_WITH_WINDOWS_LINE_ENDINGS.toString(), DEFAULT_SAVE_WITH_WINDOWS_LINE_ENDINGS);
 	}
-	
-	public boolean isSendTelemetry() {
-		return PREF.getBoolean(Key.SEND_TELEMETRY.toString(), DEFAULT_SEND_TELEMETRY);
-	}
-	
-	public void setSendTelemetry(boolean isSendTelemetry) {
-		PREF.putBoolean(Key.SEND_TELEMETRY.toString(), isSendTelemetry);
-	}
-	
-	
 	
 	/** 
 	 * true if the query sent to the server is wrapped to 

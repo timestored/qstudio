@@ -3,6 +3,7 @@ package com.timestored.sqldash.chart;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -218,21 +219,6 @@ class ChartResultSet {
 			super(name, type, vals);
 		}
 		
-		/** 
-		 * @return The time data contained in this {@link Col} as a Date[] array.
-		 * This may not be supported by all types of TimeCol as e.g. Time only columns cannot convert. 
-		 */
-		public Date[] getDates() {
-			if(dates == null) {
-				synchronized (this) {
-					if(dates == null) {
-						dates = convertToDate(vals);
-					}
-				}
-			}
-			return dates;
-		}
-
 		/** @return The time data contained in this {@link Col} as a RegularTimePeriod[] array. */
 		public RegularTimePeriod[] getRegularTimePeriods() {
 			return convertToJFreeTime(vals);
@@ -246,39 +232,42 @@ class ChartResultSet {
 			
 			for(int row = 0; row < rowCount; row++) {
 				Object timeObject = timeObjects.get(row);
-	    		RegularTimePeriod timePeriod = null;
-	    		if(timeObject instanceof RegularTimePeriod) {
-	    			timePeriod = (RegularTimePeriod) timeObject;
-	    		} else if(timeObject instanceof java.time.YearMonth) {
-	    			java.time.YearMonth t = (java.time.YearMonth)timeObject;
-			    	LocalDate ld = t.atDay(1);
+		    		RegularTimePeriod timePeriod = null;
+		    		if(timeObject instanceof RegularTimePeriod) {
+		    			timePeriod = (RegularTimePeriod) timeObject;
+		    		} else if(timeObject instanceof java.time.YearMonth) {
+		    			java.time.YearMonth t = (java.time.YearMonth)timeObject;
+				    	LocalDate ld = t.atDay(1);
 			        timePeriod = new Day(ld.getDayOfMonth(), ld.getMonthValue(), ld.getYear());
-	    		} else if(timeObject instanceof java.sql.Time) {
-	    			java.sql.Time t = (java.sql.Time)timeObject;
+		    		} else if(timeObject instanceof java.sql.Time) {
+		    			java.sql.Time t = (java.sql.Time)timeObject;
 			        timePeriod = new Millisecond(new java.util.Date(t.getTime()));	
-	    		} else if(timeObject instanceof OffsetTime) {
+		    		} else if(timeObject instanceof OffsetTime) {
 			        timePeriod = new Millisecond(new java.util.Date(((OffsetTime)timeObject).getLong(ChronoField.MILLI_OF_DAY)));	
-	    		} else if(timeObject instanceof OffsetDateTime) {
+		    		} else if(timeObject instanceof OffsetDateTime) {
 			        timePeriod = new Day(new java.util.Date(((OffsetDateTime)timeObject).toInstant().toEpochMilli()));	
-	    		} else if(timeObject instanceof LocalTime) {
-	    			long tick = ((LocalTime)timeObject).atOffset(ZoneOffset.UTC).getLong(ChronoField.MILLI_OF_DAY);
+		    		} else if(timeObject instanceof LocalTime) {
+		    			long tick = ((LocalTime)timeObject).atOffset(ZoneOffset.UTC).getLong(ChronoField.MILLI_OF_DAY);
 			        timePeriod = new Millisecond(new java.util.Date(tick), TimeZone.getTimeZone("UTC"));	
-	    		} else if(timeObject instanceof java.sql.Timestamp) {
-			        timePeriod = new Millisecond((java.sql.Timestamp)timeObject);	
+		    		} else if(timeObject instanceof java.sql.Timestamp) {
+			        timePeriod = new Millisecond((java.sql.Timestamp)timeObject, TimeZone.getTimeZone("UTC"));	
 			    } else if(timeObject instanceof LocalDate) {
 			    	LocalDate ld = (LocalDate) timeObject;
 			        timePeriod = new Day(ld.getDayOfMonth(), ld.getMonthValue(), ld.getYear());
 			    } else if(timeObject instanceof LocalDateTime) {
-			    	long tick = ((LocalDateTime) timeObject).atZone(ZoneOffset.UTC).toInstant().toEpochMilli();
-			    	timePeriod = new Millisecond(new java.util.Date(tick), TimeZone.getTimeZone("UTC"));
+			    		long tick = ((LocalDateTime) timeObject).atZone(ZoneOffset.UTC).toInstant().toEpochMilli();
+			    		timePeriod = new Millisecond(new java.util.Date(tick), TimeZone.getTimeZone("UTC"));
 			    } else if(timeObject instanceof java.sql.Timestamp) {
-			        timePeriod = new Millisecond((java.sql.Timestamp)timeObject);	
+			        timePeriod = new Millisecond((java.sql.Timestamp)timeObject, TimeZone.getTimeZone("UTC"));	
 			    } else if(timeObject instanceof Date) {
-			        timePeriod = new Day((Date) timeObject);
-	    		} else {
-			    	unconvertedRows++;
-	    		}
-	    		res[row] = timePeriod;
+			        timePeriod = new Day((Date) timeObject, TimeZone.getTimeZone("UTC"));
+		    		} else if(timeObject instanceof Instant) {
+				    	long tick = ((Instant) timeObject).toEpochMilli();
+				    	timePeriod = new Millisecond(new java.util.Date(tick), TimeZone.getTimeZone("UTC"));
+		    		} else {
+				    	unconvertedRows++;
+		    		}
+		    		res[row] = timePeriod;
 			} 
 			if(rowCount>0 && unconvertedRows == rowCount) {
 				throw new IllegalArgumentException("Could not convert any rows of the time column");
@@ -286,38 +275,6 @@ class ChartResultSet {
 			return res;
 		}
 
-		private Date[] convertToDate(List<Object> timeObjects) {
-
-			final int rowCount = timeObjects.size();
-			Date[] res = new Date[rowCount];
-			int nullRows = 0;
-			for(int row = 0; row < rowCount; row++) {
-				Object timeObject = timeObjects.get(row);
-				Date timePeriod = null;
-				if (timeObject instanceof Date) {
-					timePeriod = (Date) timeObject;
-				} else if (timeObject instanceof java.sql.Timestamp) {
-					java.sql.Timestamp t = (java.sql.Timestamp) timeObject;
-					timePeriod = new java.util.Date(t.getTime());
-//					} else if (timeObject instanceof c.Timespan) {
-//						c.Timespan t = (c.Timespan) timeObject;
-//						timePeriod = new Date(t.j / 1000000000);
-				} else if (timeObject instanceof LocalDate) {
-					LocalDate ld = (LocalDate) timeObject;
-					timePeriod = Date.from(ld.atStartOfDay(ZoneId.of("UTC")).toInstant());
-				} else if (timeObject instanceof LocalDateTime) {
-			    	timePeriod = new java.util.Date(((LocalDateTime) timeObject).atZone(ZoneOffset.UTC).toInstant().toEpochMilli());
-				} else {
-					nullRows++;
-				}
-				res[row] = timePeriod;
-			}
-			
-			if(rowCount>0 && nullRows == rowCount) {
-				throw new IllegalArgumentException("no known time row found");
-			}
-			return res;
-		}
 	}
 
 	/**

@@ -40,13 +40,6 @@ public interface QueryListener {
 	 */
 	public void queryResultReturned(ServerConfig sc, QueryResult queryResult);
 
-	
-	/** Watched expression was modified, ie. query was changed. */
-	public void watchedExpressionsModified();
-
-	/** The last result of the watched expressions have been refreshed. */
-	public void watchedExpressionsRefreshed();
-	
 	/** 
 	 * The server that queries are ran against was changed
 	 * @param server The newly selected server or null if none is selected. 

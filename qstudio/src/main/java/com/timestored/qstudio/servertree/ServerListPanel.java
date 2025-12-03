@@ -232,18 +232,23 @@ public class ServerListPanel extends JPanel  implements AdminModel.Listener {
 	}
 
 	private void highlightRow(ServerModel serverModel) {
-		// highlight the row with the currently selected server
-		if(serverModel!=null) {
-			String selName = serverModel.getName();
-			for(int row = tree.getRowCount(); row>=0; row--) {
-				ServerObjectTreeNode sot = getServerObjectTN(tree.getPathForRow(row));
-				if(sot!= null && sot.getServerModel().getName().equals(selName)) {
-					tree.setSelectionInterval(row, row+1);
-					break;
+		try {
+			// highlight the row with the currently selected server
+			if(serverModel!=null) {
+				String selName = serverModel.getName();
+				for(int row = tree.getRowCount(); row>=0; row--) {
+					ServerObjectTreeNode sot = getServerObjectTN(tree.getPathForRow(row));
+					if(sot!= null && sot.getServerModel().getName().equals(selName)) {
+						tree.setSelectionInterval(row, row+1);
+						break;
+					}
 				}
+			} else if(!tree.isSelectionEmpty()){
+				tree.clearSelection();
 			}
-		} else if(!tree.isSelectionEmpty()){
-			tree.clearSelection();
+		} catch(RuntimeException e) {
+			// This was happening when the first ever server is added.
+			LOG.warning("Error calling highlightRow for tree");
 		}
 	}
 
@@ -493,7 +498,7 @@ public class ServerListPanel extends JPanel  implements AdminModel.Listener {
 					String title = sc.getName() + " Properties";
 					adminModel.refresh(sc);
 					ServerModel sm = adminModel.getServerModel(sc.getName());
-					JPanel contentPanel = SelectedServerObjectPanel.getServerDescriptionPanel(adminModel.getServerModel());
+					JPanel contentPanel = SelectedServerObjectPanel.getServerDescriptionPanel(adminModel);
 					SwingUtils.showAppDialog(javax.swing.SwingUtilities.getWindowAncestor(ServerListPanel.this), title, contentPanel, 
 							Theme.CIcon.SERVER.get().getImage());
 				}

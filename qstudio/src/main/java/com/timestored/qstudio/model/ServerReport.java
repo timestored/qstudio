@@ -16,34 +16,35 @@
  */
 package com.timestored.qstudio.model;
 
+import java.awt.Component;
 import java.io.IOException;
 
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableModel;
 
 import kx.c.KException;
+import lombok.Data;
 import net.jcip.annotations.Immutable;
 
 import com.google.common.base.Preconditions;
 import com.timestored.kdb.KdbConnection;
 import com.timestored.qstudio.kdb.KdbHelper;
-import com.timestored.qstudio.kdb.KdbTableFactory;
 
 
 /**
  * Contains information on the disk format, memory usage and
  * general info about one KDB server.
  */
-@Immutable
+@Immutable @Data
 public class ServerReport {
 	
-	private TableModel diskTab;
-	private TableModel memTab;
+	private Component diskTab;
+	private Component memTab;
 
 	private final int ip;
 	private final String hostname;
 	private final int pid;
-	private final java.sql.Date kdbReleaseDate;
+	private final String kdbReleaseDate;
 	private final double kdbMajorVersion;
 	private final String licenseInfo;
 	private final String os;
@@ -76,15 +77,15 @@ public class ServerReport {
 
 		Object[] resArray = (Object[]) k;
 		
-		this.diskTab = KdbTableFactory.getAsTableModel(resArray[0]);
-		this.memTab = KdbTableFactory.getAsTableModel(resArray[1]);
+		this.diskTab = KdbHelper.getJXTable(resArray[0]);
+		this.memTab = KdbHelper.getJXTable(resArray[1]);
 
 		Object[] obj = (Object[]) resArray[2];
 
 		this.ip = (int) (Integer) obj[0];
 		this.hostname = (String) obj[1];
 		this.pid = (int)  (Integer) obj[2];
-		this.kdbReleaseDate = (java.sql.Date) obj[3];
+		this.kdbReleaseDate = KdbHelper.asLine(obj[3]);
 		this.kdbMajorVersion = (Double) obj[4];
 		
 		licenseInfo = KdbHelper.asLine(obj[5]);
@@ -117,54 +118,5 @@ public class ServerReport {
 				new String[] { "Property", "Value" });
 	}
 
-	/**
-	 * @return Table displaying segments / partitions / partition type etc or null if unknown.
-	 */
-	public TableModel getDiskTab() {
-		return diskTab;
-	}
-
-	/**
-	 * @return Table showing memory usage etc. Similar to .Q.w[] or null if unknown.
-	 */
-	public TableModel getMemoryTab() {
-		return memTab;
-	}
-
-	public String getHostname() {
-		return hostname;
-	}
-
-	public int getPid() {
-		return pid;
-	}
-
-	public java.sql.Date getKdbReleaseDate() {
-		return new java.sql.Date(kdbReleaseDate.getTime());
-	}
-
-	public double getKdbMajorVersion() {
-		return kdbMajorVersion;
-	}
-
-	public String getLicenseInfo() {
-		return licenseInfo;
-	}
-
-	public String getOs() {
-		return os;
-	}
-
-	public String getUserId() {
-		return userId;
-	}
-
-	public String getCommandLineArguments() {
-		return commandLineArguments;
-	}
-
-	public int getSlaveThreads() {
-		return slaveThreads;
-	}
 	
 }

@@ -72,7 +72,7 @@ class ConsolePanel extends JPanel implements QueryListener,GrabableContainer {
 						qr.rs.next();
 						txt = ""+ qr.rs.getObject(1);
 					} else if(count <= 30) {
-						txt = DBHelper.toString(qr.rs, false);
+						txt = DBHelper.toFancyString(qr.rs, false);
 					}
 				} catch (SQLException e) {}	
 			}
@@ -89,8 +89,6 @@ class ConsolePanel extends JPanel implements QueryListener,GrabableContainer {
 	
 	private void app(String msg) { scText.appendMessage(msg); }
 
-	@Override public void watchedExpressionsModified() { }
-	@Override public void watchedExpressionsRefreshed() { }
 	@Override public void serverListingChanged(List<String> serverNames) { }
 	
 	public void setCodeFont(Font f) { scText.setTextareaFont(f); }
@@ -110,4 +108,4 @@ class ConsolePanel extends JPanel implements QueryListener,GrabableContainer {
 		}
 		return null;
 	}
-}
+	        }

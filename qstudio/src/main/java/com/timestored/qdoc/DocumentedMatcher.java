@@ -50,6 +50,7 @@ public class DocumentedMatcher implements DocCompleter {
 	private final String funcEnd;
 	private final String argDivider;
 	private final boolean ignoreCasing;
+	private final CustomAutocompleteHandler filterSorter;
 	
 	/** cache previous result */
 	/** time in millis after which all docs are refetched */
@@ -62,8 +63,9 @@ public class DocumentedMatcher implements DocCompleter {
 	private ContextualDocCompleter contextualDocCompleter;
 
 
+
 	public DocumentedMatcher(Language language, DocSource docSource) {	
-		this(language, docSource,"[","]",";", false);
+		this(language, docSource,"[","]",";", false, null);
 	}
 
 	/**
@@ -74,15 +76,17 @@ public class DocumentedMatcher implements DocCompleter {
 	 * @param funcStart prefix for containing function arguments e.g. ( in java
 	 * @param funcEnd postfix for containing function arguments e.g. ) in java
 	 * @param argDivider divider of arguments e.g. , in java
+	 * @param completionSorter CUstom sorting to arrange better completions to the top.
 	 */
 	public DocumentedMatcher(Language language, DocSource docSource, String funcStart, 
-			String funcEnd, String argDivider, boolean ignoreCasing) {	
+			String funcEnd, String argDivider, boolean ignoreCasing, CustomAutocompleteHandler filterSorter) {	
 		this.language = language;	
 		this.docSource = docSource;
 		this.funcStart = funcStart;
 		this.funcEnd = funcEnd;
 		this.argDivider = argDivider;
 		this.ignoreCasing = ignoreCasing;
+		this.filterSorter = filterSorter;
 	}
 
 	
@@ -202,7 +206,7 @@ public class DocumentedMatcher implements DocCompleter {
 	private List<DocumentedEntity> findByFullname(final String fullname) {
 		final String cleanName = removeArgs(fullname);
 		Predicate<DocumentedEntity> fullMatchFilter = de -> cleanName.equals(removeArgs(de.getDocName()));
-	    return sortByName(Lists.newArrayList(filter(docSource.getDocs(), fullMatchFilter)));
+	    return Lists.newArrayList(filter(docSource.getDocs(), fullMatchFilter));
 	}
 
 	private String removeArgs(String docName) {
@@ -250,9 +254,9 @@ public class DocumentedMatcher implements DocCompleter {
 	    boolean extensionToLastSearch = prevPrefix!=null && latestPrefix.startsWith(prevPrefix);
 	    if(extensionToLastSearch && !longTimeBetweenSearch) {
 		    // just typed an extra letter, filter previous search further
-	    	docs = ImmutableList.copyOf(filter(prevPrefixDocs, prefixFilter));
+	    		docs = filterSortResults(Lists.newArrayList(filter(prevPrefixDocs, prefixFilter)), latestPrefix);
 	    } else { 
-			docs = sortByName(Lists.newArrayList(filter(docSource.getDocs(), prefixFilter)));
+			docs = filterSortResults(Lists.newArrayList(filter(docSource.getDocs(), prefixFilter)), latestPrefix);
 	    }
 		
 		prevPrefixDocs = docs;
@@ -262,9 +266,18 @@ public class DocumentedMatcher implements DocCompleter {
 		return docs;
 	}
 
+	@FunctionalInterface
+	public static interface CustomAutocompleteHandler {
+		List<DocumentedEntity> filterSortResults(List<DocumentedEntity> docs, String prefix);
+	}
+	
 	/** sort the collection in place and also return */
-	private List<DocumentedEntity> sortByName(List<DocumentedEntity> docs) {
-		Collections.sort(docs, (de1, de2)  -> de1.getDocName().compareTo(de2.getDocName()));
+	private List<DocumentedEntity> filterSortResults(List<DocumentedEntity> docs, String prefix) {
+		if(this.filterSorter != null) {
+			docs = filterSorter.filterSortResults(docs, prefix);
+		} else {
+			Collections.sort(docs, (de1, de2)  -> de1.getDocName().compareTo(de2.getDocName()));	
+		}
 		return docs;
 	}
 

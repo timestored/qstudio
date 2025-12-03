@@ -54,7 +54,6 @@ import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.StaxDriver;
 import com.thoughtworks.xstream.security.AnyTypePermission;
 import com.timestored.StringUtils;
-import com.timestored.kdb.CConnection;
 import com.timestored.kdb.KdbConnection;
 import com.timestored.plugins.ConnectionDetails;
 import com.timestored.plugins.DatabaseAuthenticationService;
@@ -381,7 +380,11 @@ public class ConnectionManager implements AutoCloseable {
 		ObjectPool<PoolableConnection> sp = serverConnPool.get(serverConfig);
 		if(sp!=null && conn!=null) {
 			try {
-				if(conn.isClosed() || invalidateConnection) {
+				boolean isClosedOrErrored = true;
+				try {
+					isClosedOrErrored = conn.isClosed();
+				} catch(Exception e) {}
+				if(isClosedOrErrored || invalidateConnection) {
 					sp.invalidateObject(conn);
 				} else {
 					sp.returnObject(conn);
@@ -576,7 +579,7 @@ public class ConnectionManager implements AutoCloseable {
 	private KdbConnection tryKdbConnection(ServerConfig serverConfig) throws Exception {
 		if(serverConfig.isKDB()) {
 			try {
-				CConnection kdbConn = new CConnection(overrideServerConfig(serverConfig));
+				KdbConnection kdbConn = new KdbConnection(overrideServerConfig(serverConfig));
 				statusUpdate(serverConfig, true);
 				return kdbConn;
 			} catch (Exception e) {

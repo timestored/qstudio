@@ -16,7 +16,9 @@
  */
 package com.timestored.qstudio.model;
 
-import javax.swing.table.TableModel;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 
 import com.google.common.base.Joiner;
 import com.timestored.misc.HtmlUtils;
@@ -32,29 +34,30 @@ public class TableModelHtmlConverter {
 		return sb.b("<" + tag + ">").b(HtmlUtils.escapeHTML(inner)).b("</" + tag + ">");
 	}
 	
-	private String convertTable(TableModel tm) {
+	private String convertTable(ResultSet rs) throws SQLException {
 
 		sb.start("<table>");
 		sb.a("<tr>");
-		for(int c=0; c<tm.getColumnCount(); c++) {
+		ResultSetMetaData tm = rs.getMetaData();
+		for(int c=1; c<=tm.getColumnCount(); c++) {
 			wrap("th", tm.getColumnName(c));
 		}
 		sb.b("</tr>");
-		for(int r=0; r<tm.getRowCount(); r++) {
+		while(rs.next()) {
 			sb.start("<tr>");
-			for(int c=0; c<tm.getColumnCount(); c++) {
+			for(int c=1; c <= tm.getColumnCount(); c++) {
 				sb.a();
-				Object o = tm.getValueAt(r, c);
-				String s = "" + o.toString();
-				if(o instanceof String) {
+				Object o = rs.getObject(c);
+				String s = o == null ? rs.getString(c) : "" + o.toString();
+				if(o == null) {
+					s = "";
+				} else if(o instanceof String) {
 					s = (String) o;
 				} else if(o instanceof char[]) {
 					s = new String((char[])o);
 				} else if(o instanceof String[]) {
 					String[] v = (String[])o;
 					s = "`" + Joiner.on('`').join(v);
-				} else {
-					
 				}
 				wrap("td", s);
 			}
@@ -64,9 +67,10 @@ public class TableModelHtmlConverter {
 		return sb.toString();
 	}
 	
-	/** convert table model to html **/
-	public static String convert(TableModel tableModel) {
-		return new TableModelHtmlConverter().convertTable(tableModel);
+	/** convert table model to html 
+	 * @throws SQLException **/
+	public static String convert(ResultSet rs) throws SQLException {
+		return new TableModelHtmlConverter().convertTable(rs);
 	}
 	
 	

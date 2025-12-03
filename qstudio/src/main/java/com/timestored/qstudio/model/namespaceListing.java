@@ -21,7 +21,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.google.common.base.Preconditions;
-import com.timestored.cstore.CAtomTypes;
+import com.timestored.qstudio.kdb.CAtomTypes;
 
 
 /**

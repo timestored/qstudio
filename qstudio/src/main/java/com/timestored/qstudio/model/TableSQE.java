@@ -16,8 +16,8 @@
  */
 package com.timestored.qstudio.model;
 
-import static com.timestored.cstore.CAtomTypes.DICTIONARY;
-import static com.timestored.cstore.CAtomTypes.TABLE;
+import static com.timestored.qstudio.kdb.CAtomTypes.DICTIONARY;
+import static com.timestored.qstudio.kdb.CAtomTypes.TABLE;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,8 +32,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.timestored.connections.JdbcTypes;
 import com.timestored.connections.MetaInfo;
-import com.timestored.cstore.CAtomTypes;
 import com.timestored.misc.HtmlUtils;
+import com.timestored.qstudio.kdb.CAtomTypes;
 import com.timestored.theme.Theme.CIcon;
 
 import lombok.Getter;

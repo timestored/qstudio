@@ -16,13 +16,16 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTree;
+import javax.swing.UIManager;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
 
+import kx.jdbc;
 import kx.c.Dict;
 import kx.c.Flip;
+import lombok.Setter;
 
-import com.timestored.cstore.CAtomTypes;
+import com.timestored.sqldash.chart.TableFactory;
 import com.timestored.sqldash.chart.TimeStringValuer;
 import com.timestored.swingxx.JTreeHelper;
 import com.timestored.theme.Theme;
@@ -35,19 +38,28 @@ import jsyntaxpane.DefaultSyntaxKit;
 public class KdbHelper {
 
 	private static final Logger LOG = Logger.getLogger(KdbHelper.class.getName());
-
 	private static final NumberFormat NUM_FORMAT;
 	public static final int DEFAULT_MAX_FRACTION_DIGITS = 7;
+	public static final int DEFAULT_GROUPING_SIZE= 0;
 	private static int decimalPlaces = DEFAULT_MAX_FRACTION_DIGITS;
 	private static String formatString = "%." + decimalPlaces + "f";
+	@Setter private static boolean negativeShownRed = true;
 	private static final TimeStringValuer TABLE_STRINGER = new TimeStringValuer(l -> format(l, true), null);
 	private static final TimeStringValuer VAL_STRINGER = new TimeStringValuer(l -> format(l, false), "yyyy.MM.dd");
 	
 	static {
 		NUM_FORMAT = NumberFormat.getInstance();
 		setMaximumFractionDigits(decimalPlaces);
+		setGroupingSize(DEFAULT_GROUPING_SIZE);
+		setNegativeShownRed(true);
 	}
 
+	public static void setGroupingSize(int groupingSize) {
+		 NUM_FORMAT.setGroupingUsed(groupingSize > 0);
+		 if (NUM_FORMAT instanceof DecimalFormat) {
+			 ((DecimalFormat) NUM_FORMAT).setGroupingSize(groupingSize);
+		 }
+	}
 	/**
 	 * @param decimalPlaces the maximum number of fraction digits to be shown; 
 	 * if less than zero, then zero is used.
@@ -64,13 +76,262 @@ public class KdbHelper {
 	}
 	
 	/**
+	 * Flatten any KDB object into a single line, output similar to -3! in KDB. 
+	 * But types will always be shown and tables will be shown differently.
+	 * @param k a KDB result object
+	 * @return String representation of the array or null if it could not convert.
+	 */
+	public static String asLine(Object k) {
+		return asText(k, false, true);
+	}
+	
+
+	/**
+	 * Convert a kdb object to a string for display in a console etc.
+	 * @param k a KDB result object
+	 * @return String representation of the array or null if it could not convert.
+	 */
+	public static String asText(Object k) {
+		return asText(k, false, false);
+	}
+	
+	/**
+	 * Convert a kdb object to a string for display in a console etc.
+	 * @param k a KDB result object
+	 * @return String representation of the array or null if it could not convert.
+	 * @param singleLine Controls whether we spread over multiple lines and try to imitate kdb exactly.
+	 */
+	public static String asText(Object k, boolean forTable, boolean singleLine) {
+		String s = null;
+		try {
+			if(k != null) {
+				if(k instanceof Flip || k instanceof Dict) { // unkeyed table
+					s = k.toString();
+				} else {
+					s = vs(k, forTable, singleLine);	
+				}
+			} else {
+				s = forTable ? "" : "::";
+			}
+		} catch(ClassCastException | IllegalArgumentException e) {
+			// fall through
+		}
+		if(s == null) {
+			return s;
+		}
+		return s + (singleLine ? "" : "\r\n");
+	}	
+	
+	/**
+	 * Flatten any KDB object into a single line, output similar to -3! in KDB. 
+	 * But types will always be shown and tables will be shown differently.
+	 * @param k a KDB result object
+	 * @param forTable when displaying values in a table, nulls are shown as
+	 * 		blanks and single items do not have their type shown.
+	 * @return String representation of the array or null if it could not convert.
+	 */
+	public static String asLine(Object k, boolean forTable) {
+		return asText(k, forTable, true);
+	}
+
+	
+	private static String flatten(Object[] a, final String emptySt, final String postfix) {
+		if(a.length==0) {
+			return emptySt;
+		} else if(a.length==1) {
+			return TimeStringValuer.SINGLE_ITEM_LIST_PREFIX +vs(a[0]);
+		}
+		StringBuilder s = new StringBuilder(a.length*3);
+		s.append("(" + vs(a[0]));
+		for (int i = 1; i < Math.min(a.length, TimeStringValuer.MAX_ARRAY_ITEMS_SHOWN); i++) {
+			s.append(";").append(vs(a[i]));
+		}
+		if(a.length>TimeStringValuer.MAX_ARRAY_ITEMS_SHOWN) {
+			s.append("...");
+		}
+		return s.append(")").toString();
+	}
+
+
+	/**
+	 * Convert a (possibly nested) list to a string. 
+	 */
+	private static String vs(Object k) {
+		return vs(k, false, true);
+	}
+
+	/**
+	 * Convert a (possibly nested) list to a string. 
+	 * @param forTable when displaying values in a table, nulls are shown as
+	 * 		blanks and single items do not have their type shown.
+	 * @param singleLine Controls whether we spread over multiple lines and try to imitate kdb exactly.
+	 */
+	private static String vs(Object k, boolean forTable, boolean singleLine) {
+		// recursively flatten each nested object by callingourself
+		String li = "";
+		TimeStringValuer conv = forTable ? TABLE_STRINGER : VAL_STRINGER;
+		
+		if(k == null && !forTable) {
+			li = "::";
+		} else if (k instanceof String[]) {
+			li = conv.flatten((String[]) k, "`symbol$()", "", "`");
+		} else if (k instanceof Object[]) {
+			li = flatten((Object[]) k, "", "");
+		} else if(k instanceof int[]) {
+			li = conv.flatten((int[]) k, "`int$()", "i");
+		} else if(k instanceof long[]) {
+			li = conv.flatten((long[]) k, "`long$()", "");
+		} else if(k instanceof double[]) {
+			li = conv.flatten((double[]) k, "`float$()", "");
+		} else if(k instanceof float[]) {
+			li = conv.flatten((float[]) k, "`real$()", "e");
+		} else if(k instanceof short[]) {
+			li = conv.flatten((short[]) k, "`short$()", "h");
+		} else if(k instanceof boolean[]) {
+			li = conv.flatten((boolean[]) k, "`boolean$()", "b");
+		} else if(k instanceof Boolean) {
+			li = ((boolean)k) ? "1b" : "0b";
+		} else if(k instanceof byte[]) {
+			li = conv.flatten((byte[]) k, "`byte$()", "", "0x");
+		} else if(k instanceof Character) {
+			li = forTable ? k.toString() : "\"" + k.toString() + "\"";
+		} else if(k instanceof char[]) {
+			li = new String((char[])k);
+			if(singleLine) {
+				li = li.replace("\r", "\\r").replace("\n", "\\n");
+			}
+			if(!forTable) {
+				li = "\"" + li + "\"";
+			}
+		} else if(k instanceof String){
+			li = forTable ? k.toString() : "`" + k;	
+		} else if(k instanceof Dict || k instanceof Flip){
+			li = k.toString(); 
+		} else if(k!=null) {
+			KdbType kt = KdbType.getType(k.getClass());
+			if(kt != null) {
+				char cc = kt.getCharacterCode();
+				li = conv.getString(k);
+				boolean hideTypeChar = forTable || cc == 'j' || cc == 'x' || (cc=='f' && (li.contains(".") || li.contains("n") || li.contains("w")));
+				li += (hideTypeChar ? "" : kt.getCharacterCode());
+			} else if(k!= null) {
+				li = conv.getString(k);
+			}
+		}
+		
+		return li;
+	}
+
+	/** 
+	 * @return a topmost count of a KDB object, or -1 if unknown
+	 */
+	public static int count(Object k) {
+		if(k == null) {
+			return 0;
+		}
+		try {
+			if(k.getClass().isArray()) {
+				return Array.getLength(k);
+			} else if(k instanceof Flip) {
+				Object vals = ((Flip)k).y[0];
+				if(vals.getClass().isArray()) {
+					return Array.getLength(vals);
+				} else {
+					 return ((Flip)k).x.length;
+				}
+			} else if(k instanceof Dict) {
+				Dict d = (Dict) k;
+				if (d.x instanceof Flip) {
+					Object vals = ((Flip) d.x).y[0];
+					if (vals.getClass().isArray()) {
+						return Array.getLength(vals);
+					} else {
+						return ((Flip) k).x.length;
+					}
+				} else {
+					if(d.x.getClass().isArray()) {
+						return Array.getLength(d.x);
+					}
+				}
+			}
+		} catch(Exception e) {
+			// fall through to return -1
+		}
+		return 0;
+	}
+	
+
+	
+	/** For a KDB type number return the character for that type */
+	public static char getTypeChar(int type) {
+		final String typec = " b gxhijefcspmdznuvt";
+		int t = Math.abs(type);
+		if(t<typec.length()) {
+			return typec.charAt(t);
+		}
+		return '?';
+	}
+	
+	/**
+	 * Take qCode and escape it so that it could be value'd.
+	 * new lines are replaced with \r\n, tabs with \t etc.
+	 */
+	public static String escape(String qCode) {
+		return qCode.replace("\\", "\\\\").replace("\t", "\\t")
+				.replace("\r", "\\r").replace("\n", "\\n")
+				.replace("\"", "\\\"");
+	}
+
+	private static String format(Object o, boolean forTable) {
+		
+		// null symbol ` return nothing
+		if(o == null || ((o instanceof String) && o.equals(""))) {
+			return "";
+		}
+		boolean isFloat = (o instanceof Float) || (o instanceof Double);
+		if(KdbType.isNull(o)) {
+			if(forTable) {
+				return "";
+			}
+			return isFloat ? "0n" : "0N";
+		} else if(KdbType.isPositiveInfinity(o)) {
+			return isFloat ? "0w" : "0W";
+		} else if(KdbType.isNegativeInfinity(o)) {
+			return isFloat ? "-0w" : "-0W";
+		} else if(o instanceof Double) {
+			return formatFloatingPt((Double) o, forTable);
+		} else if(o instanceof Float) {
+			return formatFloatingPt((Float) o, forTable);
+		} else if(o instanceof Byte) {
+			return "0x" + String.format("%02x", (Byte)o).toLowerCase();
+		}
+
+		return null;
+	}
+
+	public static String formatFloatingPt(double d) {
+		return formatFloatingPt(d, false);
+	}
+	
+	private static String formatFloatingPt(double d, boolean forTable) {
+		if(forTable) {
+			return NUM_FORMAT.format(d);
+		} else {
+			String tmp = String.format(formatString , d);
+			return TimeStringValuer.trimTrailingPointZeroes(tmp);
+		}
+		
+	}
+	
+	
+	/**
 	 * Given a kdb k object display it in the best way possible.
 	 * @param k A k result object
 	 * @return A panel displaying the result
 	 */
 	public static Component getComponent(Object k) {
 		return getComponent(k, Integer.MAX_VALUE);
-	}
+}
 	
 	/**
 	 * Given a kdb k object display it in the best way possible.
@@ -87,15 +348,15 @@ public class KdbHelper {
 		
 		// fall through, try drawing as table->tree->string line
 		if(maxRowsShown > 0) {
-			res =  KdbTableFactory.getJXTableFromKdb(k, maxRowsShown);
+			res =  getJXTableFromKdb(k, maxRowsShown);
 		} else {
-			res =  KdbTableFactory.getJXTable(k);
+			res =  getJXTable(k);
 		}
 		
 		// no table? IS it a function, else just show text.
 		if(res == null) {
 			char[] ck = k instanceof char[] ? (char[])k : new char[] {};
-			// hacky way to identify functions and show a nicer editor.
+			// identify functions and show in a code editor.
 			if(ck.length>=2 && ck[0] == '{' && (ck[ck.length-1]=='}' || ck[ck.length-1]==']')) {
 				String code = new String(ck);
 				DefaultSyntaxKit.initKit();
@@ -105,7 +366,7 @@ public class KdbHelper {
 		        codeEditor.setContentType("text/qsql");
 				codeEditor.setText(code);
 				codeEditor.setEditable(false);
-				codeEditor.setFont(Theme.getCodeFont());
+				codeEditor.setFont(UIManager.getFont("defaultFont"));
 				return scrPane;
 			} else {
 				String txt = KdbHelper.asText(k);
@@ -129,14 +390,20 @@ public class KdbHelper {
 		}
 		return res;
 	}
-		
-	private static boolean isMixedList(Object k) {
-		if(k instanceof Object[]) {
-			return k.getClass().getComponentType().equals(java.lang.Object.class);
-		}
-		return false;
-	}
 
+	public static Component getJXTable(Object kObject) {
+		return getJXTableFromKdb(kObject, Integer.MAX_VALUE);
+	}
+	
+	public static Component getJXTableFromKdb(Object kObject, int maxRowsShown) {
+		try {
+			return TableFactory.getTable(jdbc.getRS(kObject), maxRowsShown, negativeShownRed);
+		} catch(Exception e) {
+			LOG.log(Level.WARNING, "problem creating table", e);
+		}
+		return null;
+	}
+	
 	/**
 	 * Represent the kdb object k in a jtree if possible/sensible.
 	 * @param k A k result object
@@ -263,268 +530,12 @@ public class KdbHelper {
 		}
 	}
 
-	
-	/**
-	 * Flatten any KDB object into a single line, output similar to -3! in KDB. 
-	 * But types will always be shown and tables will be shown differently.
-	 * @param k a KDB result object
-	 * @return String representation of the array or null if it could not convert.
-	 */
-	public static String asLine(Object k) {
-		return asText(k, false, true);
-	}
-	
-
-	/**
-	 * Convert a kdb object to a string for display in a console etc.
-	 * @param k a KDB result object
-	 * @return String representation of the array or null if it could not convert.
-	 */
-	public static String asText(Object k) {
-		return asText(k, false, false);
-	}
-	
-	/**
-	 * Convert a kdb object to a string for display in a console etc.
-	 * @param k a KDB result object
-	 * @return String representation of the array or null if it could not convert.
-	 * @param singleLine Controls whether we spread over multiple lines and try to imitate kdb exactly.
-	 */
-	public static String asText(Object k, boolean forTable, boolean singleLine) {
-		String s = null;
-		try {
-			if(k != null) {
-				if(k instanceof Flip) {
-					s = flatten((Flip)k);
-				} else {
-					s = vs(k, forTable, singleLine);	
-				}
-			} else {
-				s = forTable ? "" : "::";
-			}
-		} catch(ClassCastException | IllegalArgumentException e) {
-			// fall through
-		}
-		if(s == null) {
-			return s;
-		}
-		return s + (singleLine ? "" : "\r\n");
-	}	
-	
-	/**
-	 * Flatten any KDB object into a single line, output similar to -3! in KDB. 
-	 * But types will always be shown and tables will be shown differently.
-	 * @param k a KDB result object
-	 * @param forTable when displaying values in a table, nulls are shown as
-	 * 		blanks and single items do not have their type shown.
-	 * @return String representation of the array or null if it could not convert.
-	 */
-	public static String asLine(Object k, boolean forTable) {
-		return asText(k, forTable, true);
-	}
-
-	private static String flatten(Flip table) {
-		String s = "([] ";
-		if(table.x.length > 0) {
-			s += table.x[0];
-		}
-		for(int i=1; i<table.x.length; i++) {
-			s += "; " + table.x[i];
-		}
-		s += ")";
-		return s;
-	}
-
-	
-	private static String flatten(Object[] a, final String emptySt, final String postfix) {
-		if(a.length==0) {
-			return emptySt;
-		} else if(a.length==1) {
-			return TimeStringValuer.SINGLE_ITEM_LIST_PREFIX +vs(a[0]);
-		}
-		StringBuilder s = new StringBuilder(a.length*3);
-		s.append("(" + vs(a[0]));
-		for (int i = 1; i < Math.min(a.length, TimeStringValuer.MAX_ARRAY_ITEMS_SHOWN); i++) {
-			s.append(";").append(vs(a[i]));
-		}
-		if(a.length>TimeStringValuer.MAX_ARRAY_ITEMS_SHOWN) {
-			s.append("...");
-		}
-		return s.append(")").toString();
-	}
-
-
-	/**
-	 * Convert a (possibly nested) list to a string. 
-	 */
-	private static String vs(Object k) {
-		return vs(k, false, true);
-	}
-
-	/**
-	 * Convert a (possibly nested) list to a string. 
-	 * @param forTable when displaying values in a table, nulls are shown as
-	 * 		blanks and single items do not have their type shown.
-	 * @param singleLine Controls whether we spread over multiple lines and try to imitate kdb exactly.
-	 */
-	private static String vs(Object k, boolean forTable, boolean singleLine) {
-		// recursively flatten each nested object by callingourself
-		String li = "";
-		TimeStringValuer conv = forTable ? TABLE_STRINGER : VAL_STRINGER;
 		
-		if(k == null && !forTable) {
-			li = "::";
-		} else if (k instanceof String[]) {
-			li = conv.flatten((String[]) k, "`symbol$()", "", "`");
-		} else if (k instanceof Object[]) {
-			li = flatten((Object[]) k, "", "");
-		} else if(k instanceof int[]) {
-			li = conv.flatten((int[]) k, "`int$()", "i");
-		} else if(k instanceof long[]) {
-			li = conv.flatten((long[]) k, "`long$()", "");
-		} else if(k instanceof double[]) {
-			li = conv.flatten((double[]) k, "`float$()", "");
-		} else if(k instanceof float[]) {
-			li = conv.flatten((float[]) k, "`real$()", "e");
-		} else if(k instanceof short[]) {
-			li = conv.flatten((short[]) k, "`short$()", "h");
-		} else if(k instanceof boolean[]) {
-			li = conv.flatten((boolean[]) k, "`boolean$()", "b");
-		} else if(k instanceof Boolean) {
-			li = ((boolean)k) ? "1b" : "0b";
-		} else if(k instanceof byte[]) {
-			li = conv.flatten((byte[]) k, "`byte$()", "", "0x");
-		} else if(k instanceof Character) {
-			li = forTable ? k.toString() : "\"" + k.toString() + "\"";
-		} else if(k instanceof char[]) {
-			li = new String((char[])k);
-			if(singleLine) {
-				li = li.replace("\r", "\\r").replace("\n", "\\n");
-			}
-			if(!forTable) {
-				li = "\"" + li + "\"";
-			}
-		} else if(k instanceof String){
-			li = forTable ? k.toString() : "`" + k;	
-		} else if(k instanceof Dict){
-			Dict d = (Dict)k;
-			li =asLine(d.x) + "!" + vs(d.y); 
-		} else if(k!=null) {
-			KdbType kt = KdbType.getType(k.getClass());
-			if(kt != null) {
-				char cc = kt.getCharacterCode();
-				li = conv.getString(k);
-				boolean hideTypeChar = forTable || cc == 'j' || cc == 'x' || (cc=='f' && (li.contains(".") || li.contains("n") || li.contains("w")));
-				li += (hideTypeChar ? "" : kt.getCharacterCode());
-			} else if(k!= null) {
-				li = conv.getString(k);
-			}
+	private static boolean isMixedList(Object k) {
+		if(k instanceof Object[]) {
+			return k.getClass().getComponentType().equals(java.lang.Object.class);
 		}
-		
-		return li;
-	}
-
-	/** 
-	 * @return a topmost count of a KDB object, or -1 if unknown
-	 */
-	public static int count(Object k) {
-		if(k == null) {
-			return 0;
-		}
-		try {
-			if(k.getClass().isArray()) {
-				return Array.getLength(k);
-			} else if(k instanceof Flip) {
-				Object vals = ((Flip)k).y[0];
-				if(vals.getClass().isArray()) {
-					return Array.getLength(vals);
-				} else {
-					 return ((Flip)k).x.length;
-				}
-			} else if(k instanceof Dict) {
-				Dict d = (Dict) k;
-				if (d.x instanceof Flip) {
-					Object vals = ((Flip) d.x).y[0];
-					if (vals.getClass().isArray()) {
-						return Array.getLength(vals);
-					} else {
-						return ((Flip) k).x.length;
-					}
-				} else {
-					if(d.x.getClass().isArray()) {
-						return Array.getLength(d.x);
-					}
-				}
-			}
-		} catch(Exception e) {
-			// fall through to return -1
-		}
-		return 0;
-	}
-	
-
-	
-	/** For a KDB type number return the character for that type */
-	public static char getTypeChar(int type) {
-		final String typec = " b gxhijefcspmdznuvt";
-		int t = Math.abs(type);
-		if(t<typec.length()) {
-			return typec.charAt(t);
-		}
-		return '?';
-	}
-	
-	/**
-	 * Take qCode and escape it so that it could be value'd.
-	 * new lines are replaced with \r\n, tabs with \t etc.
-	 */
-	public static String escape(String qCode) {
-		return qCode.replace("\\", "\\\\").replace("\t", "\\t")
-				.replace("\r", "\\r").replace("\n", "\\n")
-				.replace("\"", "\\\"");
-	}
-
-	
-	private static String format(Object o) {
-		return format(o, false);
-	}
-
-	private static String format(Object o, boolean forTable) {
-		
-		// null symbol ` return nothing
-		if(o == null || ((o instanceof String) && o.equals(""))) {
-			return "";
-		}
-		boolean isFloat = (o instanceof Float) || (o instanceof Double);
-		if(KdbType.isNull(o)) {
-			if(forTable) {
-				return "";
-			}
-			return isFloat ? "0n" : "0N";
-		} else if(KdbType.isPositiveInfinity(o)) {
-			return isFloat ? "0w" : "0W";
-		} else if(KdbType.isNegativeInfinity(o)) {
-			return isFloat ? "-0w" : "-0W";
-		} else if(o instanceof Double) {
-			return formatFloatingPt((Double) o, forTable);
-		} else if(o instanceof Float) {
-			return formatFloatingPt((Float) o, forTable);
-		} else if(o instanceof Byte) {
-			return "0x" + String.format("%02x", (Byte)o).toLowerCase();
-		}
-
-		return null;
-	}
-
-
-	
-	private static String formatFloatingPt(double d, boolean forTable) {
-		if(forTable) {
-			return NUM_FORMAT.format(d);
-		} else {
-			String tmp = String.format(formatString , d);
-			return TimeStringValuer.trimTrailingPointZeroes(tmp);
-		}
-		
+		return false;
 	}
 }
+

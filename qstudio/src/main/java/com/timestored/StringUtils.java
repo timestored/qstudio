@@ -51,6 +51,23 @@ public class StringUtils {
 	public static String abbreviate(final String str, final int maxWidth) {
 		return abbreviate(str, 0, maxWidth);
 	}
+
+	public static String abbreviateMultiline(final String str) {
+		return abbreviateMultiline(str, 7, 60);
+	}
+
+	public static String abbreviateMultiline(final String str, final int maxRows, final int maxWidth) {
+		String[] r = str.split("\\n", maxRows+4);
+		StringBuilder sb = new StringBuilder(maxRows * maxWidth * 2);
+		for(int i=0; i<maxRows && i<r.length; i++) {
+			String s = r[i];
+			sb.append(abbreviate(s, 0, maxWidth)).append("\n");
+		}
+		if(r.length > maxRows) {
+			sb.append("...");
+		}
+		return sb.toString().trim();
+	}
 	
 	/**
 	 * Abbreviates a String using ellipses.

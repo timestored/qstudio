@@ -8,7 +8,7 @@ import java.util.Set;
 /**
  * Porivdes helper functions for SQL related tasks.
  */
-class SqlHelper {
+public class SqlHelper {
 
 	private static final Set<Integer> NUMBERS;
 	private static final Set<Integer> TEMPORALS;
@@ -31,6 +31,7 @@ class SqlHelper {
 		
 		Set<Integer> times = new HashSet<Integer>();
 		times.add(Types.TIME);
+		times.add(Types.TIME_WITH_TIMEZONE);
 		times.add(Types.TIMESTAMP);
 		times.add(Types.DATE);
 		times.add(Types.TIMESTAMP_WITH_TIMEZONE);

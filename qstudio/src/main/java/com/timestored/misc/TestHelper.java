@@ -50,14 +50,14 @@ public class TestHelper {
 
 	public static File saveComponentImage(Component c, final String filename, int width, int height) throws IOException {
 		File f = new File(getOutDir() + filename);
-		SaveableFrame.saveComponentImage(c, width, height, f, false);
+		SaveableFrame.saveComponentImage(c, width, height, f);
 		return f;
 		
 	}
 
 	public static File saveComponentImage(Component c, final String filename) throws IOException {
 		File f = new File(getOutDir() + filename);
-		SaveableFrame.saveComponentImage(c, DEFAULT_WIDTH, DEFAULT_HEIGHT, f, false);
+		SaveableFrame.saveComponentImage(c, DEFAULT_WIDTH, DEFAULT_HEIGHT, f);
 		return f;
 	}
 

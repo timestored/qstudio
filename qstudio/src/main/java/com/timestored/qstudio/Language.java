@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
-public enum Language { Q("q"), SQL("sql"), PRQL("prql"),DOLPHIN("prql"), MARKDOWN("md"), OTHER("");
+public enum Language { Q("q"), SQL("sql"), PRQL("prql"),DOLPHIN("prql"),RFL("rfl"), MARKDOWN("md"), OTHER("");
 	@Getter private final String fileEnding;
 	
 	public static Language getLanguage(String fileEnding) {
@@ -15,6 +15,7 @@ public enum Language { Q("q"), SQL("sql"), PRQL("prql"),DOLPHIN("prql"), MARKDOW
 		case "sql": return SQL;
 		case "prql": return PRQL;
 		case "dos": return DOLPHIN;
+		case "rfl": return RFL;
 		case "mdown":
 		case "markdown":
 		case "mkdn":

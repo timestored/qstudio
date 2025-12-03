@@ -18,8 +18,12 @@
 package com.timestored.qdoc;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -34,6 +38,8 @@ import com.timestored.docs.OpenDocumentsModel;
 import com.timestored.misc.HtmlUtils;
 import com.timestored.qstudio.model.QEntity;
 import com.timestored.theme.Theme;
+
+import net.thisptr.jackson.jq.internal.misc.Lists;
 
 
 /**
@@ -161,16 +167,20 @@ public class ParsedQEntity implements QEntity, Comparable<ParsedQEntity> {
 					k = "Columns";
 				}
 				
-				if(k.equals(EXAMPLE_TAG)) {
+				if(k.equals(EXAMPLE_TAG) || k.toLowerCase().equals("eg")) {
 					k = "Examples";
-					Map<String, String> codeMap = Maps.newHashMap();
+					List<String> examples = new ArrayList<>();
 					e.getValue().forEach((String u, String vv) -> {
+						String txt = u;
 						if(baseWeblink!=null && baseWeblink.length()>0) {
-							u = "<a href='" + baseWeblink + "?" + vv + "'>" + u + "</a>";
+							try {
+								String args = URLEncoder.encode(u, "UTF-8");
+								txt = "<a href='" + baseWeblink + args + "' target='a'>"+u+"</a>";
+							} catch (UnsupportedEncodingException e1) {}
 						}
-						codeMap.put(u, "<code>" + vv + "</code>");
+						examples.add("<code>" + txt + "</code>");
 					});
-					namesToDescs.put(k + ": ", HtmlUtils.toList(codeMap, true));
+					namesToDescs.put(k + ": ", HtmlUtils.toList(examples));
 				} else {
 					namesToDescs.put(k + ": ", HtmlUtils.toList(e.getValue(), true));
 				}

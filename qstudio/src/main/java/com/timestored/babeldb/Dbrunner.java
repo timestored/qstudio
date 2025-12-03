@@ -6,9 +6,10 @@ import java.util.List;
 
 import com.timestored.connections.ServerConfig;
 
+
 public interface Dbrunner extends AutoCloseable {
 	
-	public ResultSet executeQry(String serverName, String sql) throws IOException;
+	public ResultSet executeQry(String serverName, String sql, int millisStalenessPermitted) throws IOException;
 	
 	public List<String> getServerWithSymbols(); // serverName
 

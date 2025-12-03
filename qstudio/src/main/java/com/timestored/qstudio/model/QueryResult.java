@@ -53,23 +53,24 @@ public class QueryResult implements QueryResultI {
 	@Getter public final Exception e;
 	private final String consoleView;
 	private final Type type;
+	@Getter private final long millisTaken;
 	
 	enum Type { Exception, Cancel, Success };
 
 	
-	public static QueryResult exceptionResult(ServerConfig serverConfig, String query, PivotFormConfig pivotConfig, Exception e) {
+	public static QueryResult exceptionResult(ServerConfig serverConfig, String query, PivotFormConfig pivotConfig, Exception e, long millisTaken) {
 		String cView = (e!=null ? e.getMessage() : "exception");
-		return new QueryResult(serverConfig, query, pivotConfig, null, null, cView, e, false);
+		return new QueryResult(serverConfig, query, pivotConfig, null, null, cView, e, false, millisTaken);
 	}
 
 	public static QueryResult cancelledResult(ServerConfig serverConfig, String query, PivotFormConfig pivotConfig) {
 		String cView = "Query Cancelled";
-		return new QueryResult(serverConfig, query, pivotConfig, null, null, cView, null, true);
+		return new QueryResult(serverConfig, query, pivotConfig, null, null, cView, null, true, 0);
 	}
 
 	public static QueryResult successfulResult(ServerConfig serverConfig, String query, PivotFormConfig pivotConfig, Object k, 
-			ResultSet rs, String consoleView) {
-		return new QueryResult(serverConfig, query, pivotConfig, k, rs, consoleView, null, false);
+			ResultSet rs, String consoleView, long millisTaken) {
+		return new QueryResult(serverConfig, query, pivotConfig, k, rs, consoleView, null, false, millisTaken);
 	}
 	
 	public boolean isCancelled() { return type.equals(Type.Cancel);	}
@@ -77,7 +78,7 @@ public class QueryResult implements QueryResultI {
 	
 	
 	private QueryResult(ServerConfig serverConfig, String query, PivotFormConfig pivotConfig, Object k, ResultSet rs, 
-			String consoleView, Exception e, boolean cancelled) {
+			String consoleView, Exception e, boolean cancelled, long millisTaken) {
 		
 		if(cancelled) {
 			type = Type.Cancel;
@@ -94,6 +95,7 @@ public class QueryResult implements QueryResultI {
 		this.rs = rs;
 		this.e = e;
 		this.consoleView = (e instanceof KException) ? "'"+e.getMessage() : consoleView;
+		this.millisTaken = millisTaken;
 	}
 	
 	Type getType() { return type; }
@@ -160,5 +162,5 @@ public class QueryResult implements QueryResultI {
 	@Override public boolean isExceededMax() {
 		return false;
 	}
-	
+
 }

@@ -6,10 +6,13 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Point;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
+import java.sql.SQLException;
 
 import javax.swing.Action;
 import javax.swing.BorderFactory;
@@ -40,7 +43,15 @@ import javax.swing.table.TableModel;
 import org.jdesktop.swingx.JXTable;
 import org.jdesktop.swingx.decorator.HighlighterFactory;
 
+import com.timestored.StringUtils;
+import com.timestored.babeldb.DBHelper;
 import com.timestored.misc.HtmlUtils;
+import com.timestored.qstudio.kdb.KdbHelper;
+import com.timestored.sqldash.chart.TableFactory;
+import com.timestored.sqldash.chart.TableFactory.EnrichedTableModel;
+
+import kx.c.Flip;
+import kx.jdbc.ExtendedResultSet;
 
 
 /**
@@ -58,7 +69,6 @@ public class Theme {
 	public static final int GAP = 4;
 	public static final Border CENTRE_BORDER = BorderFactory.createEmptyBorder(GAP, GAP, GAP, GAP);
 	
-	private static final Font CODE_FONT = new Font("Monospaced", Font.PLAIN, 14);
 	private static final Color HEADER_FG_COLOR = new Color(252,252,252);
 	private static final Color HEADER_BG_COLOR = new Color(154,165,190);
 	private static final Border OFFSET_BORDER = BorderFactory.createEmptyBorder(0, 0, GAP, GAP);
@@ -150,6 +160,7 @@ public class Theme {
 		UP_CLOUD("upcloud.png"),
 		POPUP_WINDOW("application-double.png"),
 		GREEN_FORWARD("forward_green.png"),
+		GREEN_BACK("back_green.png"),
 		GREEN_NEXT("next_green.png"),
 		GREEN_PLAY("play_green.png"),
 		FOLDER("folder.png"),
@@ -169,7 +180,9 @@ public class Theme {
 		SEARCH("google_custom_search.png"),
 		BLUE_PLAY("play_blue.png"),
 		MARKDOWN_GREEN("pulse64.png"),
-		MARKDOWN_GREY("pulse64red.png");
+		MARKDOWN_GREY("pulse64red.png"),
+		PIN("pin.png"),
+		PIN_GREEN("pin-green.png");
 		
 		private final ImageIcon imageIcon;
 		private final ImageIcon imageIcon16;
@@ -207,10 +220,6 @@ public class Theme {
 				curFont.getSize() + 3);
 	}
 
-	public static Font getCodeFont() {
-		return CODE_FONT;
-	}
-
 	public static JPanel getHeader(final String title) {
 		
 		JPanel outPanel = new JPanel(new BorderLayout());
@@ -237,18 +246,59 @@ public class Theme {
 
 		JPanel tContainerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
 		tContainerPanel.add(tablePanel);
+		TableFactory.setPresentation(table, false);
 		table.packAll();
 		return tContainerPanel;
 	}
-	
-
 
 	public static JXTable getStripedTable(TableModel tableModel) {
-		final JXTable table = new JXTable(tableModel);
+		final JXTable table = new JXTable(tableModel) {
+
+	        @Override public String getToolTipText(MouseEvent e) {
+	        	 Point p = e.getPoint();
+	             int viewRow = rowAtPoint(p);
+	             int viewCol = columnAtPoint(p);
+	             if (viewRow >= 0 && viewCol >= 0) {
+	                 int modelRow = convertRowIndexToModel(viewRow);
+	                 int modelCol = convertColumnIndexToModel(viewCol);
+	                 TableModel model = getModel();
+					 Object value = model .getValueAt(modelRow, modelCol);
+	                 if(value != null) {
+	                	 String vs = value.toString();
+	                	 String s = null;
+
+	                	 if(model instanceof EnrichedTableModel) {
+							 EnrichedTableModel etm = (EnrichedTableModel) model;
+							 ExtendedResultSet rs = etm.getNestedResultSetAt(modelRow, modelCol);
+							 if(rs != null) {
+								 try {
+									 s = DBHelper.toString(rs, false);
+									 s = "Double-click to dive into:\n" + s;
+								 } catch (SQLException e1) {}
+                		 	}
+	                	 } 
+
+	                	 if(s == null && vs.length() > 100) {
+	                		 try {
+                				 s = vs instanceof String ? vs : KdbHelper.asText(value);
+	                		 } catch(RuntimeException re) {
+	                		 }
+	                	 }
+	                	 if(s != null) {
+	                		return StringUtils.abbreviateMultiline(s);
+	                	 }
+	                 }
+	                 return null;
+	             }
+	             return super.getToolTipText(e);
+	        }
+		};
 		JTableHeader anHeader = table.getTableHeader();
 		anHeader.setForeground(Color.BLACK);
 		anHeader.setBackground(Color.GRAY);
 		table.setHighlighters(HighlighterFactory.createSimpleStriping());
+		table.setEditable(false);
+		table.setName("stripedTable");
 		return table;
 	}
 
@@ -551,7 +601,7 @@ public class Theme {
 		d.setPreferredSize(new Dimension(560, 400));
 		d.pack();
 		
-		// hack to make textarea selected
+		// workaround to ensure textarea gets focus
 		d.addWindowListener(new WindowAdapter() {
 			@Override public void windowActivated(WindowEvent e) {
 				SwingUtilities.invokeLater(new Runnable() {

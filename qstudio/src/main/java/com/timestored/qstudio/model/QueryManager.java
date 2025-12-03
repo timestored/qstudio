@@ -48,15 +48,12 @@ import com.timestored.theme.Theme;
 
 /**
  * Allows querying a currently selected server and notifies it's listeners.
- * Watched queries can be added, which when any one standard query is sent, all watched expressions
- * are requeried also.
  */
 @ThreadSafe public class QueryManager implements CommandProvider,AutoCloseable {
 	
 	private static final Logger LOG = Logger.getLogger(QueryManager.class.getName());
 
 	private final List<QueryListener> listeners = new CopyOnWriteArrayList<QueryListener>();
-	private final List<WatchedExpression> watchedExpressions = new CopyOnWriteArrayList<WatchedExpression>();
 	private List<String> serverNames = Collections.emptyList();
 
 	private final ConnectionManager connectionManager;
@@ -112,7 +109,7 @@ import com.timestored.theme.Theme;
 	}
 	
 	/**
-	 * Send the last query again, refresh all watched expressions, notify listeners.
+	 * Send the last query again,   notify listeners.
 	 */
 	public void resendLastQuery() {
 		sendQuery(previousPivotConfig, previousQuery, previousQueryTitle);
@@ -149,7 +146,6 @@ import com.timestored.theme.Theme;
 	
 	/**
 	 * Send a query to the currently selected server and notify listeners of the result.
-	 * Watched expressions will also be updated.
 	 * @throws IllegalStateException If no valid server is currently selected
 	 */
 	public void sendQuery(final String query) {
@@ -162,7 +158,6 @@ import com.timestored.theme.Theme;
 	
 	/**
 	 * Send a query to the currently selected server and notify listeners of the result.
-	 * Watched expressions will also be updated.
 	 * @throws IllegalStateException If no valid server is currently selected
 	 */
 	public void sendQuery(final String query, final String queryTitle) {
@@ -198,7 +193,6 @@ import com.timestored.theme.Theme;
 	
 	/**
 	 * Send a query to the currently selected server and notify listeners of the result.
-	 * Watched expressions will also be updated.
 	 * @param query The actual kdb query that is sent.
 	 * @param queryTitle The query reported as being sent, useful for hiding long internal queries.
 	 * 	null makes this default to actual query.
@@ -234,6 +228,7 @@ import com.timestored.theme.Theme;
 		
 		
 		if(conn==null || !conn.isConnected()) {
+			long curMillis = System.currentTimeMillis();
 			try {
 				if(sc.isKDB()) {
 					conn = connectionManager.tryKdbConnection(serverName);
@@ -242,13 +237,14 @@ import com.timestored.theme.Theme;
 					if(pivotConfig != null) {
 						crs = PivotProvider.postProcess(jtype, crs, pivotConfig.getByColsSelected(), pivotConfig.getPivotColsSelected());
 					}
-					qr = QueryResult.successfulResult(sc, title, pivotConfig, null, crs, "");
+					long millisTaken = System.currentTimeMillis() - curMillis;
+					qr = QueryResult.successfulResult(sc, title, pivotConfig, null, crs, "", millisTaken);
 					sendQRtoListeners(sc, qr);
 					return;
 				}
 			} catch (Throwable e) {
 				Exception ee = e instanceof Exception ? ((Exception)e) : new IOException(e);
-				qr = QueryResult.exceptionResult(sc, title, pivotConfig, ee);
+				qr = QueryResult.exceptionResult(sc, title, pivotConfig, ee, System.currentTimeMillis() - curMillis);
 				sendQRtoListeners(sc, qr);
 				return;
 			}
@@ -256,6 +252,7 @@ import com.timestored.theme.Theme;
 
 		Object o = null;
 		// evaluate the query itself
+		long curMillis = System.currentTimeMillis();
 		try	{
 			String qry = queryWrapPrefix + sqlSent + queryWrapPostfix;
 			
@@ -316,15 +313,16 @@ import com.timestored.theme.Theme;
 			ResultSet rs = null;
 			try {
 				if(k != null) {
-					rs = new jdbc.rs(null, k);
+					rs = jdbc.getRS(k, queryTitle);
 				}
 			} catch(Exception e) {
 				LOG.log(Level.INFO, "No RS possible", e);
 			}
-			qr = QueryResult.successfulResult(sc, title, pivotConfig, k, rs, consoleView);
+			long millisTaken = System.currentTimeMillis() - curMillis;
+			qr = QueryResult.successfulResult(sc, title, pivotConfig, k, rs, consoleView, millisTaken);
 			
 		} catch (KException ex) {
-			qr = QueryResult.exceptionResult(sc, title, pivotConfig, ex);
+			qr = QueryResult.exceptionResult(sc, title, pivotConfig, ex, System.currentTimeMillis() - curMillis);
 		} catch (Exception ex) {
 			synchronized (this) {
 				if(cancelQuery) {
@@ -334,7 +332,7 @@ import com.timestored.theme.Theme;
 					// e.g. secure server could send text warning.
 					LOG.log(Level.SEVERE, "Server sent some unwrapped unknown result", ex);
 					String s = o!=null ? KdbHelper.asLine(o) : ex.getMessage();
-					qr = QueryResult.exceptionResult(sc, title, pivotConfig, new IOException(s));
+					qr = QueryResult.exceptionResult(sc, title, pivotConfig, new IOException(s), System.currentTimeMillis() - curMillis);
 				}
 			}
 		}
@@ -343,10 +341,6 @@ import com.timestored.theme.Theme;
 		sendQRtoListeners(sc, qr);
 		
 		try {
-			if(!cancelQuery) {
-				refreshWatched(conn);
-			}
-			
 			if(!connectionPersisted) {
 				conn.close();
 				conn = null;
@@ -423,73 +417,6 @@ import com.timestored.theme.Theme;
 		this.maxReturnedObjectSize = maxSize;
 	}
 	
-	/**
-	 * In a separate thread refresh the watched expressions and notify listeners
-	 */
-	public synchronized void refreshWatchedExpressions() {
-		sendQuery("::", "Refresh Watched Expressions");
-	}
-
-	private void refreshWatched(KdbConnection conn) {
-		for(WatchedExpression we : watchedExpressions) {
-			we.setLastResult(null);
-		}
-		
-		if(conn != null && conn.isConnected()) {
-			for(WatchedExpression we : watchedExpressions) {
-				if(conn.isConnected()) { // may be closed if cancelled
-					try {
-						we.setLastResult(conn.query(we.getExpression()));
-					} catch (KException ex) {
-						we.setLastResult(null);
-					} catch (IOException e) {
-						we.setLastResult(null);
-					}
-				}
-			}
-		}
-		
-		LOG.info("watchedExpressionsRefreshed");
-		for(QueryListener l : listeners) {
-			l.watchedExpressionsRefreshed();
-		}
-	}
-	
-	/**
-	 * Add an expression that will be evaluated each time a query is sent.
-	 */
-	public void addWatchedExpression(String expression) {
-		watchedExpressions.add(new WatchedExpression(expression));
-		if(!querying) {
-			refreshWatchedExpressions();
-		}
-		watchedExpressionsModified();
-	}
-	
-	private void watchedExpressionsModified() {
-		for(QueryListener l : listeners) {
-			l.watchedExpressionsModified();
-		}
-	}
-
-	/**
-	 * Set the server/expression for the watched expression at given index.
-	 * @param index the index of the watched expression you want to modify
-	 * @param expression query that will be performed.
-	 */
-	public void setWatchedExpression(int index, String expression) {
-		WatchedExpression we = watchedExpressions.get(index);
-		if(we == null) {
-			throw new IllegalArgumentException("WatchedExpression not found");
-		} else {
-			try {
-				we.setExpression(expression);
-			} finally {
-				// notify even if partical change and other invalid
-				watchedExpressionsModified();
-			}
-		}
-	}
 	
 	/**
 	 * Set the serverName that will decide where queries are sent to.
@@ -507,7 +434,11 @@ import com.timestored.theme.Theme;
 				this.selectedServerName = sc==null ? null : serverName;
 			}
 			for(QueryListener l : listeners) {
-				l.selectedServerChanged(serverName);
+				try {
+					l.selectedServerChanged(serverName);
+				} catch(Exception e) {
+					LOG.severe("Error notifying listener:" + l); // Don't break all listeners if one fails.
+				}
 			}
 		} else {
 			LOG.fine("Ignoring setSelectedServerName: " + serverName + "as already set");
@@ -517,23 +448,6 @@ import com.timestored.theme.Theme;
 	/**  @return The selected server name or null if none is selected.  */
 	public String getSelectedServerName() {
 		return selectedServerName;
-	}
-
-	/**
-	 * Remove an expression so that it will no longer be evaluated or known of.
-	 */
-	public void removeWatchedExpression(int index) {
-		watchedExpressions.remove(index);
-		watchedExpressionsModified();
-	}
-	
-	public List<WatchedExpression> getWatchedExpressions() {
-		return watchedExpressions;
-	}
-
-	public void clearWatchedExpressions() {
-		watchedExpressions.clear();
-		watchedExpressionsModified();
 	}
 
 	private void refreshServerList() {

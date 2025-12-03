@@ -37,6 +37,20 @@ public abstract class ShortcutAction extends AbstractAction {
 	        putValue(ACCELERATOR_KEY, k);
 		}
     }
+
+	public ShortcutAction(String text, Icon icon,
+                      String desc, Integer mnemonic, 
+                      KeyStroke k) {
+        super(text, icon!=null ? icon.get16() : null);
+        putValue(SHORT_DESCRIPTION, desc);
+        if(mnemonic != null) {
+            putValue(MNEMONIC_KEY, mnemonic);	
+        }
+		if(k != null) {
+	        putValue(ACCELERATOR_KEY, k);
+		}
+    }
     
+	
     @Override public abstract void actionPerformed(ActionEvent e);
 }

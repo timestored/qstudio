@@ -63,6 +63,7 @@ import com.timestored.misc.DirWatch;
 import com.timestored.misc.DirWatch.DirWatchListener;
 import com.timestored.misc.FifoBuffer;
 import com.timestored.misc.IOUtils;
+import com.timestored.sqldash.chart.JdbcChartPanel;
 import com.timestored.swingxx.JTreeHelper.IdentifiableNode;
 import com.timestored.theme.Theme;
 
@@ -77,6 +78,7 @@ public class FileTreePanel extends JPanel {
 	private static final Logger LOG = Logger.getLogger(FileTreePanel.class.getName());
 	private static final String DEFAULT_IGNORE_FOLDER_REGEX = "^\\..*|^target$";
 	public static final FileFilter IGNORE_SVN_FILTER =  DirWatch.generateFileFilter(Pattern.compile(DEFAULT_IGNORE_FOLDER_REGEX));
+	public static boolean TEST_MODE = true;  // Tests need forced instant render. End user UI not really.
 
 	
 	private static FileSystemView fsv = FileSystemView.getFileSystemView();
@@ -294,28 +296,30 @@ public class FileTreePanel extends JPanel {
 	 * Refresh the entire appearance of the folders/files.
 	 */
 	public void refreshGui() {
-		
 		//TODO separate freshing of folder struct and GUI display
 		// as network drive walking is VERY slow and could freeze GUI
 		
 		// check root still exists and is valid directory
-		if(root != null) {
-			if(!root.isDirectory() || !root.canRead()) {
-				root = null;
+		File r = root;
+		if(r != null) {
+			if(!r.isDirectory() || !r.canRead()) {
+				r = null;
 			}
 		}
-		
+		File[] files = r != null ? DirWatch.getFiles(fileFilter, root) : null;
+		JdbcChartPanel.runInUIthread(() -> refreshUI(files), TEST_MODE);
+	}
+
+	private void refreshUI(File[] files) {
 		LOG.info("FileTreePanel refreshGui");
 		if(tree != null) {
 			tree.removeMouseListener(treeMouseListener);
 		}
-		if(root == null) {
+		if(files == null) {
 			removeAll();
 			add(noRootsComponent, BorderLayout.CENTER);
 		} else {
-
-			File[] files = DirWatch.getFiles(fileFilter, root);
-			
+			files = DirWatch.getFiles(fileFilter, root);
 			fileCache.addAll(DirWatch.generateFileCache(files, fileFilter));
 			
 			if (files.length > 0){
@@ -394,18 +398,7 @@ public class FileTreePanel extends JPanel {
 				}	
 			}
 			
-			if (SwingUtilities.isEventDispatchThread()) {
-				refreshGui();
-			} else {
-				try {
-					EventQueue.invokeAndWait(new Runnable() {
-						@Override public void run() {
-							refreshGui();
-						}
-					});
-				} catch (InterruptedException e) { } 
-				catch (InvocationTargetException e) { }
-			}
+			refreshGui();
 		}
 	}
 

@@ -17,6 +17,7 @@
 package com.timestored.qstudio;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.EventQueue;
@@ -54,6 +55,7 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.TransferHandler;
+import javax.swing.UIManager;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -64,6 +66,7 @@ import jsyntaxpane.syntaxkits.JavaScriptSyntaxKit;
 import jsyntaxpane.syntaxkits.JavaSyntaxKit;
 import jsyntaxpane.syntaxkits.PlainSyntaxKit;
 import jsyntaxpane.syntaxkits.QSqlSyntaxKit;
+import jsyntaxpane.syntaxkits.RflSyntaxKit;
 import jsyntaxpane.syntaxkits.SqlSyntaxKit;
 import jsyntaxpane.syntaxkits.PrqlSyntaxKit;
 import jsyntaxpane.syntaxkits.DosSyntaxKit;
@@ -104,6 +107,8 @@ public class ServerDocumentPanel  extends JPanel implements GrabableContainer {
 	/** flag to prevent changes we make coming back from model and causing infinite loop */
 	private boolean iAmChangingSelection = false;
 	private Font editorFont = null;
+
+	private TabLayoutPolicy tabLayoutPolicy;
 
 
 	static {
@@ -195,21 +200,45 @@ public class ServerDocumentPanel  extends JPanel implements GrabableContainer {
 
 	@Setter private static Consumer<EditorConfig> editorConfigUpdater = ec -> {};
 	
+	
+	public void setTabLayoutPolicy(TabLayoutPolicy tabLayoutPolicy) {
+    		if(tabLayoutPolicy != null && !tabLayoutPolicy.equals(this.tabLayoutPolicy)) {
+    			this.tabLayoutPolicy = tabLayoutPolicy;
+        		tabbedPane.setTabLayoutPolicy(tabLayoutPolicy.isScroll() ? 
+        					JTabbedPane.SCROLL_TAB_LAYOUT : JTabbedPane.WRAP_TAB_LAYOUT);
+        		tabbedPane.setTabPlacement(tabLayoutPolicy.isVertical() ? JTabbedPane.LEFT : JTabbedPane.NORTH);
+        		UIManager.put("TabbedPane.tabRotation", tabLayoutPolicy.isVertical() ? "auto" : "none");	
+    		}
+    }
+	
 	/**
 	 * Apply settings to the jsyntaxpane editor, this must be called before any are constructed.
 	 * If called after, you must then call applyEditorConfig on any instances to refresh them.
 	 */
 	public static void setEditorConfig(EditorConfig editorConfig) {
-		// The below is required to keep the line number margin on the left hand side the correct color in dark themes.
-		editorConfig.apply(DefaultSyntaxKit.getConfig(DefaultSyntaxKit.class));
 		editorConfigUpdater.accept(editorConfig);
+		applyConfigToSyntaxKits(editorConfig);
+	}
+	
+	public static void applyConfigToSyntaxKits(EditorConfig editorConfig) {
+		editorConfig.apply(DefaultSyntaxKit.getConfig(DefaultSyntaxKit.class));
+		editorConfig.apply(DefaultSyntaxKit.getConfig(SqlSyntaxKit.class));
+		editorConfig.apply(DefaultSyntaxKit.getConfig(JavaScriptSyntaxKit.class));
+		editorConfig.apply(DefaultSyntaxKit.getConfig(BashSyntaxKit.class));
+		editorConfig.apply(DefaultSyntaxKit.getConfig(DOSBatchSyntaxKit.class));
+		editorConfig.apply(DefaultSyntaxKit.getConfig(PlainSyntaxKit.class));
+		editorConfig.apply(DefaultSyntaxKit.getConfig(QSqlSyntaxKit.class));
+		editorConfig.apply(DefaultSyntaxKit.getConfig(DosSyntaxKit.class));
+		editorConfig.apply(DefaultSyntaxKit.getConfig(RflSyntaxKit.class));
+		editorConfig.apply(DefaultSyntaxKit.getConfig(PrqlSyntaxKit.class));
+		
 		editorConfig.apply(DefaultSyntaxKit.getConfig(SqlSyntaxKit.class));
 		editorConfig.apply(DefaultSyntaxKit.getConfig(JavaScriptSyntaxKit.class));
 		editorConfig.apply(DefaultSyntaxKit.getConfig(BashSyntaxKit.class));
 		editorConfig.apply(DefaultSyntaxKit.getConfig(DOSBatchSyntaxKit.class));
 		editorConfig.apply(DefaultSyntaxKit.getConfig(PlainSyntaxKit.class));
 	}
-	
+
 	/**
      * A convenience print method that displays a print dialog, and then
      * prints this {@code JTextComponent} in <i>interactive</i> mode with 
@@ -323,7 +352,9 @@ public class ServerDocumentPanel  extends JPanel implements GrabableContainer {
 //	}
 
 	private JPanel getTabComponent(final Document doc) {
-		JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
+		
+		boolean horiz = this.tabLayoutPolicy == null || !this.tabLayoutPolicy.isVertical();
+		JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT,  horiz ? 2 : 0, horiz ? 0 : 2));
 		p.setName("tab-" + doc.getTitle());
 		
 		JLabel label = new JLabel(doc.getTitle(), doc.getIcon().get16(), SwingConstants.LEFT);
@@ -345,6 +376,7 @@ public class ServerDocumentPanel  extends JPanel implements GrabableContainer {
 				super.mouseReleased(e);
 			}
 		});
+		
 		label.setToolTipText(doc.getFilePath());
 //		label.setOpaque(false);
 		p.add(label);
@@ -357,22 +389,36 @@ public class ServerDocumentPanel  extends JPanel implements GrabableContainer {
 //		int b = 192 + (h/64*64)%64;
 //		p.setBackground(new Color(r, g, b));
 		
-		if(doc.equals(openDocModel.getSelectedDocument())) {
-			JButton closeButton = new JButton("x");
-			closeButton.setMaximumSize(new Dimension(16, 16));
-			closeButton.setPreferredSize(new Dimension(16, 16));
-			closeButton.setMargin(new java.awt.Insets(0, 0, 0, 0));
-			closeButton.setBorder(BorderFactory.createEmptyBorder());
-			closeButton.addActionListener(new ActionListener() {
-				
-				@Override
-				public void actionPerformed(ActionEvent arg0) {
-					documentActions.getCloseFileAction(doc).actionPerformed(null);
-				}
-			});
+		JButton closeButton = new JButton("x");
+		closeButton.setMaximumSize(new Dimension(16, 16));
+		closeButton.setPreferredSize(new Dimension(16, 16));
+		closeButton.setMargin(new java.awt.Insets(0, 0, 0, 0));
+		closeButton.setBorder(BorderFactory.createEmptyBorder());
+	    final Color originalBg = closeButton.getBackground();
 
-			p.add(closeButton);
-		}
+	    closeButton.addMouseListener(new MouseAdapter() {
+	        @Override
+	        public void mouseEntered(MouseEvent e) {
+	            closeButton.setBackground(Color.RED);
+	            // if you want the red to actually fill, you may need to turn content area filled on:
+	            closeButton.setContentAreaFilled(true);
+	        }
+	        @Override
+	        public void mouseExited(MouseEvent e) {
+	            closeButton.setBackground(originalBg);
+	            closeButton.setContentAreaFilled(false);
+	        }
+	    });
+	    
+		closeButton.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				documentActions.getCloseFileAction(doc).actionPerformed(null);
+			}
+		});
+
+		p.add(closeButton);
 		return p;
 	}
 	
@@ -406,7 +452,7 @@ public class ServerDocumentPanel  extends JPanel implements GrabableContainer {
 								try {
 									tabbedPane.setSelectedComponent(newDocEditor);
 								} catch(IllegalArgumentException e) {
-									// Horrible hack but this happens on every boot on win 10 and I can't see why 
+									// Workaround for occasional boot-time issue on Windows 10 
 									if(!ignoredOnce) {
 										ignoredOnce = true;
 										LOG.warning("Ignoring setSelectedComponent");
@@ -505,7 +551,6 @@ public class ServerDocumentPanel  extends JPanel implements GrabableContainer {
 
 			DefaultSyntaxKit.initKit(); // to make it jsysntaxpane
 			Configuration config = DefaultSyntaxKit.getConfig(DefaultSyntaxKit.class);
-			config.put("DefaultFont", "monospaced 12");
 
 	        // save positions now as setting text/type moves it 
 	        final int selectionStart = document.getSelectionStart();
@@ -523,7 +568,7 @@ public class ServerDocumentPanel  extends JPanel implements GrabableContainer {
 	        // need to re-set text after setting content type
 	        
 	        /*
-	         * hacky code to workaround intricacies of editor pane 
+	         * Workaround for editor pane content type handling
 	         */
 	        
 	        String txt = editorPane.getText();
@@ -536,7 +581,7 @@ public class ServerDocumentPanel  extends JPanel implements GrabableContainer {
 	        
 	        add(scrPane, BorderLayout.CENTER);
 	        
-	        // restore positions, hack into EventThread to make scrollpane scroll to position
+	        // restore positions, post to EventThread to make scrollpane scroll to position
 	        EventQueue.invokeLater(new Runnable() {
 				@Override public void run() {
 			        document.setSelection(selectionStart, selectionEnd, caretPosition);
@@ -562,7 +607,19 @@ public class ServerDocumentPanel  extends JPanel implements GrabableContainer {
 	        	case "java":
 	        	case "prql":
 	        	case "dos":
+	        	case "rfl":
+	        	case "jflex":
+	        	case "javascript":
+	        	case "ruby":
+	        	case "scala":
+	        	case "xpath":
 	        		newContentType = "text/" + end;
+		        	break;
+	        	case "cjc":
+	        		newContentType = "text/clojure";
+		        	break;
+	        	case "py":
+	        		newContentType = "text/python";
 		        	break;
 	        	default:
 	        		if(end.equals("bat")) {
@@ -581,10 +638,13 @@ public class ServerDocumentPanel  extends JPanel implements GrabableContainer {
 	        		}
 	        }
 	        if(!editorPane.getContentType().equals(newContentType)) {
-	        	// Odd but setting contentType gets rid of text. Need to save and restore.
-	        	String content = document.getContent();
-	        	editorPane.setContentType(newContentType);
-	        	editorPane.setText(content);
+				// Odd but setting contentType gets rid of text. Need to save and restore.
+				String content = document.getContent();
+				editorPane.setContentType(newContentType);
+				editorPane.setText(content);
+				if(editorFont != null) {
+					editorPane.setFont(editorFont);
+				}
 	        }
 		}
 		
@@ -631,7 +691,7 @@ public class ServerDocumentPanel  extends JPanel implements GrabableContainer {
 		 */
 		private void setActions(final Document document) {
 
-			// hack to make control-e shortcut work as jsyntaxpane key listener otherwise
+			// workaround to make control-e shortcut work as jsyntaxpane key listener otherwise
 			// consumes control-e and does not pass to actionMap etc.
 			editorPane.addKeyListener(new KeyAdapter() {
 				@Override public void keyPressed(KeyEvent e) { 
@@ -641,7 +701,7 @@ public class ServerDocumentPanel  extends JPanel implements GrabableContainer {
 					}
 				}
 			});
-			// hack to make control-e shortcut work as jsyntaxpane key listener otherwise
+			// workaround to make control-e shortcut work as jsyntaxpane key listener otherwise
 			// consumes control-e and does not pass to actionMap etc.
 			editorPane.addKeyListener(new KeyAdapter() {
 				@Override public void keyPressed(KeyEvent e) { 

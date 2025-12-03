@@ -16,7 +16,9 @@ import java.util.logging.Logger;
 
 import javax.swing.JOptionPane;
 import javax.swing.JTable;
+import javax.swing.ListSelectionModel;
 
+import org.jdesktop.swingx.JXTable;
 import org.jdesktop.swingx.renderer.StringValue;
 
 import ch.rabanti.nanoxlsx4j.Workbook;
@@ -178,7 +180,7 @@ public class TableExporter {
 		workbook.save();
 	}
 
-	public static void saveTable(JTable table, StringValue stringValue, boolean selectedAreaOnly, boolean includeHeaders, 
+	public static void saveTable(JXTable table, StringValue stringValue, boolean selectedAreaOnly, boolean includeHeaders, 
 						String separator, File f) throws java.io.IOException {
     		LOG.info("writing out to: " + f);
     		FileWriter out = new FileWriter(f);
@@ -186,24 +188,34 @@ public class TableExporter {
     		out.close();
 	}
 	
+
+	private static int[] range(int floor, int ceiling) {
+		int[] nums = new int[ceiling-floor];
+		for(int i=floor; i<ceiling; i++) {
+			nums[i]=i;
+		}
+		return nums;
+	}
+	
 	/**
 	 * Convert a table to values separated by separator and new lines.
 	 * @param selectedAreaOnly whether to convert the whole table or only user selected area.
 	 * @param separator The string to place between columns in the output.
 	 */
-	public static String getTable(JTable table, StringValue stringValue, boolean selectedAreaOnly, boolean includeHeaders, final String separator) {
+	public static String getTable(JXTable table, StringValue stringValue, boolean selectedAreaOnly, boolean includeHeaders, final String separator) {
 		
 		int c = 0;
-		int r = 0;
 		int cEnd = table.getColumnCount();
-		int rEnd = table.getRowCount();
+		int rows[] = range(0, table.getRowCount());
 		
 		// narrow down columns / rows if selected area only
 		if(selectedAreaOnly) {
-			c = table.getSelectedColumn();
-			cEnd = c + table.getSelectedColumnCount();
-			r = table.getSelectedRow();
-			rEnd = r + table.getSelectedRowCount();
+			// user can choose single interval - with varying columns
+			if(table.getSelectionMode() == ListSelectionModel.SINGLE_INTERVAL_SELECTION) {
+				c = table.getSelectedColumn();
+				cEnd = c + table.getSelectedColumnCount();
+			}
+			rows = table.getSelectedRows();
 			if(c==-1) {
 				return ""; // no area selected
 			}
@@ -223,7 +235,7 @@ public class TableExporter {
 		}
 		
 		// loop through rows/cols building up output string.
-		for (int ri=r; ri < rEnd; ri++) {
+		for (int ri : rows) {
 			for (int ci = c; ci < cEnd; ci++) {
 				// have to account for column/row order bein changed by user
 				int modelCi = table.convertColumnIndexToModel(ci);
@@ -234,7 +246,7 @@ public class TableExporter {
 					s = stringValue==null ? o.toString() : stringValue.getString(o);
 					// If it's a single item. Return just it with proper new lines and all. 
 					// Consider people copy-pasting JSON strings within one cell.
-					if(c+1==cEnd && r+1==rEnd && selectedAreaOnly && !includeHeaders) {
+					if(c+1==cEnd && rows.length==1 && selectedAreaOnly && !includeHeaders) {
 						return unescape(s);
 					}
 					if(s.contains(",")) {
@@ -251,7 +263,7 @@ public class TableExporter {
 					sb.append(separator);
 				}
 			}
-			if(!(ri==rEnd-1)) {
+			if(!(ri==rows[rows.length-1])) {
 				sb.append(NL);	// new line except after last row
 			}
 		}

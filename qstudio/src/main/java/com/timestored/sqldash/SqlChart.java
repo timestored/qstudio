@@ -122,7 +122,7 @@ public class SqlChart {
 			    try {
 					Files.createParentDirs(file);
 					ChartUtils.save(chartParams.viewStrategy, rs, file, 
-							chartParams.width, chartParams.height, false, chartParams.chartTheme);
+							chartParams.width, chartParams.height, chartParams.chartTheme);
 				    System.out.println(file.getAbsolutePath());
 				} catch (ChartFormatException e) {
 					String msg = "Error: " + e.getMessage() + "\r\n\r\nFormat Expected:\r\n";

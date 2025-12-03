@@ -19,7 +19,6 @@ package com.timestored.qstudio;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.Font;
@@ -28,27 +27,20 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.sql.SQLException;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.JButton;
-import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
-import javax.swing.event.HyperlinkEvent;
-import javax.swing.event.HyperlinkEvent.EventType;
-import javax.swing.event.HyperlinkListener;
 
 import com.google.common.base.Preconditions;
 import com.timestored.StringUtils;
-import com.timestored.TimeStored;
-import com.timestored.babeldb.DBHelper;
 import com.timestored.connections.JdbcTypes;
 import com.timestored.connections.ServerConfig;
 import com.timestored.kdb.KError;
@@ -56,7 +48,6 @@ import com.timestored.misc.AIFacade;
 import com.timestored.misc.AIFacade.AIresult;
 import com.timestored.misc.HtmlUtils;
 import com.timestored.qstudio.kdb.KdbHelper;
-import com.timestored.qstudio.kdb.KdbTableFactory;
 import com.timestored.qstudio.model.AdminModel;
 import com.timestored.qstudio.model.AdminModel.Category;
 import com.timestored.qstudio.model.QEntity;
@@ -65,6 +56,7 @@ import com.timestored.qstudio.model.QueryManager;
 import com.timestored.qstudio.model.QueryResult;
 import com.timestored.qstudio.model.ServerModel;
 import com.timestored.qstudio.servertree.SelectedServerObjectPanel;
+import com.timestored.sqldash.chart.TableFactory;
 import com.timestored.theme.Theme;
 
 import kx.c.KException;
@@ -84,12 +76,14 @@ class KDBResultPanel extends JPanel implements GrabableContainer {
 	private int maxRowsShown = Integer.MAX_VALUE;
 
 	private boolean pivotFormVisible = false;
+	private boolean negativeShownRed = true;
 
 	KDBResultPanel(AdminModel adminModel, QueryManager queryManager) {
 
 		setLayout(new BorderLayout());
 		// add as listener last to make sure constructed
 		selectedServerObjectPanel = new SelectedServerObjectPanel(adminModel, queryManager);
+		selectedServerObjectPanel.setNegativeShownRed(this.negativeShownRed);
 		this.queryManager = queryManager;
 		
 		// When queries are sent/received display results
@@ -120,7 +114,6 @@ class KDBResultPanel extends JPanel implements GrabableContainer {
 		});
 		
 		BackgroundExecutor.EXECUTOR.execute(() -> {
-			TimeStored.fetchOnlineNews(false);
 			JPanel p = new JPanel(new BorderLayout());
 	        String licTxt = "Version: <b>" + QStudioFrame.VERSION + "</b>";
 			p.add(Theme.getHtmlText(licTxt), BorderLayout.NORTH);
@@ -132,25 +125,38 @@ class KDBResultPanel extends JPanel implements GrabableContainer {
 		});
 	}
 
-	private void regenerateDisplay(QueryResult qr) {
+
+	public static Component getDisplay(QueryResult qr, int maxRowsShown, QueryManager queryManager, 
+			boolean pivotFormVisible, boolean negativeShownRed) {
 		boolean isNonNullKdbResult = qr.k != null || (qr.getConsoleView().length()>0 && !qr.getConsoleView().equals("::"));
 		if(isNonNullKdbResult || qr.rs != null) {
-			clearAndSetContent(getComponent(qr, maxRowsShown, queryManager, pivotFormVisible));
+			return getComponent(qr, maxRowsShown, queryManager, pivotFormVisible, negativeShownRed);
 		} else {
 			if(qr.getConsoleView().length()>0) {
 				String txt = qr.getConsoleView();
-				clearAndSetContent(new JScrollPane(Theme.getTextArea("consoleView", txt)));
+				return new JScrollPane(Theme.getTextArea("consoleView", txt));
 			}
 		}
+		return new JScrollPane(new JLabel("No Result"));
 	}
 	
+	private void regenerateDisplay(QueryResult qr) {
+		clearAndSetContent(getDisplay(qr, maxRowsShown, queryManager, pivotFormVisible, negativeShownRed));
+	}
+
+
+	public void setNegativeShownRed(boolean negativeShownRed) {
+		this.negativeShownRed = negativeShownRed;
+		selectedServerObjectPanel.setNegativeShownRed(this.negativeShownRed);
+	}
 
 	
 	
 	/**
 	 * get the result of a KDB query viewed as a component.
 	 */
-	static Component getComponent(QueryResult qr, int maxRowsShown, QueryManager queryManager, boolean pivotFormVisible) {
+	static Component getComponent(QueryResult qr, int maxRowsShown, QueryManager queryManager, 
+			boolean pivotFormVisible, boolean negativeShownRed) {
 		Component p = new JLabel("Result returned for query: " + qr.query);
 		JdbcTypes jdbcType = qr.getServerConfig() != null ? qr.getServerConfig().getJdbcType() : JdbcTypes.KDB;
 		
@@ -192,10 +198,7 @@ class KDBResultPanel extends JPanel implements GrabableContainer {
 					b.add(KdbHelper.getComponent(qr.k, maxRowsShown));
 				} else {
 					try {
-						if(DBHelper.getSize(qr.rs) > maxRowsShown) {
-							b.add(new JLabel("<html><b>Warning: some rows not shown as over max display limit: " + maxRowsShown + "</b></html>"));
-						}
-						b.add(KdbTableFactory.getTable(qr.rs, maxRowsShown));
+						b.add(TableFactory.getTable(qr.rs, maxRowsShown, negativeShownRed));
 					} catch (SQLException e) {
 						p = Theme.getErrorBox("Error rendering Table Result Set");
 					}
@@ -283,7 +286,7 @@ class KDBResultPanel extends JPanel implements GrabableContainer {
 	@Override public GrabItem grab() {
 		if(lastQueryResult != null) {
 			String title = StringUtils.abbreviate(lastQueryResult.query, 50) + " - Result";
-			return new GrabItem(getComponent(lastQueryResult, maxRowsShown, queryManager, false), title);	
+			return new GrabItem(getComponent(lastQueryResult, maxRowsShown, queryManager, false, negativeShownRed), title);	
 		}
 		return null;
 	}

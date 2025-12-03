@@ -16,14 +16,18 @@
  */
 package com.timestored.qstudio;
 
-import java.awt.Color;
 import java.awt.EventQueue;
+import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.net.URL;
 import java.util.Arrays;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.logging.Logger;
 
+import javax.imageio.ImageIO;
 import javax.swing.SwingUtilities;
 
 import com.timestored.TimeStored;
@@ -32,8 +36,10 @@ import com.timestored.docs.OpenDocumentsModel;
 import com.timestored.misc.AppLaunchHelper;
 import com.timestored.misc.ErrorReporter;
 import com.timestored.plugins.PluginLoader;
+import com.timestored.sqldash.chart.JdbcChartPanel;
 import com.timestored.swingxx.ApplicationInstanceListener;
 import com.timestored.swingxx.ApplicationInstanceManager;
+import com.timestored.swingxx.FileTreePanel;
 import com.timestored.swingxx.SwingUtils;
 
 /**
@@ -41,8 +47,6 @@ import com.timestored.swingxx.SwingUtils;
  */
 public class QStudioLauncher  {
 
-	private static final Color BLUE_LOGO_BG = new Color(0, 124, 195);
-	
 	private static QStudioFrame appFrame;
 	private static final Logger LOG = Logger.getLogger(QStudioLauncher.class.getName());
 
@@ -53,6 +57,13 @@ public class QStudioLauncher  {
 	public static final ErrorReporter ERR_REPORTER = new ErrorReporter(ERR_URL, 
 			TimeStored.TECH_EMAIL_ADDRESS, "qStudio Bug Report " + QStudioFrame.VERSION, MINS_BETWEEN);
 
+	/**
+	 * Get the main application frame. Used primarily for testing.
+	 * @return the main application frame or null if not yet initialized
+	 */
+	public static QStudioFrame getAppFrame() {
+		return appFrame;
+	}
 	
 	public static void main(final String... args) throws InterruptedException, InvocationTargetException {
         
@@ -70,17 +81,31 @@ public class QStudioLauncher  {
 			}
 		}
 		
+		int uiScale = MyPreferences.INSTANCE.getUIScale();
+		if(uiScale > 0) {
+			// On multi-monitors with scaling, this fixed caret position bug
+			System.setProperty( "sun.java2d.uiScale", "1.0");
+			System.setProperty( "flatlaf.uiScale", ""+ (uiScale/100.0));
+		}
+
+		// Some JDBC drivers e.g. H2/kx rely on default timezone to modify incoming datetime data. UTC is probably correct.
+		TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+		System.setProperty("user.timezone", "UTC");
+		
+		String title = QStudioModel.APP_TITLE;
+		URL imageUrl = QStudioLauncher.class.getResource("qstudio-dock.png");
+		BufferedImage image = null;
+		if(imageUrl != null) {
+			try { image = ImageIO.read(imageUrl); } catch (IOException e) { }
+		}
+		AppLaunchHelper.setMacAndWindowsAppearance(title, image);
 		// if appframe already send it args to process
 		ApplicationInstanceManager.setApplicationInstanceListener(new ApplicationInstanceListener() {
 			@Override public void newInstanceCreated(List<String> args) {
 				System.out.println("New instance detected...");
 				if(args.size()>0 && appFrame!= null) {
 					appFrame.handleArgs(args);
-					EventQueue.invokeLater(new Runnable() {
-						@Override public void run() {
-							SwingUtils.forceToFront(appFrame);
-						}
-					});
+					EventQueue.invokeLater(() -> SwingUtils.forceToFront(appFrame));
 				}
 			}
 		});
@@ -96,12 +121,9 @@ public class QStudioLauncher  {
         		launch(args);
             }
 
-
-
 			private void launch(final String... args) {
 		        
 				OpenDocumentsModel openDocumentsModel = OpenDocumentsModel.newInstance();
-				String title = QStudioModel.APP_TITLE;
                 Persistance persistance = Persistance.INSTANCE;
                 
                 // persist first ever run date for license purposes
@@ -112,7 +134,6 @@ public class QStudioLauncher  {
                 	persistance.putLong(Persistance.Key.FERDB, firstEverRun);
                 }
 
-				AppLaunchHelper.setMacAndWindowsAppearance(title);
 				AppLaunchHelper.setTheme(MyPreferences.INSTANCE.getCodeTheme());
 				AppLaunchHelper.logToUsersFolder(QStudioModel.LEGACY_FOLDER_NAME);
 				LOG.info("Starting QStudioLauncher  launch() ###################################");
@@ -135,6 +156,8 @@ public class QStudioLauncher  {
 //					dialog = SwingUtils.showSplashDialog(r, BLUE_LOGO_BG, "        Version: " + QStudioFrame.VERSION);
 //				}
 
+				JdbcChartPanel.TEST_MODE = false;
+				FileTreePanel.TEST_MODE = false;
         		ConnectionManager conMan = ConnectionManager.newInstance();
         		
         		// only set a default if one was truly set.
@@ -156,6 +179,16 @@ public class QStudioLauncher  {
         		}
         		
             	appFrame = new QStudioFrame(qStudioModel);
+        		if(System.getProperty("os.name").toLowerCase().indexOf("mac") >= 0) {
+        			FlatDesktop.setAboutHandler( () -> {
+        			    QStudioFrame.showAboutDialog(appFrame);
+        			} );
+        			FlatDesktop.setPreferencesHandler( () -> {
+        				new PreferencesDialog(MyPreferences.INSTANCE, appFrame);
+        			} );
+        			FlatDesktop.setQuitHandler( response -> { response.performQuit(); } );
+        		}
+        		
             	appFrame.setVisible(true);
 
 //            	// if we showed our own dialog, hide it now

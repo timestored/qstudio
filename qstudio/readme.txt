@@ -1,15 +1,40 @@
-www.timestored.com/qStudio - The analytical SQL Client.
+www.timestored.com/qStudio - an IDE for analytical SQL.
 
 We hope to make this the best IDE for analytical databases there can be 
 so if you find a bug or feel there's a feature you would like added
-please raise a github issue.
+please get in touch: tech@timestored.com
 
 - Ryan Hamilton
 ___________________________________________________________________
 
 Changelog:
 
-2025-05-12 - 4.09   - Improve Autocomplete suggestions
+2025-12-03 - 4.40   - Add chart themes. Excel / tableau / powerbi.
+					- Add comprehensive chart configuration ability.
+					- Remove Dot graph mode.
+					- Improved kdb+/q keyword support and highlighting.
+					- Add code editor themes.
+
+2025-11-30 - 4.31   - Add back/froward navigation like web browser.
+					- Add Tabbed interface to Query History panel and allow pinning.
+					- Improve console output - tabtastic.
+					- Add SD - SmartDisplay to tables.
+					- Add Conditional Formatting to allow highlighting one column.
+
+2025-11-22 - 4.15   - Control+Shift+F search all open files.
+					- Add highlighting support for python, closure, jflex, rfl, javascript, scala, xpath.
+					- Improve chinese language translation.
+
+2025-11-13 - 4.14   - Upgrade DuckDB to 1.4.2.0.
+					- kdb - Show curried functions as nested list to allow diving into embedded data.
+
+2025-08-08 - 4.12   - Show negative numbers in red. TRUE/FALSE for booleans. User configurable.
+					- QDoc 2.0 with modern mkdocs theme.
+
+2025-05-12 - 4.11   - Upgrade ClickHouse driver to 0.8.6.
+					- Upgrade DuckDB to 1.3.0.0.
+
+2025-05-12 - 4.09   - Improve Autocomplete suggestions.
 					- Add namespace listing panel.
 					- Improve QDoc to add file level details.
 
@@ -22,20 +47,20 @@ Changelog:
 					- Bugfix: Switch back to MonoSpaced font. Variable width fonts cause wrong caret position.
 					- Improved high resolution QStudio icon.
 					- Mac: Bugfix: Prefences dialog fixed and allows choosing font.
-					- Mac: Fixed Menu shoing about/preferences/exit.
+					- Mac: Fixed Menu showing about/preferences/exit.
 					- Mac: Allow Command+Option+E to run current query.
 					- 4K handling improved sizing of dialogs.
 					- Bugfix: Improved duckdb init when folder is empty.
 
-2024-03-13 - 4.06   - Add ability to transpose rows.
-					  DuckDB 1.2.1. Improve display of DuckDB arrays.
-					  Add comma separator for thousands option.
+2025-03-13 - 4.06   - Add ability to transpose rows.
+					- DuckDB 1.2.1. Improve display of DuckDB arrays.
+					- Add comma separator for thousands option.
 
-2024-02-23 - 4.05   - Upgrade kdb+ c/jdbc.java to allow SSL TLS. 		
+2025-02-23 - 4.05   - Upgrade kdb+ c/jdbc.java to allow SSL TLS. 		
 					- Add preference to allow hiding all tooltips.	
 					- Double-click on kdb+ table with dictionary/table/list nested in cell will pop it out. 	
 					
-2024-01-23 - 4.04   - Show column info (avg/min/max) when column header is hovered.
+2025-01-23 - 4.04   - Show column info (avg/min/max) when column header is hovered.
 					- Remove watched expressions entirely.
 					- Improved UI threading for tree/chart display.
 					

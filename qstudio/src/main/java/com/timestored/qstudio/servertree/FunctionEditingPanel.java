@@ -38,6 +38,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JToolBar;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.UIManager;
 
 import jsyntaxpane.DefaultSyntaxKit;
 import kx.c.KException;
@@ -90,7 +91,7 @@ class FunctionEditingPanel extends JPanel {
         scrPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         codeEditor.setContentType("text/qsql");
 		codeEditor.setText("");
-		codeEditor.setFont(Theme.getCodeFont());
+		codeEditor.setFont(UIManager.getFont("defaultFont"));
 		codeEditor.addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyReleased(KeyEvent e) {
@@ -153,10 +154,6 @@ class FunctionEditingPanel extends JPanel {
 			} else {
 				codeEditor.setText("Could not get connection");
 			}
-		} catch (KException ke) {
-			e = ke;
-		} catch (IOException ioe) {
-			e = ioe;
 		} catch (Exception ex) {
 			e = ex;
 		}		

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" type="image/png" href="http://www.timestored.com/favicon.png" />
+    <title>Foobar - QDocs</title>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" />
+    <link rel="stylesheet" href="qdoc2.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/q.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/shell.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head> 
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+        <a href="../.."  class="icon icon-home"> QDocs</a><div role="search">
+  <!-- form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form -->
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Namespaces</span></p>
+              
+              <!--NAMESPACE_START-->
+              <ul>    <li class="toctree-l1"><a class="reference internal" href="../../namespaces/foo/">Foo</a></li>  </ul>
+              <!--NAMESPACE_END-->
+              
+              <p class="caption"><span class="caption-text">Files</span></p>
+              <!--FILES_START-->
+              <ul class="current"> <li class="toctree-l1 current"><a class="reference internal current" href="#">Foobar</a></li> </ul>
+              <!--FILES_END-->
+              
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">QDocs</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <!-- li class="breadcrumb-item">Files-Breadcrumb</li -->
+      <li class="breadcrumb-item active">Foobar</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="foobar">Foobar</h1>
+    
+
+    <!--MAIN_START-->
+
+
+
+
+    <div id="headerDoc">logging to disk/table/console a logger based on java's, including handlers,filters,formatters. But note there is only one gloal logger. handlers - are notified when a logging event occurs formatters - convert a logrecord into a string filters - restrict what messages are actually logged . example: .logger.info["myClass";"err txt message"]</div>
+    <div id="summary"><h2>Entity Summary</h2><table class="overviewSummary"><tbody><tr><th>Entities</th><th>Short Description</th></tr>
+        <tr><td><a href="#-logger-loq">.logger.loq</a></td><td>log an actual message, notice its spelt with a Q, loQ, apply</td></tr>
+        <tr><td>.logger.frmt</td><td>change any arg passed in, into a string</td></tr>
+</tbody></table></div>
+    <div class="details">
+    <h2>Entity Details</h2>
+        <div class="entity" id="-logger-loq"><h2>.logger.loq</h2><p>log an actual message, notice its spelt with a Q, loQ, apply all handlers to this latest log entry</p><table><tbody><tr><th>Parameters: </th><td><ul><li><strong>message</strong> - - the message to log</li><li><strong>level</strong> - - a logger.levels symbol, in order (higher priority first) `SEVERE`WARNING`INFO`CONFIG`FINE`FINER`FINEST</li><li><strong>class</strong> - - a string describing the class/namespace the logging is occuring in</li></ul></td></tr></tbody></table></div></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+<p>Chase the Foo.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td>:material-check:     Fetch resource</td>
+</tr>
+<tr>
+<td><code>PUT</code></td>
+<td>:material-check-all: Update resource</td>
+</tr>
+<tr>
+<td><code>DELETE</code></td>
+<td>:material-close:     Delete resource</td>
+</tr>
+</tbody>
+</table>              
+              
+              
+<pre><code>mkdocs.yml    # The configuration file.
+docs/
+    index.md  # The documentation homepage.
+    ...       # Other markdown pages, images and other files.
+</code></pre>
+<pre><code class="language-q">/ Welcome to QStudio,
+/ 
+/ Below you will find example queries to generate each chart type:
+/ 
+/ Multiple Series
+([] Continent:`NorthAmerica`Asia`Asia`Europe`Europe`Africa`Asia`Africa`Asia;
+     Country:`US`China`japan`Germany`UK`Zimbabwe`Bangladesh`Nigeria`Vietnam; 
+     Population:313847.0 1343239.0 127938.0 81308.0 63047.0 13010.0 152518.0 166629.0 87840.0 ;
+     GDP:15080.0 11300.0 4444.0 3114.0 2228.0 9.9 113.0 196.0 104.0 ; 
+    GDPperCapita:48300.0 8400.0 34700.0 38100.0 36500.0 413.0 1788.0 732.0 3359.0 ;  
+    LifeExpectancy:77.14 72.22 80.93 78.42 78.16 39.01 61.33 51.01 70.05 )
+
+
+
+</code></pre>
+              
+<!--MAIN_END-->
+
+              
+            </div>
+            
+
+s
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <!-- a href="../foo/" class="btn btn-neutral float-left" title="Foo"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../namespaces/bar/" class="btn btn-neutral float-right" title="Bar">Next <span class="icon icon-circle-arrow-right"></span></a -->
+    </div>
+
+  <hr/>
+
+
+
+  <div role="contentinfo">
+    <!-- Copyright -->
+  </div>
+
+  Built with <a href="https://www.timestored.com/qstudio/help/qdoc">QDoc</a> provided by <a href="https://www.timestored.com/">TimeStored</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+      <!-- span><a href="../foo/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../../namespaces/bar/" style="color: #fcfcfc">Next &raquo;</a></span -->
+    
+  </span>
+</div>
+    <script src="https://www.timestored.com/qstudio/addon/qdoc/2025-08-07/js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="https://www.timestored.com/qstudio/addon/qdoc/2025-08-07/js/theme_extra.js"></script>
+    <script src="https://www.timestored.com/qstudio/addon/qdoc/2025-08-07/js/theme.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

@@ -3,8 +3,16 @@ package com.timestored.sqldash.chart;
 import java.sql.Timestamp;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 import org.jdesktop.swingx.renderer.StringValue;
+
+import kx.jdbc.KdbJdbcType;
 
 
 /**
@@ -23,10 +31,16 @@ public class TimeStringValuer implements StringValue {
 	private static final String SPACER = " ";
 	private static final String DEFAULT_EMPTY_ARRAY = "()";
 	private static final String DEFAULT_POSTFIX = "";
-
+	
+	private final SimpleDateFormat nanosTimeOnlyFormat = new SimpleDateFormat("HH:mm:ss.SSSSSSSSS");
 	private final SimpleDateFormat millisTimeOnlyFormat = new SimpleDateFormat("HH:mm:ss.SSS");
+	private final DateTimeFormatter millisTimeOnlyFormatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS").withZone(ZoneId.of("UTC"));
+	// TODO increase dtformatter to nanos?
+	private final DateTimeFormatter dtformatter = DateTimeFormatter.ofPattern("yyyy.MM.dd'T'HH:mm:ss.SSSSSS").withZone(ZoneId.of("UTC"));
+	private final DateTimeFormatter dateOnlyFormatter;
 	private final SimpleDateFormat dateOnlyFormat;
 	private final SimpleDateFormat dtWithMillisFormat;
+	private final DateTimeFormatter dtWithMillisFormatter;
 	private final DecimalFormat nanosEndFormat = new DecimalFormat("000");
 
 	private final StringValue overidingStringFormatter;
@@ -39,9 +53,13 @@ public class TimeStringValuer implements StringValue {
 		this.overidingStringFormatter = overidingStringFormatter;
 		if(overidingDateFormat != null) {
 			dateOnlyFormat = new SimpleDateFormat(overidingDateFormat);
+			dateOnlyFormatter =  DateTimeFormatter.ofPattern(overidingDateFormat).withZone(ZoneId.of("UTC")); 
+			dtWithMillisFormatter =  DateTimeFormatter.ofPattern(overidingDateFormat + "'T'HH:mm:ss.SSS").withZone(ZoneId.of("UTC")); 
 			dtWithMillisFormat = new SimpleDateFormat(overidingDateFormat + "'T'HH:mm:ss.SSS");
 		} else {
 			dateOnlyFormat = new SimpleDateFormat("yyyy-MM-dd");
+			dateOnlyFormatter =  DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneId.of("UTC"));
+			dtWithMillisFormatter =  DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS").withZone(ZoneId.of("UTC")); 
 			dtWithMillisFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
 		}
 	}
@@ -172,9 +190,19 @@ public class TimeStringValuer implements StringValue {
 			s = overidingStringFormatter.getString(o);
 		}
 		if(s == null) {
-			if(o instanceof java.sql.Timestamp) {
+			if(o instanceof KdbJdbcType) {
+				s = o.toString();
+			} else if(o instanceof java.sql.Timestamp) {
 				Timestamp ts = (Timestamp) o;
 				s =  dtWithMillisFormat.format(ts) + nanosEndFormat.format((ts.getNanos()%1000000)/1000);
+			} else if(o instanceof Instant) {
+				s = dtformatter.format((Instant) o);
+			} else if(o instanceof LocalDate) {
+				s = dateOnlyFormatter.format((LocalDate) o);
+			} else if(o instanceof LocalTime) {
+				s = millisTimeOnlyFormatter.format((LocalTime) o);
+			} else if(o instanceof LocalDateTime) {
+				s = dtWithMillisFormatter.format((LocalDateTime) o);
 			} else if(o instanceof java.sql.Time) {
 				s = millisTimeOnlyFormat.format((java.sql.Time)o);
 			} else if(o instanceof java.sql.Date) {

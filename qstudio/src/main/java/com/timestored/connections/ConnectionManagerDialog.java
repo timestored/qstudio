@@ -50,6 +50,8 @@ import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListCellRenderer;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
@@ -64,8 +66,11 @@ import javax.swing.border.EtchedBorder;
 import javax.swing.border.TitledBorder;
 
 import com.google.common.base.Preconditions;
+import com.timestored.TimeStored;
 import com.timestored.TimeStored.Page;
 import com.timestored.connections.Msg.Key;
+import com.timestored.misc.HtmlUtils;
+import com.timestored.misc.InfoLink;
 import com.timestored.misc.TextWrapper;
 import com.timestored.plugins.PluginLoader;
 import com.timestored.swingxx.ColorChooserPanel;
@@ -81,13 +86,11 @@ import lombok.RequiredArgsConstructor;
  */
 public class ConnectionManagerDialog extends JDialog implements ActionListener {
 	
-	private static final int DIALOG_HEIGHT = 700;
-	private static final int DIALOG_WIDTH = 800;
 	private static final Logger LOG = Logger.getLogger(ConnectionManagerDialog.class.getName());
 	
 	private static final long serialVersionUID = 1L;
-	private static final InputLabeller INPUT_LABELLER = Theme.getInputLabeller(80, 20);
-	private static final int DEF_COLUMNS = 40;
+	private static final InputLabeller INPUT_LABELLER = Theme.getInputLabeller(120, 20);
+	private static final int DEF_COLUMNS = 50;
 	
 	private final ConnectionManager conMan;
 
@@ -97,6 +100,10 @@ public class ConnectionManagerDialog extends JDialog implements ActionListener {
 	private final JTextField usernameTextField;
 	private final JTextField nameTextField;
 	private final JComboBox serverTypeComboBox;
+	private final JCheckBox useTLSCheckbox;
+	private final Box useTLSBox;
+	private final JCheckBox useAsyncCheckbox;
+	private final Box useAsyncBox;
 	private final List<JdbcTypes> jdbcTypesShown;
 	private final List<String> niceDBnames;
 	private final ColorChooserPanel colorChooserPanel;
@@ -139,7 +146,7 @@ public class ConnectionManagerDialog extends JDialog implements ActionListener {
 		});
 		niceDBnames.add("--------------------");
 		allDBs.stream().forEach(j -> {  
-			if(!j.isAvailable()) { 
+			if(!j.isAvailable() && !j.equals(JdbcTypes.YANDEX_CLICKHOUSE)) { 
 				niceDBnames.add(j.getNiceName());
 				jdbcNameToIcon.put(j.getNiceName(), JdbcIcons.getIconFor(j));
 			}    
@@ -162,12 +169,11 @@ public class ConnectionManagerDialog extends JDialog implements ActionListener {
 		
 		// set general appearance
 		setResizable(false);
-		setSize(DIALOG_WIDTH, DIALOG_HEIGHT);
+		SwingUtils.setSensibleDimensions(parent, this);
 		setLocationRelativeTo(parent);
 		setLayout(new BorderLayout());
 		setModalityType(ModalityType.APPLICATION_MODAL);
-		JPanel cp = new JPanel();
-		cp.setLayout(new BoxLayout(cp, BoxLayout.PAGE_AXIS));
+		Box cp = Box.createVerticalBox();
 		SwingUtils.addEscapeCloseListener(this);
 		
 		
@@ -219,6 +225,21 @@ public class ConnectionManagerDialog extends JDialog implements ActionListener {
 		String nameLbl = "<html><b>Name:</b></html>";
 		connPanel.add(INPUT_LABELLER.get(nameLbl, nameTextField, "serverNameField"));
 		nameTextField.addActionListener(this); // save if enter pressed
+
+		useTLSCheckbox = new JCheckBox();
+		String tlsTooltipText = "<html>Since V3.4t 2016.05.12, kdb+ can use Secure Sockets Layer (SSL)/Transport Layer Security (TLS)"
+				+ "<br> to encrypt connections using the OpenSSL libraries.</html>";
+		JLabel tlsButton = InfoLink.getLabel("", "See SSL/TLS Docs", TimeStored.Page.QSTUDIO_HELP_SSL, true);
+		useTLSBox = Theme.getFormRow(useTLSCheckbox, "Use kdb+ TLS", tlsTooltipText, tlsButton);
+		connPanel.add(useTLSBox);
+		
+		
+		useAsyncCheckbox = new JCheckBox();		
+		JLabel asyncWarningLabel = new JLabel(Theme.CIcon.WARNING.get16());
+		String asyncTooltipText = "<html>Send messages asynchronously then force sync.<br>This setting is experimental, please report any issues.</html>";
+		asyncWarningLabel.setToolTipText(asyncTooltipText);
+		useAsyncBox = Theme.getFormRow(useAsyncCheckbox, "Use kdb+ Async", asyncTooltipText, asyncWarningLabel);
+//		connPanel.add(useAsyncBox);
 		
 		databasePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
 		serverTypeComboBox.addActionListener(new ActionListener() {
@@ -229,6 +250,9 @@ public class ConnectionManagerDialog extends JDialog implements ActionListener {
 				urlButton.setSelected(isEmbed);
 				hostButton.setSelected(!isEmbed);
 				enableHostPort(!isEmbed);
+				
+				useTLSBox.setVisible(t.isKDB());
+				useAsyncBox.setVisible(t.isKDB());
 				
 				databasePanel.setVisible(t.isDatabaseRequired());
 				portTextField.setText(""+t.getDefaultPort());
@@ -273,6 +297,7 @@ public class ConnectionManagerDialog extends JDialog implements ActionListener {
 		nameColorPanel.setLayout(new BoxLayout(nameColorPanel, BoxLayout.PAGE_AXIS));
 
 		colorChooserPanel = new ColorChooserPanel(ConnectionManagerDialog.this);
+		colorChooserPanel.setColor(ServerConfig.DEFAULT_COLOR);
 		nameColorPanel.add(INPUT_LABELLER.get("Background:", colorChooserPanel, "colorButton"));
 		
 		
@@ -424,6 +449,8 @@ public class ConnectionManagerDialog extends JDialog implements ActionListener {
 			colorChooserPanel.setColor(sc.getColor());
 			databasePanel.setVisible(sc.getJdbcType().isDatabaseRequired());
 			setFolder(sc.getFolder());
+			useAsyncCheckbox.setSelected(sc.isUseAsync());
+			useTLSCheckbox.setSelected(sc.isUseTLS());
 			
 			if(sc.getPort() == 0) {
 				enableHostPort(false);
@@ -457,13 +484,18 @@ public class ConnectionManagerDialog extends JDialog implements ActionListener {
 		
 		String database = databaseTextField.getText();
 		Color c = colorChooserPanel.getColor();
+		if(c == ServerConfig.DEFAULT_COLOR) {
+			c = null;
+		}
 		
 		if(urlButton.isSelected()) {
 			port = 0;
 			database = urlTextField.getText();
 		}
 		
-		return new ServerConfig(host, port, username, password, name, t, c, database, folder);
+		boolean useTLS = useTLSCheckbox.isSelected();
+		boolean useAsync = useAsyncCheckbox.isSelected();
+		return new ServerConfig(host, port, username, password, name, t, c, database, folder, useTLS, useAsync );
 	}
 	
 	@Override public void actionPerformed(ActionEvent e) {

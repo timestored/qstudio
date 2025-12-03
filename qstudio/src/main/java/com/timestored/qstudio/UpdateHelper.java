@@ -12,39 +12,26 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.util.Calendar;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Scanner;
-import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JEditorPane;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
-import javax.swing.JTextField;
 
 import com.timestored.TimeStored;
 import com.timestored.TimeStored.Page;
-import com.timestored.babeldb.Curler;
 import com.timestored.connections.ConnectionManager;
 import com.timestored.connections.JdbcTypes;
-import com.timestored.connections.ServerConfig;
-import com.timestored.docs.Document;
 import com.timestored.docs.OpenDocumentsModel;
 import com.timestored.jgrowl.Growler;
 import com.timestored.jgrowl.GrowlerFactory;
@@ -52,65 +39,15 @@ import com.timestored.misc.AppLaunchHelper;
 import com.timestored.misc.HtmlUtils;
 import com.timestored.theme.Theme;
 
-import bibliothek.gui.dock.action.actions.SimpleButtonAction;
 import lombok.Setter;
 
 public class UpdateHelper {
 
 	private static final Logger LOG = Logger.getLogger(UpdateHelper.class.getName());
 	private static final Random R = new Random();
-	private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-	private static final Map<String,AtomicInteger> eventCount = new ConcurrentHashMap<>();	 
 	@Setter private static QStudioModel qStudioModel;
+
 	
-	static {
-		Runnable runnable = () -> {
-			try {
-				postInfo();
-			} catch (IOException e) {
-				LOG.warning(e.toString());
-			}
-		};
-		int secondsBetweenSaves = 60*30;  //30*60 =  30 minutes
-		scheduler.scheduleAtFixedRate(runnable, secondsBetweenSaves, secondsBetweenSaves, TimeUnit.SECONDS);
-	}
-	private static String encode(String k, String v) throws IOException {
-		return URLEncoder.encode(k, "UTF-8") + "=" + URLEncoder.encode(v, "UTF-8");
-	}
-	
-	private static void postInfo() throws IOException {
-		if(!MyPreferences.INSTANCE.isSendTelemetry()) {
-			return;
-		}
-		
-        StringBuilder postData = new StringBuilder();
-		if(qStudioModel != null) {
-			postData.append(getUrlParams(qStudioModel, 0));
-		}
-		for (Map.Entry<String, AtomicInteger> entry : eventCount.entrySet()) {
-			if (postData.length() != 0) {
-                postData.append('&');
-            }
-		   postData.append(encode(entry.getKey(), ""+entry.getValue()));
-		}
-		
-		String st = postData.toString();
-        byte[] postDataBytes = st.getBytes("UTF-8");
-		String reqType = "application/x-www-form-urlencoded";
-		String U = TimeStored.URL + "/qstudio/addon/u";
-		Curler.POST(U, null, reqType, postDataBytes);
-		eventCount.clear(); // Between iterate and clear, some data could be lost but that's negligible.
-	}
-	
-	public static void registerEvent(String event) {
-		eventCount.putIfAbsent(event, new AtomicInteger(0));
-		eventCount.get(event).incrementAndGet();
-	}
-	
-	static {
-		
-		eventCount.clear();
-	}
 	
 	private static final int GAP = 4;
 	public static JPanel getUpdateGrowler(String newVersion) {
@@ -144,54 +81,6 @@ public class UpdateHelper {
 		return p;
 	}
 	
-
-
-	static String getUrlParams(QStudioModel qsm, int queryCount) {
-		StringBuilder sb = new StringBuilder();
-		sb.append("?v=" + QStudioFrame.VERSION);
-
-        MyPreferences myPreferences = MyPreferences.INSTANCE;
-		if(myPreferences != null && !myPreferences.isSendTelemetry()) {
-			return sb.toString();
-		}
-		sb.append("&q=" + queryCount);
-
-		try {
-			String ctypes = "";
-			Stream<ServerConfig> conns = qsm.getConnectionManager().getServerConnections().stream();
-			Map<String, Long> ctypesMap = conns.map(sc -> sc.getJdbcType().name().toLowerCase().substring(0, 2)).collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
-			for(Entry<String,Long> enn : ctypesMap.entrySet()) {
-				ctypes += (""+enn.getKey() + enn.getValue()); // some people have hundreds of servers
-			}
-			sb.append("&c=" + ctypes);
-		} catch(Exception e) {}
-		try {
-			String ftypes = "";
-			Stream<Document> docs = qsm.getOpenDocumentsModel().getDocuments().stream();
-			Map<String, Long> ftypesMap = docs.map(d -> d.getFileEnding()).collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
-			for(Entry<String,Long> enn : ftypesMap.entrySet()) {
-				ftypes += ("-"+enn.getKey() + "." + enn.getValue()); // some people have hundreds of servers
-			}
-			sb.append("&f=" + ftypes);
-		} catch(Exception e) {}
-		
-		try {
-            long firstEverRun = qsm.getPersistance().getLong(Persistance.Key.FERDB, -1);
-			sb.append("&d=" + qsm.getOpenDocumentsModel().getDocuments().size());
-			sb.append("&date=" + firstEverRun);
-			sb.append("&os=" + getPropAsParam("os.name"));
-			sb.append("&ctry=" + getPropAsParam("user.country"));
-			sb.append("&lang=" + getPropAsParam("user.language"));
-			sb.append("&vmn=" + getPropAsParam("java.vm.name"));
-			sb.append("&vmv=" + getPropAsParam("java.vm.vendor"));
-			sb.append("&jv=" + getPropAsParam("java.version"));
-			sb.append("&tz=" + URLEncoder.encode(TimeZone.getDefault().getID()));
-			sb.append("&"+encode("font", MyPreferences.INSTANCE.getCodeFont()));
-			sb.append("&"+encode("fontsize", ""+MyPreferences.INSTANCE.getCodeFontSize()));
-			sb.append("&"+encode("theme", MyPreferences.INSTANCE.getCodeTheme()));
-		} catch(Exception e) {}
-		return sb.toString();
-	}
 	
 	public static void main(String... args) {
 		QStudioModel qsm = new QStudioModel(ConnectionManager.newInstance(), Persistance.INSTANCE, OpenDocumentsModel.newInstance());
@@ -216,10 +105,11 @@ public class UpdateHelper {
 		
 		tabb.add(p, "Update Example");
 		int i = 1;
-		for(String html : TimeStored.fetchOnlineNews(true)) {
+		TimeStored.fetchOnlineNews();
+		for(String html : TimeStored.getOnlineNews(true)) {
 			tabb.add(getNewsPanel(null, html), "Online Dark " + i++);
 		}
-		for(String html : TimeStored.fetchOnlineNews(false)) {
+		for(String html : TimeStored.getOnlineNews(false)) {
 			tabb.add(getNewsPanel(null, html), "Online Light " + i++);
 		}
 		i = 1;
@@ -232,9 +122,9 @@ public class UpdateHelper {
 	}
 	
 	static void checkVersion(QStudioModel qsm, int queryCount, Growler growler) {
-		boolean newVersionAvailable = true;
+		boolean newVersionAvailable = false;
 		String vs = "?";
-		String params = getUrlParams(qsm, queryCount);
+		String params = "?v=" + QStudioFrame.VERSION;
 		try(Scanner sc = new java.util.Scanner(new URL("https://www.timestored.com/qstudio/version3.txt" + params).openStream(), "UTF-8")) {
 			try {
 				String[] versionTxt = sc.useDelimiter("\\A").next().split(",");
@@ -334,38 +224,4 @@ public class UpdateHelper {
 	}
 
 	
-
-	/**
-	 * TELemetry check which actions are popular with users. Only record minimum essential to know what is used over entire QStudio users
-	 * AVOID anything that would be too specific!!!!  
-	 */
-	public static JButton tel(JButton button) {
-		button.addActionListener(e -> {
-			String txt = button.getName();
-			txt = txt != null ? txt : button.getText() != null ? button.getText() : button.getToolTipText();
-			UpdateHelper.registerEvent("button_" + (txt == null ? "" : txt));
-		});
-		return button;
-	}
-	public JMenuItem tel(JMenuItem jMenuItem) {
-		jMenuItem.addActionListener(e -> {
-			String txt = jMenuItem.getName();
-			txt = txt != null ? txt : jMenuItem.getText() != null ? jMenuItem.getText() : jMenuItem.getToolTipText();
-			UpdateHelper.registerEvent("menu_" + (txt == null ? "" : txt));
-		});
-		return jMenuItem;
-	}
-//	public static AAction tel(AAction a) {
-//		return new AAction(a, e -> UpdateHelper.registerEvent("aaction_"+a.getName()));
-//	}
-	
-	public static SimpleButtonAction tel(SimpleButtonAction button) {
-		String txt = button.getText();
-		UpdateHelper.registerEvent("buttonaction_"+txt != null ? txt : button.getTooltip());
-		return button;
-	}
-	public JTextField tel(JTextField txtField) {
-		txtField.addActionListener(e -> UpdateHelper.registerEvent("textfield_" + txtField.getName()));
-		return txtField;
-	}
 }

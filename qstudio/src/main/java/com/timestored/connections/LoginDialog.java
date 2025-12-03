@@ -44,8 +44,8 @@ public class LoginDialog extends JDialog {
 	
 	private static final long serialVersionUID = 1L;
 	private static final int PAD = 10;
-	private static final int WIDTH = 300;
-	private static final int HEIGHT = 250;
+	private static final int WIDTH = 600;
+	private static final int HEIGHT = 400;
 
 	private final JTextField usernameField;
 	private final JPasswordField passwordField;

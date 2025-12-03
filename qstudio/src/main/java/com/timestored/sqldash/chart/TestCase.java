@@ -11,11 +11,17 @@ import com.google.common.base.MoreObjects;
 class TestCase {
 
 	private final String kdbQuery;
+	private final String duckdbSql;
 	private final String name;
 	private final ResultSet resultSet;
 
 	TestCase(String name, ResultSet resultSet, String kdbQuery) {
+		this(name, resultSet, kdbQuery, null);
+	}
+
+	TestCase(String name, ResultSet resultSet, String kdbQuery, String duckdbSql) {
 		this.kdbQuery = kdbQuery;
+		this.duckdbSql = duckdbSql;
 		this.resultSet = resultSet;
 		this.name = name;
 	}
@@ -24,6 +30,7 @@ class TestCase {
 	public String toString() {
 		return MoreObjects.toStringHelper(this)
 			.add("kdbQuery", kdbQuery)
+			.add("duckdbSql", duckdbSql)
 			.add("name", name)
 			.add("resultSet", resultSet)
 			.toString();
@@ -39,6 +46,11 @@ class TestCase {
 	/** get the KDB query which will create the example */
 	public String getKdbQuery() {
 		return kdbQuery;
+	}
+
+	/** get the DuckDB SQL query which will create the example */
+	public String getDuckdbSql() {
+		return duckdbSql;
 	}
 
 	/** get the resultSet which will create the example if possible otherwise return null */

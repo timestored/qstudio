@@ -37,12 +37,14 @@ import com.google.common.base.Preconditions;
  * it's configuration changed, and receive {@link ResultSet} data updates.
  */
 public class JdbcChartPanel extends JPanel {
-
+	private static final long serialVersionUID = 1L;
+	public static boolean TEST_MODE = true;  // Tests need forced instant render. End user UI not really.
 	private static final Logger LOG = Logger.getLogger(JdbcChartPanel.class.getName());
 
 	private ViewStrategy viewCreator;
 	private ChartTheme theme;
-	@Setter @Getter private boolean renderLargeDataSets = false;;
+	@Setter @Getter private boolean renderLargeDataSets = false;
+	@Getter @Setter private ChartAppearanceConfig appearanceConfig = null;
 	
 	private UpdateableView updateableView;
 	
@@ -86,17 +88,22 @@ public class JdbcChartPanel extends JPanel {
 		LOG.fine("JdbcChartPanel refreshGUI()");
 
 		//TODO with invokeLater all the unit test screenshots break, fix this!?
+		final ResultSet rs = prevRS;
+		final Exception err = e;
+		runInUIthread(() ->runn(rs,err), TEST_MODE);
+	}
+	
+	public static void runInUIthread(Runnable r, boolean invokeAndWait) {
 		if(EventQueue.isDispatchThread()) {
-			runn();
-		} else {
+			r.run();
+		} else if(invokeAndWait) {
 			try {
-				EventQueue.invokeAndWait(new Runnable() {
-					@Override public void run() {
-						runn();
-					}
-				});
-			} catch (InterruptedException e) { } 
-			catch (InvocationTargetException e) { }
+				EventQueue.invokeAndWait(r);
+			} catch (InterruptedException | InvocationTargetException e) { 
+				LOG.severe("Severe Error Updating Chart");
+			}
+		} else {
+			EventQueue.invokeLater(r);
 		}
 	}
 	
@@ -108,16 +115,16 @@ public class JdbcChartPanel extends JPanel {
 			 || sqlType == java.sql.Types.TINYINT;
 	}
 
-	private void runn() {
+	private void runn(ResultSet rs, Exception err) {
 		Component c = null;
 		try {
-			updateableView = viewCreator.getView(theme);
-			if(prevRS!=null) {
+			updateableView = viewCreator.getView(theme, appearanceConfig);
+			if(rs!=null) {
 				// TODO this line threw a null pointer exception from JfreeChary DefaulHighLowDataset
 				// should i let these spiral up or show an error screen?
 				boolean isVerySafeToRender = true;
 				try {
-					int rowCount = DBHelper.getSize(prevRS);
+					int rowCount = DBHelper.getSize(rs);
 					int numColCount = 0;
 					ResultSetMetaData rsmd = prevRS.getMetaData();
 					for(int col=1; col<=rsmd.getColumnCount(); col++) {
@@ -125,9 +132,9 @@ public class JdbcChartPanel extends JPanel {
 							numColCount++;
 						}
 					}
-					isVerySafeToRender = viewCreator.isQuickToRender(prevRS, rowCount, numColCount);
+					isVerySafeToRender = viewCreator.isQuickToRender(rs, rowCount, numColCount);
 				} catch (SQLException e) {
-					Log.warn("Problem assessing how safe it is to render chart:" + e);
+					Log.warn("Problem assessing how safe it is to render chart:" + err);
 				}
 				lastChartFormatException = null;
 				if(isVerySafeToRender || renderLargeDataSets) {

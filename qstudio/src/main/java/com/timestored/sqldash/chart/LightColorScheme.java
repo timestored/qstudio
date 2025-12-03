@@ -3,52 +3,58 @@ package com.timestored.sqldash.chart;
 import java.awt.Color;
 
 /**
- * A light color scheme based on the jfree chart defaults. 
+ * Modern light color scheme inspired by Excel/PowerBI.
+ * Clean, professional colors with good contrast on white backgrounds.
  */
 class LightColorScheme implements ColorScheme {
 
-	public final static Color[] SERIES_COLORS;
-	private final static Color textColor = Color.decode("#444444");
+	@Override public String toString() {
+		return "Light Color Scheme";
+	}
 	
-	private static final Color FG_COLOR = Color.decode("#050505");
+	public final static Color[] SERIES_COLORS;
+	private final static Color textColor = Color.decode("#323130");
+	
+	private static final Color FG_COLOR = Color.decode("#201F1E");
 	private static final Color BG_COLOR = Color.WHITE;
-	private static final Color ALT_BG_COLOR = Color.decode("#E1E5F1");
-	private static final Color SELECTED_BG_COLOR = Color.decode("#FFFA69");
+	private static final Color ALT_BG_COLOR = Color.decode("#F3F2F1");
+	private static final Color SELECTED_BG_COLOR = Color.decode("#DEECF9");
+	private static final Color GRIDLINE_COLOR = Color.decode("#777777");
 	
 	static {
+		// Modern Excel/PowerBI inspired palette - saturated but professional
 		SERIES_COLORS = new Color[] {
-				// generated with http://tools.medialab.sciences-po.fr/iwanthue/
-				new Color(220,61,50)
-				,new Color(61,140,167)
-				,new Color(205,81,217)
-				,new Color(81,172,50)
-				,new Color(168,90,132)
-				,new Color(191,139,44)
-				,new Color(53,116,67)
-				,new Color(110,109,215)
-				,new Color(100,99,150)
-				,new Color(214,62,109)
-				,new Color(164,77,46)
-				,new Color(151,158,47)
-				,new Color(163,93,178)
-				,new Color(210,70,154)
-				,new Color(47,151,131)
-				,new Color(221,111,45)
-				,new Color(95,110,35)
-				,new Color(115,147,212)
-				,new Color(141,95,34)
-				,new Color(76,169,105)
-				,new Color(191,85,87)
-				,new Color(80,139,48)
+				new Color(68, 114, 196),    // Excel Blue
+				new Color(237, 125, 49),    // Excel Orange
+				new Color(165, 165, 165),   // Excel Gray
+				new Color(255, 192, 0),     // Excel Gold
+				new Color(91, 155, 213),    // Excel Light Blue
+				new Color(112, 173, 71),    // Excel Green
+				new Color(38, 68, 120),     // Excel Dark Blue
+				new Color(158, 72, 14),     // Excel Dark Orange
+				new Color(99, 99, 99),      // Excel Dark Gray
+				new Color(153, 115, 0),     // Excel Dark Gold
+				new Color(37, 94, 145),     // Excel Steel Blue
+				new Color(67, 104, 43),     // Excel Dark Green
+				new Color(124, 175, 221),   // Soft Blue
+				new Color(244, 177, 131),   // Soft Orange
+				new Color(199, 199, 199),   // Light Gray
+				new Color(255, 217, 102),   // Light Gold
+				new Color(158, 193, 228),   // Pale Blue
+				new Color(169, 209, 142),   // Pale Green
+				new Color(47, 85, 151),     // Navy Blue
+				new Color(192, 80, 14),     // Rust Orange
+				new Color(118, 113, 113),   // Medium Gray
+				new Color(190, 144, 0)      // Amber
 		};
-	};
+	}
 	
 	@Override public Color getBG() { return BG_COLOR; }
 	@Override public Color getAltBG() { return ALT_BG_COLOR; }
 	@Override public Color getSelectedBG() { return SELECTED_BG_COLOR; }
 	@Override public Color getFG() { return FG_COLOR; }
-	@Override public Color getText() { return textColor ; }
-	@Override public Color getGridlines() { return Color.DARK_GRAY; }
+	@Override public Color getText() { return textColor; }
+	@Override public Color getGridlines() { return GRIDLINE_COLOR; }
 	@Override public Color[] getColorArray() { return SERIES_COLORS; }
 	
 }

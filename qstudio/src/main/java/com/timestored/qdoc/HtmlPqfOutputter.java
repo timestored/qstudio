@@ -30,10 +30,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.logging.Logger;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
-import com.timestored.TimeStored.Page;
 import com.timestored.docs.Document;
 import com.timestored.misc.HtmlUtils;
 import com.timestored.misc.IOUtils;
@@ -42,10 +42,6 @@ import com.timestored.misc.IOUtils;
  * Converts a {@link ParsedQFile} to formatted HTML output similar to javadoc.
  */
 public class HtmlPqfOutputter {
-
-	public static final String CSS_LINK = "<link rel=\"stylesheet\" href=\"qdoc.css\" type=\"text/css\" media=\"screen\" />";
-
-	private static final String QDOC_LINK = "<a class='qlogo' href='" + Page.QDOC.url() + "' target='a'>q<span>Doc</span></a>";
 	
 	private static final String FILE_SUFFIX = ".html";
 
@@ -58,9 +54,67 @@ public class HtmlPqfOutputter {
 	 */
 	private static final int SD_LENGTH = 60;
 
+	private static final String MANLISTING_HEADER = "// Generated qdoc tables to allow programmatic use of documentation.\r\n"
+			+ ".man.funcs:([] fullname:(); ns:(); description:(); name:(); other:());\r\n"
+			+ ".man.registerFunc:{`.man.funcs insert `fullname`ns`description`name`other!(),/:x};\r\n"
+			+ ".man.args:([] fullname:(); tag:(); param:(); description:());\r\n"
+			+ ".man.registerArg:{`.man.args insert `fullname`tag`param`description!(),/:x};\r\n"
+			+ ".man.files:([] title:(); author:(); namespaces:(); header:());\r\n"
+			+ ".man.registerFile:{`.man.files insert `title`author`namespaces`header!(),/:x};\r\n"
+			+ ".man.filetags:([] title:(); tag:(); val:());\r\n"
+			+ ".man.registerFileTag:{`.man.filetags insert `title`tag`val!(),/:x};\r\n"
+			+ "\r\n"
+			+ "/ @eg .man.getDocs[]\r\n"
+			+ "/ @return table of format ([] fullname; tag; param; description)\r\n"
+			+ ".man.getDocs:{[]\r\n"
+			+ "    ft:select fullname,description from .man.funcs;\r\n"
+			+ "    at:select fullname,tag,param,description from .man.args;\r\n"
+			+ "    headerTbl:0!select description:\"\\n\" sv header by title,fullname:{first \"|\" vs x} each namespaces from .man.files where 1<count each trim namespaces,1<count each trim header;\r\n"
+			+ "    filenameToNSDict:exec first fullname by title from headerTbl;\r\n"
+			+ "    tagTbl:select fullname:filenameToNSDict title, tag,description:val from .man.filetags;\r\n"
+			+ "    t:at uj ft uj tagTbl uj (``title _ headerTbl);\r\n"
+			+ "    t:asc select from t where (0<count each tag) or (0<count each param) or (0<count each description);\r\n"
+			+ "    t };    \r\n"
+			+ "\r\n"
+			+ "\r\n"
+			+ "\r\n"
+			+ "/ @eg .man.getTS[`GOOG]\r\n"
+			+ ".man.getTS:{[symbol]  // random walk with set seed to mimic incoming data\r\n"
+			+ "    seed:prd `int$string symbol;\r\n"
+			+ "    {  walk:{ [seed;n]\r\n"
+			+ "    	 r:{{ abs ((1664525*x)+1013904223) mod 4294967296}\\[y-1;x]};\r\n"
+			+ "    	 prds (100+((r[seed;n]) mod 11)-5)%100};\r\n"
+			+ "    	 c:{x mod `long$00:20:00.0t}x;   st:x-c;   cn:`long$c%1000;\r\n"
+			+ "    	 ([] time:.z.d+st+1000*til cn; gold:walk[y;cn])  }[.z.t;seed]\r\n"
+			+ "    };\r\n"
+			+ "    \r\n"
+			+ "/ @eg .man.getOHLC[`MSFT]\r\n"
+			+ ".man.getOHLC:{[symbol]\r\n"
+			+ "    seed:prd `int$string symbol;\r\n"
+			+ "    {  r:{{ abs ((1664525*x)+1013904223) mod 4294967296}\\[y-1;x]};\r\n"
+			+ "	walk:{ [r;seed;n] prds (100+((r[seed;n]) mod 11)-5)%100}[r;;];\r\n"
+			+ "	c:{x mod `long$00:05:00.0t}x;   st:x-c;   cn:100+`long$c%1000;\r\n"
+			+ "	t:([] time:`second$.z.d+st+1000*til cn; open:walk[y+4;cn]; close:walk[y+3;cn]);\r\n"
+			+ "	-100 sublist update low:?[open > close;close;open]-(r[11;cn] mod 11)*0.02,high:?[open < close;close;open]+(r[44;cn] mod 11)*0.02,volume:(r[44;cn] mod 110) from t}[.z.t;seed]\r\n"
+			+ "    };\r\n"
+			+ "\r\n"
+			+ "/ @eg .man.getSymbols[]\r\n"
+			+ ".man.getSymbols:{[]\r\n"
+			+ "    sym:`MSFT`AAPL`NVDA`AMZN`GOOGL`META`BRK.B`AVGO`TSLA`TSM`WMT`JPM`V`LLY`MA`NFLX`XOM`COST`ORCL`JNJ`PG`HD`UNH`SAP`ABBV`BAC`KO`NVO;\r\n"
+			+ "    des:(\"Microsoft Corporation\";\"Apple Inc.\";\"NVIDIA Corporation\";\"Amazon.com, Inc.\";\"Alphabet Inc.\";\"Meta Platforms, Inc.\";\"Berkshire Hathaway Inc.\";\"Broadcom Inc.\";\"Tesla, Inc.\";\"Taiwan Semiconductor Manufacturing Company Limited\";\"Walmart Inc.\";\"JPMorgan Chase & Co.\";\"Visa Inc.\";\"Eli Lilly and Company\";\"Mastercard Incorporated\";\"Netflix, Inc.\";\"Exxon Mobil Corporation\";\"Costco Wholesale Corporation\";\"Oracle Corporation\";\"Johnson & Johnson\";\"The Procter & Gamble Company\";\"The Home Depot, Inc.\";\"UnitedHealth Group Incorporated\";\"SAP SE\";\"AbbVie Inc.\";\"Bank of America Corporation\";\"The Coca-Cola Company\";\"Novo Nordisk A/S\");\r\n"
+			+ "    t:update query:(`$\".man.getTS[`XXX]\") from ([] symbol:sym; title:`$des);\r\n"
+			+ "    t,:select query:(`$\".man.getOHLC[`XXX]\"),symbol:(`$string[symbol],\\:\"_OHLC\"),title from t;\r\n"
+			+ "    t};\r\n"
+			+ "\r\n"
+			+ "\r\n";
+
 
 	private HtmlPqfOutputter() {	}
-	
+
+	public static void writeFile(String s, File tgtFile) throws IOException {
+		System.out.println("writing: " + tgtFile.getAbsolutePath());
+		IOUtils.writeStringToFile(s, tgtFile);
+	}
 
 	/**
 	 * Save documentation as HTMl to selected directory.
@@ -72,10 +126,9 @@ public class HtmlPqfOutputter {
 	public static List<String> output(List<Document> documents, File outdir, String baseWeblink) {
 
 		final List<String> errors = Lists.newArrayList();
-		final String destdir = outdir.getPath() + File.separator;
 		
 		if(!outdir.isDirectory()) {	
-			addLogError(errors, "Could not output documentation to " + destdir
+			addLogError(errors, "Could not output documentation to " + outdir.getAbsolutePath()
 					+ "\r\nIt is not a valid directory.");
 			return errors;
 		}
@@ -83,63 +136,77 @@ public class HtmlPqfOutputter {
 		if(outdir.list().length > 0) {
 			LOG.warning("directory is not empty!");
 		}
+		List<ParsedQFile> parsedDocs = Lists.newArrayList();
+		for(Document d : documents) {
+			ParsedQFile pqf = QFileParser.parse(d.getContent(), d.getFilePath(), d.getTitle());
+			parsedDocs.add(pqf);
+		}
+		String[] nsFileHtmls = generateIndexListing(parsedDocs);
 		
 		// output each HTML file
-		List<ParsedQFile> writtenDocs = Lists.newArrayList();
-		for(Document d : documents) {
+		for(ParsedQFile pqf : parsedDocs) {
 			try {
-				String filename;
-				filename = destdir + d.getTitle() + FILE_SUFFIX;
-				ParsedQFile pqf = QFileParser.parse(d.getContent(), d.getFilePath(), d.getTitle());
+				String filename = pqf.getFileTitle() + FILE_SUFFIX;
+				File tgtFile = new File(outdir, filename);
 				String html = generateHTML(pqf, baseWeblink);
-				IOUtils.writeStringToFile(html, new File(filename));
-				writtenDocs.add(pqf);
+				html = getTemplate(pqf.getFileTitle(), html, nsFileHtmls);
+				writeFile(html, tgtFile);
 			} catch (IOException e) {
-				addLogError(errors, "Could not output documentation for " + d.getFilePath());
+				addLogError(errors, "Could not output documentation for " + pqf.getFileTitle());
 			}
-		}
-		
-		// generate allclasses listing to show namespaces/files
-		try {
-			String frameSetHtml = generateIndexListing(writtenDocs);
-			File framesetFile = new File(destdir + "allclasses-frame.html");
-			IOUtils.writeStringToFile(frameSetHtml, framesetFile);
-		} catch (IOException e) {
-			addLogError(errors, "Could not output allclasses-frame.html");
 		}
 
 		try {
-			FileWriter fw = new FileWriter(new File(destdir, "manlisting.q"));
-			generateQhelpTable(writtenDocs, fw);
+			File tgtFile = new File(outdir, "man.q");
+			System.out.println("writing: " + tgtFile.getAbsolutePath());
+			FileWriter fw = new FileWriter(tgtFile);
+			fw.write(MANLISTING_HEADER);
+			generateQhelpTable(parsedDocs, fw);
 			fw.close();
 		} catch (IOException e) {
-			addLogError(errors, "manlisting.q");
+			addLogError(errors, "man.q");
 		}
 		
 		// generate package-summary.html
 		try {
-			String fileSummaryHTML = generateFileSummaryHtml(writtenDocs);
-			File dfile = new File(destdir + "package-summary.html");
-			IOUtils.writeStringToFile(fileSummaryHTML, dfile);
+			String fileSummaryHTML = generateFileSummaryHtml(parsedDocs);
+			fileSummaryHTML = getTemplate("package-summary", fileSummaryHTML, nsFileHtmls);
+			writeFile(fileSummaryHTML, new File(outdir, "index.html"));
 		} catch (IOException e) {
 			addLogError(errors, "Could not output package-summary.html");
 		}
-		
-		// index
+
 		try {
-			String index = IOUtils.toString(HtmlPqfOutputter.class, "index.html");
-			IOUtils.writeStringToFile(index, new File(destdir + "index.html"));
-			saveQdocCssTo(destdir);
+			saveQdocCssTo(outdir);
 		} catch (IOException e) {
-			addLogError(errors, "Could not output index.html");
+			addLogError(errors, "saveQdocCssTo fail");
 		}
+		
 		return errors;
 	}
+
+	private static final String replace(String haystack, String start, String end, String replacement) {
+		int p = haystack.indexOf(start);
+		int q = haystack.indexOf(end);
+		return haystack.substring(0, p) + replacement + haystack.substring(q, haystack.length());
+	}
+
+	public static void saveQdocCssTo(File outdir) throws IOException {
+		String css = IOUtils.toString(HtmlPqfOutputter.class, "qdoc2.css");
+		writeFile(css, new File(outdir, "qdoc2.css"));
+	}
 	
-	public static void saveQdocCssTo(String destdir) throws IOException {
-		String d = destdir.endsWith(File.separator) ? destdir : destdir + File.separator;
-		String css = IOUtils.toString(HtmlPqfOutputter.class, "qdoc.css");
-		IOUtils.writeStringToFile(css, new File(d + "qdoc.css"));
+	private static String getTemplate(String title, String main, String[] namespaceFiles) throws IOException {
+		String s = IOUtils.toString(HtmlPqfOutputter.class, "qdoc-template.html");
+		s = s.replace("Foobar", title);
+		s = replace(s, "<!--MAIN_START-->", "<!--MAIN_END-->", main);
+		// workaround for naming convention dependency to avoid regenerating each time
+		String t = (title.endsWith(".q") ? title.substring(0, title.length()-2) : title).replace(".", "");
+		String ns = namespaceFiles[0].replace("cls-"+t+"-cls", "current");
+		String fils = namespaceFiles[1].replace("cls-"+t+"-cls", "current");
+		s = replace(s, "<!--NAMESPACE_START-->", "<!--NAMESPACE_END-->", ns);
+		s = replace(s, "<!--FILES_START-->", "<!--FILES_END-->", fils);
+		return s;
 	}
 	
 	/**
@@ -150,7 +217,6 @@ public class HtmlPqfOutputter {
 
 		// construct output HTML from parts
 		StringBuilder sb = new StringBuilder();
-		sb.append(HtmlUtils.getTSPageHead("Index Listing", QDOC_LINK, CSS_LINK, true));
 		sb.append("<h1>Files</h1>");
 
 		Collections.sort(pqfiles, new Comparator<ParsedQFile>() {
@@ -172,15 +238,20 @@ public class HtmlPqfOutputter {
 			sb.append("</td></tr>");
 		}
 		sb.append("</table>");
-
-		sb.append(HtmlUtils.getTSPageTail(QDOC_LINK));
 		return sb.toString();
 	}
 	
 	/** ml for make link */
-	private static String makeLink(String href, String txt) {
-		return "<a href='" + href + "' target='classFrame' >" + txt + "</a>";
+	private static String makeLI(String href, String txt) {
+		String t = (txt.endsWith(".q") ? txt.substring(0, txt.length()-2) : txt).replace(".", "");
+		String cls = "cls-" + t + "-cls";
+		return "<li class=\"toctree-l1 " + cls + "\"><a class=\"reference internal " + cls + "\" href='" + href + "' >" + txt + "</a></li>";
 	}
+	
+	private static String makeLink(String href, String txt) {
+		return "<a href='" + href + "' >" + txt + "</a>";
+	}
+	
 	
 	private static String esc(String s) {
 		if(s == null) {
@@ -191,6 +262,24 @@ public class HtmlPqfOutputter {
 
 	private static void generateQhelpTable(List<ParsedQFile> pqfiles, FileWriter w) throws IOException {
 		for(ParsedQFile pqFile : pqfiles) {
+			w.write(".man.registerFile (");
+			w.write(esc(pqFile.getFileTitle()));
+			w.write(C);
+			w.write(esc(pqFile.getAuthor()));
+			w.write(C);
+			w.write(esc(Joiner.on("|").join(pqFile.getNamespaces())));
+			w.write(C);
+			w.write(esc(pqFile.getHeaderDoc()));
+			w.write(");\r\n");
+			for(Entry<String, String> tagEntry : pqFile.getHeaderTags().entrySet()) {
+				w.write(".man.registerFileTag (");
+				w.write(esc(pqFile.getFileTitle()));
+				w.write(C);
+				w.write(esc(tagEntry.getKey()));
+				w.write(C);
+				w.write(esc(tagEntry.getValue()));
+				w.write(");\r\n");
+			}
 			for(ParsedQEntity parsedQentity : pqFile.getQEntities()) {
 				w.write(".man.registerFunc (");
 				w.write(esc(parsedQentity.getFullName()));
@@ -241,13 +330,13 @@ public class HtmlPqfOutputter {
 	 * @param pqfiles
 	 * @return HTML page that lists files and namespaces for all files in our list.
 	 */
-	private static String generateIndexListing(List<ParsedQFile> pqfiles) {
+	private static String[] generateIndexListing(List<ParsedQFile> pqfiles) {
 		
 		// file links
 		List<String> fileLinks = Lists.newArrayList();
 		for(ParsedQFile pqf : pqfiles) {
 			String fn = pqf.getFileTitle() + FILE_SUFFIX;
-			fileLinks.add(makeLink(fn, pqf.getFileTitle()));
+			fileLinks.add(makeLI(fn, pqf.getFileTitle()));
 			Collections.sort(fileLinks);
 		}
 		
@@ -272,25 +361,19 @@ public class HtmlPqfOutputter {
 			if(files.size()>1) {
 				List<String> fileListing = Lists.newArrayList();
 				for(String fileTitle : files) {
-					fileListing.add(makeLink(fileTitle + FILE_SUFFIX, fileTitle));
+					fileListing.add(makeLI(fileTitle + FILE_SUFFIX, fileTitle));
+					nsLinks.add(makeLI(fileTitle + FILE_SUFFIX, ns + " (" + fileTitle + ")"));
 				}
-				nsLinks.add(ns + ": " + HtmlUtils.toList(fileListing));
+//				nsLinks.add("<li>"+ ns + ": " + "\n\t<ul>" + Joiner.on("\n\t").join(fileListing) + "</ul></li>");
 			} else {
 				String fn = files.get(0) + FILE_SUFFIX;
-				nsLinks.add(makeLink(fn, ns));
+				nsLinks.add(makeLI(fn, ns));
 			}
 		}
-		
-		// construct output HTML from parts
-		StringBuilder sb = new StringBuilder();
-		String subTitleLink = "<a href='package-summary.html' target='classFrame' >Home</a> - " + QDOC_LINK;
-		sb.append(HtmlUtils.getTSPageHead("Index Listing", subTitleLink, CSS_LINK, true));
-		sb.append("<h1>Namespaces</h1>");
-		sb.append(HtmlUtils.toList(nsLinks));
-		sb.append("<h1>Files</h1>");
-		sb.append(HtmlUtils.toList(fileLinks));
-		sb.append(HtmlUtils.getTSPageTail(QDOC_LINK));
-		return sb.toString();
+
+		String nsHTML =  "\n<ul>" + Joiner.on("\n\t").join(nsLinks) + "\n</ul>";
+		String fileHTML =  "\n<ul>" + Joiner.on("\n\t").join(fileLinks) + "\n</ul>";
+		return new String[] { nsHTML, fileHTML };
 	}
 	
 	private static void addLogError(final List<String> errors, String msg) {
@@ -301,8 +384,10 @@ public class HtmlPqfOutputter {
 	/**
 	 * @return Full HTML page for one {@link ParsedQFile} showing all docs/entities.
 	 */
-	static String generateHTML(ParsedQFile pqf) {
-		return generateHTML(pqf, null);
+	static String generateHTML(ParsedQFile pqf) throws IOException {
+		String [] nsFiles = new String[] { makeLI("NAMESPACER","namespacer"),
+				makeLI("FILES","files")};
+		return getTemplate(pqf.getFileTitle(), generateHTML(pqf, "http://www.pulseui.net?qry="), nsFiles);
 	}
 	
 	/**
@@ -311,8 +396,6 @@ public class HtmlPqfOutputter {
 	 */
 	static String generateHTML(ParsedQFile pqf, String baseWeblink) {
 		StringBuilder s = new StringBuilder();
-		final String title = pqf.getFileTitle();
-		s.append(HtmlUtils.getTSPageHead(title, QDOC_LINK, CSS_LINK, true));
 			s.append("\r\n\t<div id='headerDoc'>");
 			s.append(pqf.getHeaderDoc());
 			s.append(HtmlUtils.toList(pqf.getHeaderTags(), true));
@@ -328,7 +411,6 @@ public class HtmlPqfOutputter {
 			s.append("\r\n\t<h2>Entity Details</h2>");
 			appendEntityDetails(s, pqf, baseWeblink);
 			s.append("</div>");
-		s.append(HtmlUtils.getTSPageTail(QDOC_LINK));
 		return s.toString();
 	}
 
@@ -357,16 +439,7 @@ public class HtmlPqfOutputter {
 			if(hasDetails(e) && !isInternal(e)) {
 				s.append("\r\n\t\t<div class='entity' id='"+getHtmlId(e)+"'>");
 				s.append("<h2>");
-				if(baseWeblink!= null && baseWeblink.length()>0) {
-					String args = "/" + e.getDocDescription() + "\r\n" + e.getDocName();
-					try {
-						args = URLEncoder.encode(args, "UTF-8");
-					} catch (UnsupportedEncodingException e1) {}
-					String anchor = "<a href='" + baseWeblink + "?" + args + "' target='a'>";
-					s.append(anchor  + e.getDocName()).append("</a>");
-				} else {
-					s.append(e.getDocName());
-				}
+				s.append(e.getDocName());
 				s.append("</h2>");
 				s.append(HtmlUtils.extractBody(e.getHtmlDoc(false, baseWeblink)));
 				s.append("</div>");
@@ -377,7 +450,7 @@ public class HtmlPqfOutputter {
 	private static void appendTableOverview(StringBuilder s, ParsedQFile pqf) {
 
 		s.append("<table class='overviewSummary'><tbody>");
-		s.append("<tr><th>Entities</th><th>Short Description</th></tr>");
+		s.append("\n<tr><th>Entities</th><th>Short Description</th></tr>");
 		
 		for(ParsedQEntity e : pqf.getQEntities()) {
 			// Ignore internal functions, we don't want to generate HTML for them
@@ -400,7 +473,4 @@ public class HtmlPqfOutputter {
 	}
 
 
-
-	private static final String TAIL = "</body></html>";
-	
 }

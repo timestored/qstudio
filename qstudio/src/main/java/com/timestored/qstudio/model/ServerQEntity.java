@@ -21,8 +21,8 @@ import java.util.List;
 import javax.swing.ImageIcon;
 
 import com.google.common.base.Objects;
-import com.timestored.cstore.CAtomTypes;
 import com.timestored.qdoc.DocumentedEntity;
+import com.timestored.qstudio.kdb.CAtomTypes;
 import com.timestored.theme.Icon;
 import com.timestored.theme.Theme;
 

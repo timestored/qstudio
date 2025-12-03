@@ -53,10 +53,10 @@ import com.timestored.connections.JdbcTypes;
 import com.timestored.connections.MetaInfo;
 import com.timestored.connections.MetaInfo.ColumnInfo;
 import com.timestored.connections.ServerConfig;
-import com.timestored.cstore.CAtomTypes;
 import com.timestored.kdb.KdbConnection;
 import com.timestored.qdoc.DocumentedEntity;
 import com.timestored.qstudio.QStudioLauncher;
+import com.timestored.qstudio.kdb.CAtomTypes;
 import com.timestored.qstudio.model.ServerQEntity.QQuery;
 
 /**

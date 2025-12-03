@@ -8,6 +8,8 @@ import java.awt.Component;
 import java.sql.ResultSet;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
@@ -28,7 +30,8 @@ import org.jfree.chart.renderer.xy.XYBarRenderer;
 import org.jfree.data.time.RegularTimePeriod;
 import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
-import org.jfree.data.xy.DefaultHighLowDataset;
+import org.jfree.data.time.ohlc.OHLCSeries;
+import org.jfree.data.time.ohlc.OHLCSeriesCollection;
 import org.jfree.data.xy.OHLCDataset;
 
 import com.google.common.base.Joiner;
@@ -53,13 +56,39 @@ public enum CandleStickViewStrategy implements ViewStrategy {
 	private static final String queryTHLOCV = queryTHLOC + "; volume:30#3 9 6 5 4 7 8 2 13";
 	private static final String END = ") }[]";
 	
+	// DuckDB SQL queries for candlestick examples
+	private static final String DUCKDB_CANDLESTICK = 
+			"WITH b AS (\r\nSELECT \r\n" +
+			"    TIME '09:00' + INTERVAL '10 minutes' * i AS t,\r\n" +
+			"    (55 + 2*i) + 30 AS high,\r\n" +
+			"    (55 + 2*i) - 20 AS low,\r\n" +
+			"    60 + i AS \"open\",\r\n" +
+			"    (55 + 2*i) AS \"close\",\r\n" +
+			"    (ARRAY[3,9,6,5,4,7,8,2,13])[(i % 9) + 1] AS volume\r\n" +
+			"FROM generate_series(0,29) t(i))\r\nSELECT * FROM b";
+	
+	private static final String DUCKDB_CANDLESTICK_NO_VOL = 
+			"WITH b AS (\r\nSELECT \r\n" +
+			"    TIME '09:00' + INTERVAL '10 minutes' * i AS t,\r\n" +
+			"    (55 + 2*i) + 30 AS high,\r\n" +
+			"    (55 + 2*i) - 20 AS low,\r\n" +
+			"    60 + i AS \"open\",\r\n" +
+			"    (55 + 2*i) AS \"close\"\r\n" +
+			"FROM generate_series(0,29) t(i))\r\nSELECT * FROM b";
+	
+	private static final String DUCKDB_CANDLESTICK_HL_ONLY = 
+			"WITH b AS (\r\nSELECT \r\n" +
+			"    TIME '09:00' + INTERVAL '10 minutes' * i AS t,\r\n" +
+			"    (55 + 2*i) + 30 AS high,\r\n" +
+			"    (55 + 2*i) - 20 AS low\r\n" +
+			"FROM generate_series(0,29) t(i))\r\nSELECT * FROM b";
+	
 	private static final String TOOLTIP_FORMAT = "<html><b>{0}:</b><br>{1}<br>{2}</html>";
-	private static final String[] COL_TITLES = { "high","low","open","close"};
 
 	private static final String[] FORMATA = 
 		{ "The table should contain columns labelled open/high/low/close/volume",
 				"<br/>but must atleast contain high/low to allow it to be drawn.",
-				"<br/>Only weekday values are shown." };
+				"<br/>If you send only daily weekdays, weekend values are hidden." };
 	
 
 	@Override public UpdateableView getView(final ChartTheme theme) {
@@ -112,53 +141,71 @@ public enum CandleStickViewStrategy implements ViewStrategy {
 		
 	}
 
+    public static boolean isWeekend(Date date) {
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(date);
+        int dayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
+        return (dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.SUNDAY);
+    }
 
-	private static DateAxis getTimeAxis(ChartResultSet chartResultSet) {
+	private static DateAxis getTimeAxis(ChartResultSet chartResultSet) throws ChartFormatException {
 		DateAxis timeAxis = new DateAxis("Date");
 		
-		timeAxis.setTimeline(SegmentedTimeline.newMondayThroughFridayTimeline());
 		timeAxis.setLowerMargin(0.02); // reduce the default margins on the time axis
 		timeAxis.setUpperMargin(0.02);
 
-		// bug in jfree causes infinite loop if I let it use auto
-		// see: http://www.jfree.org/phpBB2/viewtopic.php?f=3&t=26926&start=15#p177518
-		// so I try to calculate my own rough tick marks
-        timeAxis.setAutoTickUnitSelection(false);
 		// calc the largest date range
 		TimeCol tc = chartResultSet.getTimeCol();
-		if(tc != null) {
-			Date[] dts = tc.getDates();
-			if(dts.length > 0) {
-				Date minDate = dts[0];
-				Date maxDate = dts[0];
-				for(Date d : dts) {
-					if(d.after(maxDate)) {
-						maxDate = d;
-					} else if(d.before(minDate)) {
-						minDate = d;
-					}
-				}	
-				long diff = maxDate.getTime() - minDate.getTime();
-				long diffDays = diff / (24 * 60 * 60 * 1000);
-				DateTickUnit dtu;
-				if(diffDays < 1) {
-					dtu = new DateTickUnit(DateTickUnitType.HOUR, 1);
-					timeAxis.setDateFormatOverride(new SimpleDateFormat("h:mm"));
-				} else if(diffDays < 10) {
-					dtu = new DateTickUnit(DateTickUnitType.DAY, 1);
-					timeAxis.setDateFormatOverride(new SimpleDateFormat("dd MMM"));
-				} else if(diffDays < 60) {
-					dtu = new DateTickUnit(DateTickUnitType.DAY, 7);
-					timeAxis.setDateFormatOverride(new SimpleDateFormat("dd MMM"));
-				} else {
-					dtu = new DateTickUnit(DateTickUnitType.MONTH, 1);
-					timeAxis.setDateFormatOverride(new SimpleDateFormat("dd MMM"));
+		if(tc != null && tc.getRegularTimePeriods().length > 0) {
+			RegularTimePeriod[] dts = tc.getRegularTimePeriods();
+			Date minDate = dts[0].getStart();
+			Date maxDate = dts[0].getEnd();
+			double weekendCount = 0;
+			for(RegularTimePeriod rtp : dts) {
+				Date d = rtp.getStart();
+				if(d.after(maxDate)) {
+					maxDate = d;
+				} else if(d.before(minDate)) {
+					minDate = d;
 				}
-		        timeAxis.setTickUnit(dtu);
+				if(isWeekend(d)) {
+					weekendCount++;
+				}
+			}	
+			long diff = maxDate.getTime() - minDate.getTime();
+			double diffDays = diff / (24 * 60 * 60 * 1000.0);
+			
+			// Only turn on segments if this is daily data and very little weekend data.
+			// Part of the reason for being so restrictive is that turning on
+			// causes a bug that can cause rendering to freeze.
+			double avgDelta = diffDays / dts.length;
+			boolean likelyDailyData = avgDelta > 0.5 && avgDelta < 10;
+			boolean manyWeekends = (weekendCount/dts.length) > (0.5/7.0);
+			boolean hideWeekends = likelyDailyData && !manyWeekends && dts.length > 3;
+            if(hideWeekends) {
+    				timeAxis.setTimeline(SegmentedTimeline.newMondayThroughFridayTimeline());
+            }
+
+			// bug in jfree causes infinite loop if I let it use auto
+			// see: http://www.jfree.org/phpBB2/viewtopic.php?f=3&t=26926&start=15#p177518
+			// so I try to calculate my own rough tick marks
+			DateTickUnit dtu = null;
+            if(avgDelta > 300) {
+				dtu = new DateTickUnit(DateTickUnitType.YEAR, 1);
+            } else if(avgDelta > 20) {
+				dtu = new DateTickUnit(DateTickUnitType.MONTH, 1);
+            }
+            
+            timeAxis.setAutoTickUnitSelection(dtu == null);
+			if(dtu != null) {
+				timeAxis.setTickUnit(dtu);
 			}
+			
 		}
+		
 		return timeAxis;
 	}
+
 
 
 
@@ -187,6 +234,17 @@ public enum CandleStickViewStrategy implements ViewStrategy {
 		return null;
 	}
 
+
+	private static double[] getColIfExists(ChartResultSet crs, String... colNames) {
+		for(String c : colNames) {
+			NumericCol nc = crs.getNumericalColumn(c);
+			if(nc != null) {
+				return nc.getDoubles();
+			}
+		}
+		return null;
+	}
+	
 	/**
 	 * Create a dataset from the given result set or return null if not possible
 	 * @throws ChartFormatException 
@@ -199,47 +257,58 @@ public enum CandleStickViewStrategy implements ViewStrategy {
 			throw new ChartFormatException("No Time column found.");
 		}
 
-		NumericCol[] hlocvIndices = new NumericCol[4];
-		int i = 0;
-		for (String columnLabel : COL_TITLES) {
-			hlocvIndices[i++] = chartResultSet.getNumericalColumn(columnLabel);
+		double[][] ohlc = new double[4][];
+
+		// replace with specifically named where possible.
+		ohlc[0] = getColIfExists(chartResultSet, "open","o");
+		ohlc[1] = getColIfExists(chartResultSet, "high","h", "ask", "a", "open", "o");
+		ohlc[2] = getColIfExists(chartResultSet, "low","l", "bid", "b", "close", "c");
+		ohlc[3] = getColIfExists(chartResultSet, "close","c");
+		boolean allNull = ohlc[0] == null && ohlc[1] == null && ohlc[2] == null && ohlc[3] == null;
+		if(allNull) {
+			// fallback allocation based on numerical column values
+			List<NumericCol> ncs = chartResultSet.getNumericColumns();
+			if(ncs.size() == 0) {
+				throw new ChartFormatException("Candlestick requires atleast time/numeric columns.");
+			} else if(ncs.size() == 1) {
+				ohlc[0] = ohlc[1] = ohlc[2] = ohlc[3]= ncs.get(0).getDoubles();
+			} else if(ncs.size() == 2) {
+				ohlc[1] = ncs.get(0).getDoubles();
+				ohlc[2] = ncs.get(1).getDoubles();
+				if(ohlc[1].length > 0 && ohlc[1][0] < ohlc[2][0]) { // swap based on high low size
+					double[] temp = ohlc[1];
+					ohlc[2] = ohlc[1];
+					ohlc[1] = temp;
+				}
+			}
 		}
 		
-		if(hlocvIndices[0] == null || hlocvIndices[1] == null) {
+		if(ohlc[1] == null && ohlc[2] == null) {
 			throw new ChartFormatException("Candlestick requires atleast time/high/low columns.");
 		}
+		ohlc[1] = ohlc[1] != null ? ohlc[1] : ohlc[2];
+		ohlc[2] = ohlc[2] != null ? ohlc[2] : ohlc[1]; 
+		// 1/2 both have values now
+		ohlc[0] = ohlc[0] != null ? ohlc[0] : ohlc[1];
+		ohlc[3] = ohlc[3] != null ? ohlc[3] : ohlc[2];		
 
-		// make only having time and high/low compulsory
-		boolean noOpen = hlocvIndices[2] == null;
-		boolean noClose = hlocvIndices[3] == null;
-		if(noOpen && noClose) { 
-			// no open/close, set both to high
-			hlocvIndices[2] = hlocvIndices[0];
-			hlocvIndices[3] = hlocvIndices[0];
-		} else if(noOpen) {
-			hlocvIndices[2] = hlocvIndices[3]; // open = close
-		} else if(noClose) {
-			hlocvIndices[3] = hlocvIndices[2]; // close = open
-		}
+		RegularTimePeriod[] periods = timeCol.getRegularTimePeriods();
+        OHLCSeries series = new OHLCSeries("Price Data");
+        RegularTimePeriod prevP = null;
+        for (int i = 0; i < periods.length; i++) {
+        		if(prevP != null && prevP.equals(periods[i])) {
+        			throw new ChartFormatException("Time-series contains duplicate date entries.");
+        		}
+            series.add(periods[i], ohlc[0][i], ohlc[1][i], ohlc[2][i], ohlc[3][i]);
+    			prevP = periods[i];
+        }
 
-		// have time column and OHLC cur
-		double[][] doubArray = new double[COL_TITLES.length][];
-		for (int j = 0; j < COL_TITLES.length; j++) {
-			if(hlocvIndices[j] != null) {
-				doubArray[j] = hlocvIndices[j].getDoubles();
-			} 
-		}
-		
-		
-
-		// one off conversion of timeseries to chart compatible format
-		Date[] arrayOfDate = timeCol.getDates();
-		double[] vol = new double[chartResultSet.getRowCount()];
-		return new DefaultHighLowDataset("Series 1", arrayOfDate, doubArray[0], doubArray[1], doubArray[2],
-				doubArray[3], vol);
-
+        OHLCSeriesCollection dataset = new OHLCSeriesCollection();
+        dataset.addSeries(series);
+		return dataset;
 	}
 
+	
 
 	@Override public String getDescription() { return "Candlestick"; }
 
@@ -267,7 +336,7 @@ public enum CandleStickViewStrategy implements ViewStrategy {
 		ResultSet resultSet = new SimpleResultSet(
 				new String[] { "t", "high", "low", "open", "close", "volume" }, 
 				new Object[] { date, high, low, open, close, volume });
-		TestCase testCase = new TestCase(name, resultSet, queryTHLOCV + END);
+		TestCase testCase = new TestCase(name, resultSet, queryTHLOCV + END, DUCKDB_CANDLESTICK);
 		ExampleView fullColEV = new ExampleView(name , description, testCase);
 
 		// without a volume column
@@ -276,7 +345,7 @@ public enum CandleStickViewStrategy implements ViewStrategy {
 				new Object[] { date, high, low, open, close });
 		name = "Rising Prices, No Volume";
 		description = "A candlestick showing only price movements, no volume column.";
-		testCase = new TestCase(name, resultSetNoVol, queryTHLOC + END);
+		testCase = new TestCase(name, resultSetNoVol, queryTHLOC + END, DUCKDB_CANDLESTICK_NO_VOL);
 		ExampleView noVolColEV = new ExampleView(name , description, testCase);
 		
 		// only high and low columns
@@ -285,7 +354,7 @@ public enum CandleStickViewStrategy implements ViewStrategy {
 				new Object[] { date, high, low });
 		name = "Rising Prices, Only High Low Columns Shown";
 		description = "A candlestick showing only high low prices.";
-		testCase = new TestCase(name, resultSetOnlyHighLow, queryTHL + END);
+		testCase = new TestCase(name, resultSetOnlyHighLow, queryTHL + END, DUCKDB_CANDLESTICK_HL_ONLY);
 		ExampleView onlyHighLowEV = new ExampleView(name , description, testCase);
 		
 		

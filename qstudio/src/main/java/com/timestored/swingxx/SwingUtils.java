@@ -3,13 +3,11 @@ package com.timestored.swingxx;
 import static javax.swing.KeyStroke.getKeyStroke;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.Font;
 import java.awt.Dialog.ModalityType;
 import java.awt.Frame;
-import java.awt.GridBagLayout;
 import java.awt.Image;
 import java.awt.Insets;
 import java.awt.Toolkit;
@@ -20,21 +18,17 @@ import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
 import java.util.Enumeration;
 import java.util.logging.Logger;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.ActionMap;
-import javax.swing.BorderFactory;
-import javax.swing.ImageIcon;
 import javax.swing.InputMap;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -90,45 +84,6 @@ public class SwingUtils {
 		frame.setAlwaysOnTop(false);
 		frame.repaint();
 	}
-
-    /**
-     * @return A dialog showing qStudio logo and some license details or null if not possible
-     */
-	public static JDialog showSplashDialog(URL r, Color bgColor, String txt) {
-		JDialog  dialog = null;
-		try {
-        	if(r!=null) {
-	             dialog = new JDialog();
-	            // use the same size as your image
-	            dialog.setUndecorated(true);
-	            JPanel cp = new JPanel(new BorderLayout());
-	            ImageIcon ii = new ImageIcon(r);
-	            cp.add(new JLabel(ii), BorderLayout.CENTER);
-	            
-	            JPanel lblPanel = new JPanel(new GridBagLayout());
-	            JLabel l = new JLabel(txt);
-	            l.setForeground(Color.WHITE);
-	            lblPanel.setBackground(bgColor);
-	            lblPanel.setOpaque(true);
-	            lblPanel.add(l);
-	            cp.add(lblPanel, BorderLayout.SOUTH);
-	            
-	            cp.setBorder(BorderFactory.createLineBorder(bgColor));
-	            cp.setBackground(bgColor);
-	            dialog.add(cp);
-	            dialog.pack();
-	            dialog.setLocationRelativeTo(null);
-	            
-	            dialog.setVisible(true);
-	            dialog.validate();
-	            dialog.paintAll(dialog.getGraphics());
-	            dialog.repaint();
-        	}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return dialog;
-	}
 	
 	public static JFrame getPopupFrame(Component parent, String title, 
 			Component content, Image icon) {
@@ -168,16 +123,17 @@ public class SwingUtils {
 		d.setVisible(true);
 	}
 
-	private static void setSensibleDimensions(Component parent, Window w) {
+	public static void setSensibleDimensions(Component parent, Window w, int defWidth, int defHeight) {
 		Toolkit tk = Toolkit.getDefaultToolkit();
-		int defWidth = 400;
-		int defHeight = 400;
 		if(parent != null) {
 			Insets si = tk.getScreenInsets(parent.getGraphicsConfiguration());
-			defWidth = Math.max(700, (tk.getScreenSize().width - si.left - si.right)*3/5);
-	        defHeight = (tk.getScreenSize().height - si.top - si.bottom)*4/5;
+			defWidth = (int) Math.max(700, (tk.getScreenSize().width - si.left - si.right)*3.0/5);
+	        defHeight = (int) ((tk.getScreenSize().height - si.top - si.bottom)*4.0/5);
 		}
 		w.setSize(defWidth, defHeight);
+	}
+	public static void setSensibleDimensions(Component parent, Window w) {
+		setSensibleDimensions(parent, w, 600, 400);
 	}
 
 	/**

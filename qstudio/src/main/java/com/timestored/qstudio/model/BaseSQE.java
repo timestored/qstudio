@@ -27,8 +27,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.timestored.connections.JdbcTypes;
-import com.timestored.cstore.CAtomTypes;
 import com.timestored.misc.HtmlUtils;
+import com.timestored.qstudio.kdb.CAtomTypes;
 import com.timestored.theme.Theme.CIcon;
 
 /** Base class that implements most methods for concreate classes to base themself off. */

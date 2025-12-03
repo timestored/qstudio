@@ -48,7 +48,7 @@ public class TabbedPaneRightClickBlocker {
 	    	try {
 		        delegate.mouseClicked(e);
 	    	} catch (NullPointerException npe) {
-	    		LOG.warning("NullPointerException from RightClickBlocker delegate" + npe.getLocalizedMessage());
+	    		LOG.fine("NullPointerException from RightClickBlocker delegate" + npe.getLocalizedMessage());
 	    		// this was happening but probably ok to ignore.
 	    	}
 	    }
@@ -58,7 +58,7 @@ public class TabbedPaneRightClickBlocker {
 	    	try {
 	    		delegate.mousePressed(e);
 	    	} catch (NullPointerException npe) {
-	    		LOG.warning("NullPointerException from RightClickBlocker delegate" + npe.getLocalizedMessage());
+	    		LOG.fine("NullPointerException from RightClickBlocker delegate" + npe.getLocalizedMessage());
 	    		// this was happening but probably ok to ignore.
 	    	}
 	    }
@@ -68,7 +68,7 @@ public class TabbedPaneRightClickBlocker {
 	    	try {
 	    		delegate.mouseReleased(e);
 	    	} catch (NullPointerException npe) {
-	    		LOG.warning("NullPointerException from RightClickBlocker delegate" + npe.getLocalizedMessage());
+	    		LOG.fine("NullPointerException from RightClickBlocker delegate" + npe.getLocalizedMessage());
 	    		// this was happening but probably ok to ignore.
 	    	}
 	    }
@@ -78,7 +78,7 @@ public class TabbedPaneRightClickBlocker {
 	    	try {
 	    		delegate.mouseEntered(e);
 	    	} catch (NullPointerException npe) {
-	    		LOG.warning("NullPointerException from RightClickBlocker delegate" + npe.getLocalizedMessage());
+	    		LOG.fine("NullPointerException from RightClickBlocker delegate" + npe.getLocalizedMessage());
 	    		// this was happening but probably ok to ignore.
 	    	}
 	    }
@@ -88,7 +88,7 @@ public class TabbedPaneRightClickBlocker {
 	    	try {
 		        delegate.mouseExited(e);
 	    	} catch (NullPointerException npe) {
-	    		LOG.warning("NullPointerException from RightClickBlocker delegate" + npe.getLocalizedMessage());
+	    		LOG.fine("NullPointerException from RightClickBlocker delegate" + npe.getLocalizedMessage());
 	    		// this was happening but probably ok to ignore.
 	    	}
 	    }

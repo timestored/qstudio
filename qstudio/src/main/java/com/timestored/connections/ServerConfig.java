@@ -31,6 +31,7 @@ import com.google.common.base.Preconditions;
 import com.timestored.misc.IOUtils;
 import com.timestored.plugins.ConnectionDetails;
 
+import lombok.Getter;
 import net.jcip.annotations.Immutable;
 
 
@@ -45,19 +46,24 @@ public class ServerConfig {
 	private final int port;
 	private final String database;
 	private final JdbcTypes jdbcType;
+	@Getter private final boolean useTLS;
+	@Getter private final boolean useAsync;
    	
 	/** The color GUI elements should be shown for this server */
 	private final Color color;
-	private static final Color DEFAULT_COLOR = Color.WHITE;
+	public static final Color DEFAULT_COLOR = Color.WHITE;
+	public static final boolean DEFAULT_USE_TLS = false;
+	public static final boolean DEFAULT_USE_ASYNC = false;
 	
 
 	public ServerConfig(String host, int port, String username, 
 			String password, String name, JdbcTypes jdbcType) {
-		this(host, port, username, password, name, jdbcType, DEFAULT_COLOR, null, null);
+		this(host, port, username, password, name, jdbcType, DEFAULT_COLOR, null, null, DEFAULT_USE_TLS, DEFAULT_USE_ASYNC);
 	}
 	public ServerConfig(String host, int port, String username, 
 			String password, String name, JdbcTypes jdbcType, Color color, String database) {
-		this(host, port, username, password, name, jdbcType, color == null ? DEFAULT_COLOR : color, database, null);
+		this(host, port, username, password, name, jdbcType, color == null ? DEFAULT_COLOR : color, database, null, 
+				DEFAULT_USE_TLS, DEFAULT_USE_ASYNC);
 	}
 	
 	public static ServerConfig forFile(String filePath) throws IOException {
@@ -100,7 +106,8 @@ public class ServerConfig {
 	 * as part of the name itself.
 	 */
 	public ServerConfig(String host, int port, String username, 
-			String password, String name, JdbcTypes jdbcType, Color color, String database, String folder) {
+			String password, String name, JdbcTypes jdbcType, Color color, String database, String folder, 
+			boolean useTLS, boolean useAsync) {
 
 		if(port<0) {
 			throw new IllegalArgumentException("Must specify positive port");
@@ -115,6 +122,8 @@ public class ServerConfig {
 		this.port = port;
 		this.username = username;
 		this.password = password;
+		this.useTLS = useTLS;
+		this.useAsync = useAsync;
 		
 		// clean any folders, remove multiple empty /s
 		String n = name;
@@ -150,15 +159,15 @@ public class ServerConfig {
 
 	public ServerConfig(String host, int port, 
 			String username, String password, String name) {
-		this(host, port, username, password, name, JdbcTypes.KDB, null, null, null);
+		this(host, port, username, password, name, JdbcTypes.KDB, null, null);
 	}
 	public ServerConfig(String host, int port, 
 			String username, String password) {
-		this(host, port, username, password, host + ":" + port, JdbcTypes.KDB, null, null, null);
+		this(host, port, username, password, host + ":" + port, JdbcTypes.KDB, null, null);
 	}
 
 	public ServerConfig(String host, int port) {
-		this(host, port, "", "", host + ":" + port, JdbcTypes.KDB, null, null, null);
+		this(host, port, "", "", host + ":" + port, JdbcTypes.KDB, null, null);
 	}
 
 	/** @return A short user assigned name representing this server **/

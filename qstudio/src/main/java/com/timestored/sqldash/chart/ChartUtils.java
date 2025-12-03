@@ -8,6 +8,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import com.timestored.babeldb.BabelDBJdbcDriver;
 import com.timestored.misc.SaveableFrame;
 
 /**
@@ -20,12 +21,12 @@ public class ChartUtils {
 
 	static void save(ViewStrategy viewStrategy, ResultSet resultSet, 
 			File file) throws IOException {
-		save(viewStrategy, resultSet, file, WIDTH, HEIGHT, false);
+		save(viewStrategy, resultSet, file, WIDTH, HEIGHT);
 	}
 
 	public static void save(ViewStrategy viewStrategy, ResultSet resultSet, 
-			File file, int width, int height, boolean watermark) throws IOException {
-		save(viewStrategy, resultSet, file, width, height, watermark, null);
+			File file, int width, int height) throws IOException {
+		save(viewStrategy, resultSet, file, width, height, null, null);
 	}
 	
 	/**
@@ -33,11 +34,31 @@ public class ChartUtils {
 	 * @throws ChartFormatException If the resultset is the wrong format for this {@link ViewStrategy}.
 	 */
 	public static void save(ViewStrategy viewStrategy, ResultSet resultSet, 
-			File file, int width, int height, boolean watermark, ChartTheme chartTheme) throws IOException {
+			File file, int width, int height, ChartTheme chartTheme) throws IOException {
+		save(viewStrategy, resultSet, file, width, height, chartTheme, null);
+	}
+	
+	/**
+	 * Save a chart with appearance configuration.
+	 * @param viewStrategy The view strategy to use
+	 * @param resultSet The data to display
+	 * @param file The file to save to
+	 * @param width Width of the chart image
+	 * @param height Height of the chart image
+	 * @param chartTheme Optional chart theme
+	 * @param appearanceConfig Optional appearance configuration (title, colors, axis)
+	 * @throws ChartFormatException If the resultset is the wrong format for this {@link ViewStrategy}.
+	 */
+	public static void save(ViewStrategy viewStrategy, ResultSet resultSet, 
+			File file, int width, int height, ChartTheme chartTheme, 
+			ChartAppearanceConfig appearanceConfig) throws IOException {
 		
 		final JdbcChartPanel jdbcChartPanel = ViewStrategyFactory.getJdbcChartpanel(viewStrategy);
 		if(chartTheme != null) {
 			jdbcChartPanel.setTheme(chartTheme);
+		}
+		if(appearanceConfig != null) {
+			jdbcChartPanel.setAppearanceConfig(appearanceConfig);
 		}
 		jdbcChartPanel.update(resultSet);
 		try {
@@ -54,7 +75,7 @@ public class ChartUtils {
 		if(cfe!=null) {
 			throw cfe;
 		}
-		SaveableFrame.saveComponentImage(jdbcChartPanel, width, height, file, watermark);
+		SaveableFrame.saveComponentImage(jdbcChartPanel, width, height, file);
 	}
 	
 
@@ -67,10 +88,16 @@ public class ChartUtils {
 		try	{
 		    Statement st = conn.createStatement();
 		    ResultSet rs = st.executeQuery("q)" + query);
-			save(viewStrategy, rs, file, WIDTH, HEIGHT, false);
+			save(viewStrategy, rs, file, WIDTH, HEIGHT);
 		} catch (SQLException e) {
 			throw new IOException(e);
 		} 
 	}
-	
+
+	public static void queryDuckdbAndSave(ViewStrategy viewStrategy, String query,
+		File file, BabelDBJdbcDriver babeldb) throws IOException {
+	    ResultSet rs = babeldb.executeQryForTestsOnly(query);
+		save(viewStrategy, rs, file, WIDTH, HEIGHT);
+	}
+
 }
