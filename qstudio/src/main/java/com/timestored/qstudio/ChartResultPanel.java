@@ -75,17 +75,6 @@ class ChartResultPanel extends JPanel implements GrabableContainer {
 		
 		app = new ChartWidget();
 		
-		// adapts queryManager events to trigger tabChange events for kdbChartPanel
-		adminModel.addQueryListener(new QueryAdapter() {
-
-			@Override public void sendingQuery(ServerConfig sc, String query) {}
-
-			@Override public void queryResultReturned(ServerConfig sc, QueryResult qr) {
-				showQueryResult(qr);
-			}
-			
-		});
-		
 		if(adminModel.hasAnyServers()) {
 			add(UpdateHelper.getNewsPanel(null), BorderLayout.CENTER);
 		}

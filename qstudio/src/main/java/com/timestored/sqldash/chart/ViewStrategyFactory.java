@@ -11,7 +11,7 @@ public class ViewStrategyFactory {
 	
 	private static final List<ViewStrategy> STRATEGIES
 		= Collections.unmodifiableList(Arrays.asList(new ViewStrategy[] {
-				NoRedrawViewStrategy.INSTANCE,
+				AutoRedrawViewStrategy.INSTANCE,
 				TimeseriesViewStrategy.INSTANCE,
 				StepChartViewStrategy.INSTANCE,
 				AreaChartViewStrategy.INSTANCE,
@@ -25,6 +25,7 @@ public class ViewStrategyFactory {
 				PieChartViewStrategy.INSTANCE,
 				ScatterPlotViewStrategy.INSTANCE,
 				DataTableViewStrategy.getInstance(),
+				NoRedrawViewStrategy.INSTANCE,
 		}));
 
 
