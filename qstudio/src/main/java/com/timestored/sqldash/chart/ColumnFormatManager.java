@@ -102,7 +102,7 @@ public class ColumnFormatManager {
     }
 
     public JMenu  buildFlatMenu(String colName, ColType type) {
-        JMenu m = new JMenu("Format…");
+        JMenu m = new JMenu("Format...");
 
         switch(type) {
             case NUMBER:
