@@ -1,4 +1,4 @@
-# qStudio - Free SQL Analysis Tool
+# QStudio - Fully Open Source SQL Analysis Tool
 
 ![Qstudio](qstudio/qstudio.png)
 
