@@ -188,10 +188,11 @@ public class ServerObjectTree {
 			short tableTypNum =  (short) CAtomTypes.TABLE.getTypeNum();
 			while(namespaceRS.next()) {
 				String path = namespaceRS.getString(1);
-				CachedRowSet tablesRS = connectionManager.executeQuery(serverConfig, "listTables('" + path + "')");
+				String pathLiteral = toDolphinStringLiteral(path);
+				CachedRowSet tablesRS = connectionManager.executeQuery(serverConfig, "listTables(" + pathLiteral + ")");
 				while(tablesRS.next()) {
 					String tblName = tablesRS.getString("tableName");
-					String tblLoad = "loadTable('" + path + "', '" + tblName + "')";
+					String tblLoad = "loadTable(" + pathLiteral + ", " + toDolphinStringLiteral(tblName) + ")";
 					String[] colNames = getDolphinColNames(connectionManager, serverConfig, tblLoad, new String[] { "unknown" }); 
 					ServerQEntity sqe = ServerQEntityFactory.get(serverName, path, tblName, tableTypNum, 0, true, false, 
 							false, colNames , serverConfig.getJdbcType());
@@ -240,6 +241,13 @@ public class ServerObjectTree {
 		HashMap<String, NamespaceListing> r = new HashMap<String, NamespaceListing>();
 		allElements.stream().collect(Collectors.groupingBy(sqe -> sqe.getNamespace())).forEach((ns,sqel) -> r.put(ns, new NamespaceListing(sqel)));
 		return r;
+	}
+
+	private static String toDolphinStringLiteral(String s) {
+		if(s == null) {
+			return "\"\"";
+		}
+		return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("'", "\\'") + "\"";
 	}
 
 	private static String[] getDolphinColNames(ConnectionManager connectionManager, ServerConfig serverConfig, String name, String[] fallbackIfError) {
