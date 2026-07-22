@@ -145,7 +145,6 @@ public class AIFacade {
 		urlConnection.setConnectTimeout(15000);
 		urlConnection.setReadTimeout(15000);
 		try (OutputStream os = urlConnection.getOutputStream()) {
-			System.out.println(jsonInputString);
 			byte[] input = jsonInputString.getBytes("utf-8");
 			os.write(input, 0, input.length);
 		}
