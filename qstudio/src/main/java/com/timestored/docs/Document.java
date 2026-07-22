@@ -291,22 +291,18 @@ public class Document {
 	}
 	
 	public void saveAs(File file, boolean useWindowsLineEndings) throws IOException {
-		try {
-			BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), Charset.forName("UTF-8")));
+		try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), Charset.forName("UTF-8")))) {
 			if(useWindowsLineEndings) {
 				bw.write(content.replace("\n", "\r\n"));
 			} else {
 				bw.write(content);
 			}
-			bw.close();
 			this.file = file;
 			title = file.getName();
 			savedContent = content;
 			for(Listener l : listeners) {
 				l.docSaved();
 			}
-		} catch(IOException ex) {
-			throw new IOException(ex);
 		}
 	}
 
@@ -323,22 +319,17 @@ public class Document {
 	}
 	
 	public void save(boolean useWindowsLineEndings) throws IOException {
-		try {    
-			OutputStreamWriter osw = new OutputStreamWriter(new FileOutputStream(file), "UTF8");
-			BufferedWriter bw = new BufferedWriter(osw);
+		try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF8"))) {
 			if(useWindowsLineEndings) {
 				bw.write(content.replace("\n", "\r\n"));
 			} else {
 				bw.write(content);
 			}
-			bw.close();
 			savedContent = content;
 
 			for(Listener l : listeners) {
 				l.docSaved();
 			}
-		} catch(IOException ex) {
-			throw new IOException(ex);
 		}
 	}
 

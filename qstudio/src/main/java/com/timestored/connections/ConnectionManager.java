@@ -836,11 +836,10 @@ public class ConnectionManager implements AutoCloseable {
 				throw new IOException("cant find server");
 			}
 			executionSucceeded = execute(sql, conn);
-			returnConn(serverConfig, conn, !executionSucceeded);
 		} catch (IOException e) {
 			LOG.log(Level.WARNING, "error getting connection:\r\n", e);
 		} finally {
-			returnConn(serverConfig, conn, true);
+			returnConn(serverConfig, conn, !executionSucceeded);
 		}
 		
 		return executionSucceeded;

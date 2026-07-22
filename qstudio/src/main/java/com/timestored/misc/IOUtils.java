@@ -37,11 +37,16 @@ public class IOUtils {
 
 	/** Read a file and return it as a string */
 	public static String toString(File file, Charset charset, int bytes) throws IOException {
-		   int bytesToRead = bytes!=-1 ? bytes : (int)file.length(); 
+		   int bytesToRead = bytes!=-1 ? bytes : (int)file.length();
 		   byte[] buffer = new byte[bytesToRead];
-		   BufferedInputStream f = new BufferedInputStream(new FileInputStream(file));
-		   f.read(buffer);
-		   f.close();
+		   try (BufferedInputStream f = new BufferedInputStream(new FileInputStream(file))) {
+			   int totalRead = 0;
+			   while(totalRead < bytesToRead) {
+				   int r = f.read(buffer, totalRead, bytesToRead - totalRead);
+				   if(r == -1) break;
+				   totalRead += r;
+			   }
+		   }
 		   return new String(buffer, charset);
 	}
 
@@ -60,9 +65,13 @@ public class IOUtils {
 	 */
 	public static String toString(@SuppressWarnings("rawtypes") Class c, 
 			String resourceName) throws IOException {
-		// TODO close this stream
-		InputStream is =c.getResourceAsStream(resourceName);
-		return CharStreams.toString(new InputStreamReader(is, Charset.forName("UTF-8")));
+		InputStream is = c.getResourceAsStream(resourceName);
+		if(is == null) {
+			throw new IOException("Resource not found: " + resourceName);
+		}
+		try (InputStreamReader reader = new InputStreamReader(is, Charset.forName("UTF-8"))) {
+			return CharStreams.toString(reader);
+		}
 	}
 	
 	public static void writeStringToFile(String s, File file) throws IOException {

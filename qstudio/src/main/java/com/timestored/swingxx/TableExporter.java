@@ -183,9 +183,9 @@ public class TableExporter {
 	public static void saveTable(JXTable table, StringValue stringValue, boolean selectedAreaOnly, boolean includeHeaders, 
 						String separator, File f) throws java.io.IOException {
     		LOG.info("writing out to: " + f);
-    		FileWriter out = new FileWriter(f);
-    		out.write(TableExporter.getTable(table, stringValue, selectedAreaOnly, includeHeaders, ","));
-    		out.close();
+    		try (FileWriter out = new FileWriter(f)) {
+    			out.write(TableExporter.getTable(table, stringValue, selectedAreaOnly, includeHeaders, ","));
+    		}
 	}
 	
 
