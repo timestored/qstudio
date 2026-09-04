@@ -17,6 +17,8 @@ ___________________________________________________________________
 
 Changelog:
 
+2026-09-04 - 5.01   - Add RayforceDB support. Connects over Rayforce's own IPC protocol, browses tables in the server tree and runs Rayfall (.rfl) queries.
+
 2025-08-19 - 4.12   - Show negative numbers in red. TRUE/FALSE for booleans. User configurable.
 					- QDoc 2.0 with modern mkdocs theme.
 

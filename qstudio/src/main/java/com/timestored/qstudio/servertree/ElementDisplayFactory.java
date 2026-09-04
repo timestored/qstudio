@@ -22,6 +22,7 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.io.IOException;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.logging.Level;
@@ -34,10 +35,13 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 import kx.c.KException;
+import kx.jdbc;
 
 import com.timestored.connections.JdbcTypes;
+import com.timestored.connections.NativeConnection;
 import com.timestored.connections.ServerConfig;
 import com.timestored.qstudio.kdb.CAtomTypes;
+import com.timestored.qstudio.kdb.KdbHelper;
 import com.timestored.qstudio.model.AdminModel;
 import com.timestored.qstudio.model.QueryManager;
 import com.timestored.qstudio.model.ServerQEntity;
@@ -134,10 +138,56 @@ class ElementDisplayFactory {
 			} else if(elementDetails.getType().equals(CAtomTypes.LAMBDA)) {
 				return new FunctionEditingPanel(adminModel, queryName);
 			}
+		} else if (adminModel.getServerModel().getServerConfig().isRayforce()) {
+			return new RayforceElementPanel(adminModel, queryManager, elementDetails, negativeShownRed);
 		} else if (elementDetails.isTable() || adminModel.getServerModel().getServerConfig().getJdbcType().equals(JdbcTypes.DOLPHINDB)) {
 			return new NonkdbTablePanel(adminModel, queryManager, elementDetails, chartTheme, negativeShownRed);
 		}
 		return null;
+	}
+
+	/**
+	 * Preview for any Rayforce element. Same shape as {@link NonkdbTablePanel} but
+	 * the query goes over Rayforce's own protocol - there is no JDBC driver to run
+	 * it through. Tables become a grid the way kdb results do; anything else is
+	 * rendered the way the console renders a kdb value.
+	 */
+	private static class RayforceElementPanel extends JPanel {
+		private static final long serialVersionUID = 1L;
+
+		public RayforceElementPanel(AdminModel adminModel, QueryManager queryManager, ServerQEntity serverEntity,
+				boolean negativeShownRed) {
+			setLayout(new BorderLayout());
+
+			List<QQuery> qQueries = serverEntity.getQQueries();
+			if(!qQueries.isEmpty()) {
+				add(getActionButtons(queryManager, qQueries), BorderLayout.NORTH);
+			}
+			// A lambda has no queries of its own; its name evaluates to the function.
+			String query = qQueries.isEmpty() ? serverEntity.getFullName() : qQueries.get(0).getQuery();
+
+			ServerConfig sc = adminModel.getServerModel().getServerConfig();
+			NativeConnection conn = adminModel.getConnectionManager().getNativeConnection(sc);
+			if(conn == null) {
+				add(new JLabel("Could not get connection to server."), BorderLayout.CENTER);
+				return;
+			}
+			try {
+				Object k = conn.query(query);
+				ResultSet rs = serverEntity.isTable() ? jdbc.getRS(k, serverEntity.getName()) : null;
+				if(rs != null) {
+					add(TableFactory.getTable(rs, 10000, negativeShownRed), BorderLayout.CENTER);
+				} else if(k != null) {
+					add(KdbHelper.getComponent(k, 10000), BorderLayout.CENTER);
+				}
+				revalidate();
+			} catch (Exception e) {
+				LOG.log(Level.INFO, "Could not preview Rayforce element " + serverEntity.getFullName(), e);
+				add(new JLabel("Could not display element: " + e.getMessage()), BorderLayout.CENTER);
+			} finally {
+				try { conn.close(); } catch (IOException e) { }
+			}
+		}
 	}
 
 	private static class NonkdbTablePanel extends JPanel {

@@ -71,7 +71,8 @@ public class QStudioModel {
 	Language getCurrentSqlLanguage() {
 		String serverName = queryManager.getSelectedServerName();
 		ServerConfig sc = serverName == null ? null : connectionManager.getServer(serverName);
-		Language fallbackLang = sc != null && sc.isKDB() ? Language.Q : Language.SQL;
+		Language fallbackLang = sc == null ? Language.SQL
+				: sc.isKDB() ? Language.Q : sc.isRayforce() ? Language.RFL : Language.SQL;
 		Language l = Language.getLanguage(openDocumentsModel.getSelectedDocument().getFileEnding());
 		return (l.equals(Language.MARKDOWN) || l.equals(Language.OTHER)) ? fallbackLang : l;
 	}
@@ -99,7 +100,11 @@ public class QStudioModel {
     		return qFirst;
     	}
     	ServerConfig sc = connectionManager.getServer(queryManager.getSelectedServerName());
-    	return sc != null ? (JdbcTypes.DOLPHINDB.equals(sc.getJdbcType()) ? dosFirst : sc.isKDB() ? qFirst : sqlFirst) : qFirst;
+    	if(sc == null) {
+    		return qFirst;
+    	}
+    	return JdbcTypes.DOLPHINDB.equals(sc.getJdbcType()) ? dosFirst
+    			: sc.isKDB() ? qFirst : sc.isRayforce() ? rflFirst : sqlFirst;
 	}
 
 	private static final String MEMNAME = "QDUCKDB";

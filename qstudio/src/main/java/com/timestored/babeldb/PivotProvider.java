@@ -74,6 +74,9 @@ public class PivotProvider {
 
 	public static String pivotSQL(JdbcTypes jdbcTypes, List<String> groupbylist, List<String> pivotlist, String sel, String translation) {
 		boolean isKDB = jdbcTypes.isKDB();
+		if(jdbcTypes.isRayforce()) {
+			return pivotRayfall(groupbylist, pivotlist, sel, translation);
+		}
 		if(isKDB) {
 			String ssel = sel.replace(":count *", ":count i");
 			String groupby =  DBHelper.toKdbStringList(groupbylist);
@@ -90,6 +93,52 @@ public class PivotProvider {
 		} else {
 			return pivotStandardSQL(jdbcTypes, groupbylist, pivotlist, sel, translation);
 		}
+	}
+
+	/**
+	 * Generates the group-by half and leaves the pivot itself to {@link #postProcess} -
+	 * the same split every database without a native PIVOT gets. (Rayfall does have a
+	 * pivot verb, but it takes one index and one value column, not this form's lists.)
+	 * The asc: clause matters: PivotResultSet relies on rows arriving ordered by the
+	 * grouping columns.
+	 */
+	private static String pivotRayfall(List<String> groupbylist, List<String> pivotlist, String sel, String translation) {
+		if(pivotlist.size() > 0 && groupbylist.size() == 0) {
+			throw new RuntimeException("mustSpecifyGroupbyToAllowPivot");
+		}
+		if(groupbylist.size() > 0 && (sel == null || sel.trim().length() == 0)) {
+			throw new RuntimeException("mustSpecifyAggregatesForGroupBy");
+		}
+		List<String> by = new ArrayList<>();
+		by.addAll(groupbylist);
+		by.addAll(pivotlist);
+		if(by.isEmpty()) {
+			return "(select {from: " + translation + " take: 1000})";
+		}
+		StringBuilder sb = new StringBuilder("(select {from: ").append(translation);
+		sb.append(" by: [").append(Joiner.on(' ').join(by)).append("]");
+		for(String clause : sel.split(",", -1)) {
+			sb.append(' ').append(toRayfallSel(clause, by.get(0)));
+		}
+		sb.append(" asc: [").append(Joiner.on(' ').join(by)).append("]");
+		return sb.append("})").toString();
+	}
+
+	/**
+	 * qStudio holds aggregates in kdb's {@code name:agg col} form; Rayfall wants
+	 * {@code name: (agg col)}. A row count has no column, so it counts a grouping
+	 * column - within a group every column has the row count.
+	 */
+	private static String toRayfallSel(String sclause, String anyGroupCol) {
+		String[] assign = sclause.split(":", 2);
+		String body = assign[1].trim();
+		int p = body.indexOf(' ');
+		String op = body.substring(0, p).trim();
+		String cname = body.substring(p + 1).trim();
+		if(cname.equals("*")) {
+			cname = anyGroupCol;
+		}
+		return assign[0].trim() + ": (" + op + " " + cname + ")";
 	}
 
 	private static String pivotStandardSQL(JdbcTypes jdbcTypes, List<String> groupbylist, List<String> pivotlist, String sel, String translation) {

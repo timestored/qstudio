@@ -37,6 +37,7 @@ import javax.activation.UnsupportedDataTypeException;
 import javax.sql.rowset.CachedRowSet;
 
 import kx.c.Dict;
+import kx.c.Flip;
 import kx.c.KException;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -51,6 +52,7 @@ import com.google.common.collect.Lists;
 import com.timestored.connections.ConnectionManager;
 import com.timestored.connections.JdbcTypes;
 import com.timestored.connections.MetaInfo;
+import com.timestored.connections.NativeConnection;
 import com.timestored.connections.MetaInfo.ColumnInfo;
 import com.timestored.connections.ServerConfig;
 import com.timestored.kdb.KdbConnection;
@@ -126,6 +128,8 @@ public class ServerObjectTree {
 		try {
 			if(serverConfig.isKDB()) {
 				namespaceListingMap = getNSListing(serverConfig, connectionManager);
+			} else if(serverConfig.isRayforce()) {
+				namespaceListingMap = getNSListingForRayforce(serverConfig, connectionManager);
 			} else if(serverConfig.getJdbcType().equals(JdbcTypes.DOLPHINDB)) {
 				namespaceListingMap = getNSListingForDolphin(serverConfig, connectionManager);
 			} else {
@@ -133,7 +137,7 @@ public class ServerObjectTree {
 			}
 		} catch (KException ke) {
 			e = ke;
-			errMsg = "Kdb Exception when querying server. Ensure server security settings ok.";
+			errMsg = (serverConfig.isKDB() ? "Kdb " : "") + "Exception when querying server. Ensure server security settings ok.";
 		} catch (IOException ioe) {
 			e = ioe;
 			errMsg = "IO Error communicating with Server: " + ioe.getMessage();
@@ -172,6 +176,125 @@ public class ServerObjectTree {
 		return r;
 	}
 
+
+
+	/**
+	 * Rayfall expression that describes every global binding in one round trip -
+	 * name, type label, length and, for tables, the column names - without
+	 * shipping the values themselves. {@code env} lists builtins too; they and
+	 * user lambdas both have type {@code ?}, and only formatting tells them apart.
+	 */
+	public static final String RAYFORCE_LISTING_QUERY = "((fn [e] (table [name type len cols] (list (key e)"
+			+ " (map (fn [v] (if (== (type v) '?) (if (== (format \"%\" v) \"lambda\") 'lambda 'builtin) (type v))) (value e))"
+			+ " (map (fn [v] (count v)) (value e))"
+			+ " (map (fn [v] (if (== (type v) 'TABLE) (cols v) [])) (value e))))) (env 0))";
+
+	/**
+	 * Build the tree from Rayforce's own introspection. Rayfall reserves every
+	 * dotted name for builtin namespaces, so user globals all sit in the default
+	 * namespace.
+	 */
+	private static Map<String, NamespaceListing> getNSListingForRayforce(ServerConfig serverConfig,
+			ConnectionManager connectionManager) throws IOException, KException, UnsupportedDataTypeException {
+
+		NativeConnection conn = connectionManager.getNativeConnection(serverConfig);
+		if(conn == null) {
+			throw new IOException("Could not connect to Rayforce server");
+		}
+		try {
+			Object o = conn.query(RAYFORCE_LISTING_QUERY);
+			if(!(o instanceof Flip)) {
+				throw new UnsupportedDataTypeException("Rayforce server did not send a variable listing.");
+			}
+			Flip vars = (Flip) o;
+			if(!(vars.at("name") instanceof String[]) || !(vars.at("type") instanceof String[])
+					|| !(vars.at("len") instanceof long[]) || !(vars.at("cols") instanceof Object[])) {
+				throw new UnsupportedDataTypeException("Rayforce variable listing had unexpected column types.");
+			}
+			String[] names = (String[]) vars.at("name");
+			String[] types = (String[]) vars.at("type");
+			long[] lens = (long[]) vars.at("len");
+			Object[] cols = (Object[]) vars.at("cols");
+
+			String serverName = serverConfig.getName();
+			List<ServerQEntity> allElements = new ArrayList<>();
+			for(int i = 0; i < names.length; i++) {
+				if(names[i].startsWith(".") || types[i].equals("builtin")) {
+					continue;
+				}
+				Short typeNum = toKdbTypeNum(types[i]);
+				if(typeNum == null) {
+					LOG.info("Skipping " + names[i] + " in tree: unmapped Rayforce type " + types[i]);
+					continue;
+				}
+				boolean isTable = typeNum == CAtomTypes.TABLE.getTypeNum();
+				String[] colNames = (cols[i] instanceof String[]) ? (String[]) cols[i] : new String[] {};
+				try {
+					ServerQEntity sqe = ServerQEntityFactory.get(serverName, DEFAULT_NAMESPACE, names[i],
+							typeNum, lens[i], isTable, false, false, colNames, serverConfig.getJdbcType());
+					if(sqe != null) {
+						allElements.add(sqe);
+					}
+				} catch(IllegalArgumentException | ClassCastException ex) {
+					// e.g. a table with no columns - leave it out rather than lose the whole tree
+					LOG.log(Level.WARNING, "unrecognised ServerQEntity: " + names[i], ex);
+				}
+			}
+
+			HashMap<String, NamespaceListing> r = new HashMap<String, NamespaceListing>();
+			r.put(DEFAULT_NAMESPACE, new NamespaceListing(allElements));
+			return r;
+		} finally {
+			conn.close();
+		}
+	}
+
+	/**
+	 * Rayforce type labels are lowercase for an atom and uppercase for a vector -
+	 * the same distinction kdb encodes in the sign of its type number, so the tree
+	 * can reuse kdb's {@link CAtomTypes} and every icon and menu that keys off it.
+	 * Returns null for a type the tree has no representation for.
+	 */
+	private static Short toKdbTypeNum(String rayforceType) {
+		if(rayforceType == null) {
+			return null;
+		}
+		switch(rayforceType) {
+		case "b8": return (short) CAtomTypes.BOOLEAN.getTypeNum();
+		case "B8": return (short) CAtomTypes.BOOLEAN_LIST.getTypeNum();
+		case "u8": return (short) CAtomTypes.BYTE.getTypeNum();
+		case "U8": return (short) CAtomTypes.BYTE_LIST.getTypeNum();
+		case "i16": return (short) CAtomTypes.SHORT.getTypeNum();
+		case "I16": return (short) CAtomTypes.SHORT_LIST.getTypeNum();
+		case "i32": return (short) CAtomTypes.INT.getTypeNum();
+		case "I32": return (short) CAtomTypes.INT_LIST.getTypeNum();
+		case "i64": return (short) CAtomTypes.LONG.getTypeNum();
+		case "I64": return (short) CAtomTypes.LONG_LIST.getTypeNum();
+		case "f32": return (short) CAtomTypes.REAL.getTypeNum();
+		case "F32": return (short) CAtomTypes.REAL_LIST.getTypeNum();
+		case "f64": return (short) CAtomTypes.FLOAT.getTypeNum();
+		case "F64": return (short) CAtomTypes.FLOAT_LIST.getTypeNum();
+		case "date": return (short) CAtomTypes.DATE.getTypeNum();
+		case "DATE": return (short) CAtomTypes.DATE_LIST.getTypeNum();
+		case "time": return (short) CAtomTypes.TIME.getTypeNum();
+		case "TIME": return (short) CAtomTypes.TIME_LIST.getTypeNum();
+		case "timestamp": return (short) CAtomTypes.TIMESTAMP.getTypeNum();
+		case "TIMESTAMP": return (short) CAtomTypes.TIMESTAMP_LIST.getTypeNum();
+		case "guid": return (short) CAtomTypes.GUID.getTypeNum();
+		case "GUID": return (short) CAtomTypes.GUID_LIST.getTypeNum();
+		// Rayforce strings are their own type; both they and symbols reach Java as
+		// String, so the tree shows them the way it shows kdb symbols.
+		case "sym":
+		case "str": return (short) CAtomTypes.SYMBOL.getTypeNum();
+		case "SYM":
+		case "STR": return (short) CAtomTypes.SYMBOL_LIST.getTypeNum();
+		case "LIST": return (short) CAtomTypes.MIXED_LIST.getTypeNum();
+		case "TABLE": return (short) CAtomTypes.TABLE.getTypeNum();
+		case "DICT": return (short) CAtomTypes.DICTIONARY.getTypeNum();
+		case "lambda": return (short) CAtomTypes.LAMBDA.getTypeNum();
+		default: return null;
+		}
+	}
 
 
 	private static Map<String, NamespaceListing> getNSListingForDolphin(ServerConfig serverConfig,

@@ -297,7 +297,13 @@ public class ServerConfig {
 
 	/** @return true iff this is a kdb server **/
 	public boolean isKDB() { return jdbcType.isKDB(); }
-	
+
+	/** @return true iff this is a Rayforce server **/
+	public boolean isRayforce() { return jdbcType.isRayforce(); }
+
+	/** @return true iff queries go over the database's own protocol rather than JDBC **/
+	public boolean isNativeProtocol() { return jdbcType.isNativeProtocol(); }
+
 	/** @return true iff this is a streaming server **/
 	public boolean isStreaming() { return jdbcType.isStreaming(); }
 

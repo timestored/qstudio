@@ -83,7 +83,8 @@ public enum JdbcIcons implements Icon {
 	DB_TERADATA("teradata_icon.png"),
 	DB_MONGODB("mongodb.png"),
 	DB_REDIS("redis.png"),
-	DB_DOLPHIN("dolphin.png");
+	DB_DOLPHIN("dolphin.png"),
+	DB_RAYFORCE("rayforce_icon.png");
 	
 	public static JdbcIcons getIconFor(JdbcTypes jdbcTypes) {
 		switch(jdbcTypes) {
@@ -129,6 +130,7 @@ public enum JdbcIcons implements Icon {
 		case REDIS: return DB_REDIS;
 		case MONGODB: return DB_MONGODB;
 		case REDSHIFT: return DB_REDSHIFT;
+		case RAYFORCE: return DB_RAYFORCE;
 		default: 
 		}
 		return DB_DATABASE_GENERIC;

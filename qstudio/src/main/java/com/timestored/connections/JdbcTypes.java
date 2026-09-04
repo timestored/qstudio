@@ -192,7 +192,21 @@ public enum JdbcTypes {
 	TDENGINE("TDengine","com.taosdata.jdbc.rs.RestfulDriver",6041,"jdbc:TAOS-RS://{host}:{port}/[{database}]","http://www.tdengine.com","maven:/com.taosdata.jdbc:taos-jdbcdriver:RELEASE[3.2.4]","com/taosdata/jdbc/taos-jdbcdriver/3.2.4/taos-jdbcdriver-3.2.4-dist.jar"),
 	ORACLE("Oracle","oracle.jdbc.driver.OracleDriver",1521,"jdbc:oracle:thin:@{host}:{port}/[{database}]","https://www.oracle.com/uk/database/","maven:/com.oracle.database.jdbc:ojdbc8:RELEASE[19.19.0.0]","/com/oracle/database/jdbc/ojdbc8/19.19.0.0/ojdbc8-19.19.0.0.jar"),
 	BABELDB("BabelDB", "com.timestored.babeldb.BabelDBJdbcDriver", 80, "jdbc:babeldb:"),
-	REDSHIFT("RedShift","com.amazon.redshift.jdbc.Driver",5439,"jdbc:redshift:{host}:{port}/[{database}]","https://aws.amazon.com/redshift/","maven:/com.amazon.redshift:redshift-jdbc42:RELEASE[2.1.0.28]","/com/amazon/redshift/redshift-jdbc42/2.1.0.28/redshift-jdbc42-2.1.0.28.jar")
+	REDSHIFT("RedShift","com.amazon.redshift.jdbc.Driver",5439,"jdbc:redshift:{host}:{port}/[{database}]","https://aws.amazon.com/redshift/","maven:/com.amazon.redshift:redshift-jdbc42:RELEASE[2.1.0.28]","/com/amazon/redshift/redshift-jdbc42/2.1.0.28/redshift-jdbc42-2.1.0.28.jar"),
+
+	// Rayforce speaks its own IPC protocol, not JDBC - see com.timestored.rayforce.
+	// The driver name and URL are here because every JdbcTypes entry carries them;
+	// nothing loads a driver class for this type.
+	RAYFORCE("Rayforce", "com.timestored.rayforce.RayIpc", 5000, "rayforce://{host}:{port}", "https://rayforcedb.com/", "", "") {
+		/** Rayfall is a Lisp; a line comment starts with a double semicolon. */
+		@Override public String getComment(String commentContent) {
+			return ";; " + commentContent;
+		}
+		@Override public String getComment() { return ";; "; }
+		@Override public boolean isRayforce() { return true; }
+		/** No driver class to find - the client is built in. */
+		@Override public boolean isAvailable() { return true; }
+	}
 	;
 
 
@@ -315,6 +329,15 @@ public enum JdbcTypes {
 
 	/** @return true if this represents a kdb connection type **/
 	public boolean isKDB() { return false; }
+
+	/** @return true if this represents a Rayforce connection type **/
+	public boolean isRayforce() { return false; }
+
+	/**
+	 * @return true if queries go over the database's own protocol rather than JDBC,
+	 * so the reply is a native object graph instead of a {@link java.sql.ResultSet}.
+	 */
+	public boolean isNativeProtocol() { return isKDB() || isRayforce(); }
 
 	/** @return true if this represents a streaming connection type **/
 	public boolean isStreaming() { return false; }

@@ -61,9 +61,9 @@ class ServerQEntityFactory {
 		} else if(t.isList()) {
 			return new ListSQE(serverName, namespace, name, t, count, jdbcTypes);
 		} else if (t.equals(CAtomTypes.DICTIONARY)){
-			return new DictSQE(serverName, namespace, name, count);
+			return new DictSQE(serverName, namespace, name, count, jdbcTypes);
 		} else if (t.equals(CAtomTypes.LAMBDA)){
-			return new LambdaSQE(serverName, namespace, name, colArgNames);
+			return new LambdaSQE(serverName, namespace, name, colArgNames, jdbcTypes);
 		} else {
 			return new AtomSQE(serverName, namespace, name, t, jdbcTypes);
 		}
@@ -133,7 +133,11 @@ class ServerQEntityFactory {
 		@Getter private final long count;
 		
 		public DictSQE(String serverName, String namespace, String name, long count) {
-			super(serverName, namespace, name, CAtomTypes.DICTIONARY, null);
+			this(serverName, namespace, name, count, null);
+		}
+
+		public DictSQE(String serverName, String namespace, String name, long count, JdbcTypes jdbcTypes) {
+			super(serverName, namespace, name, CAtomTypes.DICTIONARY, jdbcTypes);
 			Preconditions.checkArgument(count>=0);
 			this.count = count;
 		}
@@ -208,7 +212,11 @@ class ServerQEntityFactory {
 		final List<String> argNames;
 		
 		public LambdaSQE(String serverName, String namespace, String name, String[] argNames) {
-			super(serverName, namespace, name, CAtomTypes.LAMBDA, null);
+			this(serverName, namespace, name, argNames, null);
+		}
+
+		public LambdaSQE(String serverName, String namespace, String name, String[] argNames, JdbcTypes jdbcTypes) {
+			super(serverName, namespace, name, CAtomTypes.LAMBDA, jdbcTypes);
 			this.argNames = Arrays.asList(argNames);
 		}
 

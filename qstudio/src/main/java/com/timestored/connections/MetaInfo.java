@@ -189,10 +189,28 @@ import lombok.NonNull;
 	}
 	
 	public static String getCountQuery(JdbcTypes jdbcTypes, String fullname) {
-		return (jdbcTypes.isKDB() ? "count " : "SELECT COUNT(*) FROM ") + fullname;	
+		if(jdbcTypes.isRayforce()) {
+			return "(count " + fullname + ")";
+		}
+		return (jdbcTypes.isKDB() ? "count " : "SELECT COUNT(*) FROM ") + fullname;
 	}
-	
+
+	/** Rayfall projections are {@code name: expr} pairs inside the select map. */
+	private static String rayforceCols(List<String> colNames) {
+		StringBuilder sb = new StringBuilder();
+		for(String cn : colNames) {
+			sb.append(' ').append(cn).append(": ").append(cn);
+		}
+		return sb.toString();
+	}
+
 	public static String getTop100Query(JdbcTypes jdbcTypes, List<String> colNames, String fullname, boolean isKdbPartitioned, boolean includeColumnNames) {
+		if(jdbcTypes.isRayforce()) {
+			// take: inside select stops at the table's end, whereas the take builtin
+			// cycles round a short table the way kdb's # does.
+			String cols = includeColumnNames && colNames != null ? rayforceCols(colNames) : "";
+			return "(select {from: " + fullname + cols + " take: 1000})";
+		}
 		String cols = cols(jdbcTypes, colNames, includeColumnNames);
 		String qry = "SELECT " + cols + " FROM " + fullname + " LIMIT 1000";
 		// select top 100
@@ -208,6 +226,9 @@ import lombok.NonNull;
 	}
 	
 	public static String getBottom100query(JdbcTypes jdbcTypes, List<String> colNames,String fullname, boolean isKdbPartitioned, boolean includeColumnNames) {
+		if(jdbcTypes.isRayforce()) {
+			return "(select {from: " + fullname + " take: -1000})";
+		}
 		String cols = cols(jdbcTypes, colNames, includeColumnNames);
 		if (isKdbPartitioned) {
 			return "select " + cols + " from .Q.ind[" + fullname 

@@ -59,7 +59,7 @@ class ConsolePanel extends JPanel implements QueryListener,GrabableContainer {
 		String txt = "";
 		// For KDB always use console view. For non-kdb check if it's just one cell and show that or the number of rows.
 		// useful for REDIS for example
-		if(sc.isKDB() || qr.getConsoleView().length() > 2) { // console = :: for kdb often
+		if(sc.isNativeProtocol() || qr.getConsoleView().length() > 2) { // console = :: for kdb often
 			txt = qr.getConsoleView();
 		} else {
 			if(qr.rs != null) {
@@ -80,7 +80,7 @@ class ConsolePanel extends JPanel implements QueryListener,GrabableContainer {
 		app(txt);
 	}
 	@Override public void sendingQuery(ServerConfig sc, String query) { 
-		app((sc.isKDB() ? "q)" : ">") + query); 
+		app((sc.isKDB() ? "q)" : sc.isRayforce() ? "ray)" : ">") + query);
 	}
 	
 	@Override public void selectedServerChanged(String server) {

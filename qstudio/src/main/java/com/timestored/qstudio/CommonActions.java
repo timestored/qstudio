@@ -240,8 +240,10 @@ public class CommonActions implements CommandProvider {
 
 			@Override public void actionPerformed(ActionEvent e) {
 				ServerConfig sc = connectionManager.getServer(queryManager.getSelectedServerName());
-				boolean isKdb = sc == null || sc.isKDB();
-				if(isKdb) {
+				// Statement splitting is semicolon-based, which is meaningless in q
+				// and in Rayfall; for those the line is the unit, as at their REPLs.
+				boolean lineIsTheUnit = sc == null || sc.isNativeProtocol();
+				if(lineIsTheUnit) {
 					sendQuery(openDocumentsModel.getSelectedDocument().getCurrentLine());
 				} else {
 					sendQuery(openDocumentsModel.getSelectedDocument().getCurrentStatement());

@@ -149,7 +149,7 @@ public class TableSQE extends BaseSQE {
 		r.add(new QQuery("Select Top 1000", CIcon.TABLE_ELEMENT, MetaInfo.getTop100Query(jdbcTypes, colNames, fn, isPartitioned, false)));
 		r.add(new QQuery("Select Col1,Col2... from Top 1000", CIcon.TABLE_ELEMENT, MetaInfo.getTop100Query(jdbcTypes, colNames, fn, isPartitioned, true)));
 		r.add(new QQuery("Count", CIcon.TABLE_ELEMENT, MetaInfo.getCountQuery(jdbcTypes, fn)));
-		if(jdbcTypes.isKDB()) {
+		if(jdbcTypes.isKDB() || jdbcTypes.isRayforce()) {
 			r.add(new QQuery("Select Bottom 1000", CIcon.TABLE_ELEMENT, MetaInfo.getBottom100query(jdbcTypes, colNames, fn, isPartitioned, false)));
 			r.addAll(super.getQQueries());
 		}

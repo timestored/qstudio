@@ -61,6 +61,37 @@ public class AIFacade {
 	private static final String KDB_Q3 = "Question: Find the price of 'NFLX' trades in 15 minute bars from trades?";
 	private static final String KDB_A3 = "Answer: select count i by 15 xbar time.minute from trade where sym=`NFLX";
 
+	private static final String RFL_PREP = "You are a RayforceDB expert. Given an input question, step by step create a syntactically correct Rayfall query to run.\r\n"
+			+ "Rayfall is a Lisp: every expression is a parenthesised form, and a query is (select {from: TABLE ...}) where the clauses are keyword pairs - where:, by:, asc:, desc: - and a projection is name: (expression).\r\n"
+			+ "Symbols are written with a leading quote, as in 'AAPL. Limit rows with a take: n clause inside select; a negative n takes from the end.\r\n"
+			+ "Unless the user asks for a specific number of rows, return at most 1000 using take: 1000.\r\n"
+			+ "Pay attention to use only the column names you can see in the tables below.\r\n"
+			+ "Be careful to not query for columns that do not exist. Also, pay attention to which column is in which table.\r\n"
+			+ "SQL syntax does not work in Rayfall: there is no SELECT ... FROM, no LIMIT, no GROUP BY.\r\n"
+			+ "\r\n" + "Only use the following tables:";
+
+	private static final String RFL_Q1 = "Question: Select the first two rows from the trade table?";
+	private static final String RFL_A1 = "Answer: (select {from: trade take: 2})";
+	private static final String RFL_Q2 = "Question: Find the number of trades for JPM grouped by symbol?";
+	private static final String RFL_A2 = "Answer: (select {from: trade where: (== sym 'JPM) by: [sym] n: (count sym)})";
+	private static final String RFL_Q3 = "Question: Find the average price and total quantity of NFLX trades by side?";
+	private static final String RFL_A3 = "Answer: (select {from: trade where: (== sym 'NFLX) by: [side] avgPrice: (avg price) qty: (sum quantity)})";
+
+	private static final String getRayforceMessages(String tblInfo, String question) {
+		String tbls = tblInfo != null ? tblInfo : "";
+		return "[{\"role\": \"user\", \"content\": \"" + RFL_PREP.replace("\n", "\\n").replace("\r", "\\r").replace("\"", "\\\"")
+				+ tbls.replace("\n", "\\n").replace("\r", "\\r") + "\"}\r\n"
+				+ ",{\"role\": \"user\", \"content\": \"" + RFL_Q1 + "\"}\r\n"
+				+ ",{\"role\": \"assistant\", \"content\": \"" + RFL_A1 + "\"}\r\n"
+				+ ",{\"role\": \"user\", \"content\": \"" + RFL_Q2 + "\"}\r\n"
+				+ ",{\"role\": \"assistant\", \"content\": \"" + RFL_A2 + "\"}\r\n"
+				+ ",{\"role\": \"user\", \"content\": \"" + RFL_Q3 + "\"}\r\n"
+				+ ",{\"role\": \"assistant\", \"content\": \"" + RFL_A3 + "\"}\r\n"
+				+ ",{\"role\": \"user\", \"content\": \"Question: "
+				+ question.replace("\n", "\\n").replace("\r", "\\r") + "\"}\r\n"
+				+ ",{\"role\": \"assistant\", \"content\": \"Answer: \"}\r\n" + "]\r\n";
+	}
+
 	private static final String getKDBMessages(String tblInfo, String question) {
 		String tbls = tblInfo != null ? tblInfo : "";
 		return "[{\"role\": \"user\", \"content\": \"" + KDB_PREP.replace("\n", "\\n").replace("\r", "\\r").replace("\"", "\\\"")
@@ -118,7 +149,9 @@ public class AIFacade {
 		// Below line is needed to make call work in bundled JRE
 		// To test you must do full build and run with JRE.
 		System.setProperty("https.protocols", "TLSv1.2");
-		String msgs = jdbcType.isKDB() ? getKDBMessages(tblInfo, question) : getSQLMessages(tblInfo, question);
+		String msgs = jdbcType.isKDB() ? getKDBMessages(tblInfo, question)
+				: jdbcType.isRayforce() ? getRayforceMessages(tblInfo, question)
+				: getSQLMessages(tblInfo, question);
 		return queryOpenAIRaw(msgs);
 	}
 

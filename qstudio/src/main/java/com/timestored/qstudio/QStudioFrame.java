@@ -331,21 +331,13 @@ public class QStudioFrame extends JFrame {
 		serverDocumentPanel = new ServerDocumentPanel(commonActions, documentActions, 
 				openDocsModel, this, qDocController, files -> handleArgsFiles(files));
 		serverDocumentPanel.setEditorFont(myPreferences.getCodeFontFont());
-		serverDocumentPanel.setAssumedFileEnding(conMan.isEmpty() || conMan.containsKdbServer() ? "q" : "sql");
+		serverDocumentPanel.setAssumedFileEnding(getAssumedFileEnding(conMan, queryManager.getSelectedServerName()));
 
 		ActionMap am = getRootPane().getActionMap();
 		InputMap im = getRootPane().getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 		queryManager.addQueryListener(new QueryAdapter() {
 			@Override public void selectedServerChanged(String server) {
-				String fileEnding = conMan.isEmpty() || conMan.containsKdbServer() ? "q" : "sql";
-				if(server != null) {
-					ServerConfig sc = conMan.getServer(server);
-					if(sc != null) {
-//						serverDocumentPanel.setEditorBackground(sc.getColor());
-						fileEnding = sc.isKDB() ? "q" : "sql";
-					}
-				}
-				serverDocumentPanel.setAssumedFileEnding(fileEnding);
+				serverDocumentPanel.setAssumedFileEnding(getAssumedFileEnding(conMan, server));
 			}
 		});
 
@@ -1340,6 +1332,15 @@ public class QStudioFrame extends JFrame {
 			return;
 		}
 		handleArgsFiles(args.stream().map(s -> new File(s)).collect(Collectors.toList()));
+	}
+
+	/** Language for untitled documents: the selected server's, else whatever the server list suggests. */
+	private static String getAssumedFileEnding(ConnectionManager conMan, String server) {
+		ServerConfig sc = server == null ? null : conMan.getServer(server);
+		if(sc != null) {
+			return sc.isKDB() ? "q" : sc.isRayforce() ? "rfl" : "sql";
+		}
+		return conMan.isEmpty() || conMan.containsKdbServer() ? "q" : "sql";
 	}
 
 	public void handleArgsFiles(File file) { handleArgsFiles(Arrays.asList(file)); }

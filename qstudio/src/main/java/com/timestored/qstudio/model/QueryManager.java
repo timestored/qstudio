@@ -39,7 +39,8 @@ import com.timestored.command.CommandProvider;
 import com.timestored.connections.ConnectionManager;
 import com.timestored.connections.JdbcTypes;
 import com.timestored.connections.ServerConfig;
-import com.timestored.kdb.KdbConnection;
+import com.timestored.connections.NativeConnection;
+import com.timestored.rayforce.RayConnection;
 import com.timestored.qstudio.BackgroundExecutor;
 import com.timestored.qstudio.PivotFormConfig;
 import com.timestored.qstudio.kdb.KdbHelper;
@@ -72,7 +73,7 @@ import com.timestored.theme.Theme;
 	
 	private long maxReturnedObjectSize;
 
-	private KdbConnection conn;
+	private NativeConnection conn;
 
 
 	/**
@@ -84,7 +85,7 @@ import com.timestored.theme.Theme;
 			@Override public void serverAdded(ServerConfig sc) {  }	
 			@Override public void prefChange() {
 				refreshServerList();
-				KdbConnection c = conn;
+				NativeConnection c = conn;
 				if(c != null) {
 					try {
 						c.close();
@@ -125,7 +126,7 @@ import com.timestored.theme.Theme;
 		synchronized (this) {
 			if(querying) {
 				try {
-					KdbConnection c = conn;
+					NativeConnection c = conn;
 					if(c!=null) {
 						LOG.warning("Cancelling query");
 						cancelQuery = true;
@@ -230,8 +231,8 @@ import com.timestored.theme.Theme;
 		if(conn==null || !conn.isConnected()) {
 			long curMillis = System.currentTimeMillis();
 			try {
-				if(sc.isKDB()) {
-					conn = connectionManager.tryKdbConnection(serverName);
+				if(sc.isNativeProtocol()) {
+					conn = connectionManager.tryNativeConnection(serverName);
 				} else {
 					ResultSet crs = connectionManager.executeQuery(sc, sqlSent);
 					if(pivotConfig != null) {
@@ -262,7 +263,11 @@ import com.timestored.theme.Theme;
 			// making parsing in java harder.
 			// (sizeOk; (runOk=(1b;`); runResult); consoleText)
 			// (sizeOk; (runOk=enlist 0b; errorMessage; stackTrace); consoleText)
-			if(queryWrapped) {
+			// The wrapper is q source, so it only applies to kdb. Rayforce gets the
+			// same three things from its own protocol: the server captures printed
+			// output and error detail for us, and the value is rendered locally.
+			boolean kdbWrapped = queryWrapped && sc.isKDB();
+			if(kdbWrapped) {
 				String maxSizeString = maxReturnedObjectSize == 0 ? "0Wj" : (maxReturnedObjectSize + "j");
 				String callWrapper = "{v:$[`trp in key .Q; .Q.trp[{( (1b;`) ;value x)};x;{((0b;`);x;$[4<count y; .Q.sbt -4 _ y; \"\"])}]; ((1b;`);value x)]; a:" + maxSizeString + ">@[-22!;v;{0}]; (a;$[a;v;0b];.Q.s v 1)} \"";
 				qry = callWrapper + KdbHelper.escape(qry) + "\"";
@@ -271,11 +276,14 @@ import com.timestored.theme.Theme;
 			if(sc.isKDB()) {
 				commercialDBqueries++;
 			}
+			if(conn instanceof RayConnection) {
+				((RayConnection) conn).setMaxResultBytes(maxReturnedObjectSize);
+			}
 			o = conn.query(qry);
 			Object k = null;
 			String consoleView = null;
 
-			if(queryWrapped) {
+			if(kdbWrapped) {
 				if(!(o instanceof Object[])) {
 					throw new KException("replyformat"); // This connects to KError to suggest unwrapping the query.
 				}
@@ -308,12 +316,21 @@ import com.timestored.theme.Theme;
 				}
 			} else {
 				k = o;
-				consoleView = (k == null ? "" : KdbHelper.asLine(k));
+				// Anything the query printed server-side comes first, then the value
+				// itself. For kdb this is always empty; Rayforce fills it from the
+				// eval's captured stdout/stderr.
+				String printed = conn.getLastConsoleOutput();
+				String rendered = (k == null ? "" : KdbHelper.asLine(k));
+				consoleView = printed.isEmpty() ? rendered : printed + rendered;
 			}
 			ResultSet rs = null;
 			try {
 				if(k != null) {
 					rs = jdbc.getRS(k, queryTitle);
+				}
+				// kdb pivots server-side; Rayforce only groups, so pivot here like plain SQL databases.
+				if(rs != null && pivotConfig != null) {
+					rs = PivotProvider.postProcess(jtype, rs, pivotConfig.getByColsSelected(), pivotConfig.getPivotColsSelected());
 				}
 			} catch(Exception e) {
 				LOG.log(Level.INFO, "No RS possible", e);

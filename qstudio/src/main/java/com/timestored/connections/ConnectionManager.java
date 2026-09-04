@@ -55,6 +55,7 @@ import com.thoughtworks.xstream.io.xml.StaxDriver;
 import com.thoughtworks.xstream.security.AnyTypePermission;
 import com.timestored.StringUtils;
 import com.timestored.kdb.KdbConnection;
+import com.timestored.rayforce.RayConnection;
 import com.timestored.plugins.ConnectionDetails;
 import com.timestored.plugins.DatabaseAuthenticationService;
 import com.timestored.plugins.PluginLoader;
@@ -543,6 +544,21 @@ public class ConnectionManager implements AutoCloseable {
 
 		boolean connected = false;
 
+		if(serverConfig.isRayforce()) {
+			// No JDBC driver to pool - test the way we will actually query.
+			try {
+				tryNativeConnection(serverConfig).close();
+				connected = true;
+			} catch (Exception e) {
+				throw new IOException(e.getMessage(), e);
+			} finally {
+				if(serverConns.contains(serverConfig)) {
+					statusUpdate(serverConfig, connected);
+				}
+			}
+			return;
+		}
+
 		PoolableConnection conn = getConn(serverConfig);
 		try {
 			connected = !conn.isClosed();
@@ -572,24 +588,49 @@ public class ConnectionManager implements AutoCloseable {
 		}
 		return tryKdbConnection(serverConfig);
 	}
-	
+
 	/**
 	 * @return kdbConnection for selected {@link ServerConfig} else throw an Exception
 	 */
 	private KdbConnection tryKdbConnection(ServerConfig serverConfig) throws Exception {
 		if(serverConfig.isKDB()) {
+			return (KdbConnection) tryNativeConnection(serverConfig);
+		}
+		throw new IllegalStateException("tryKdbConnection only works for kdb");
+	}
+
+	/**
+	 * @return a connection over the server's own protocol - kdb or Rayforce -
+	 * else throw an Exception.
+	 */
+	public NativeConnection tryNativeConnection(String serverName) throws Exception {
+		ServerConfig serverConfig = getServer(serverName);
+		if(serverConfig == null) {
+			throw new IllegalStateException("ConnectionManager cant find server named: " + serverName);
+		}
+		return tryNativeConnection(serverConfig);
+	}
+
+	/**
+	 * @return a connection over the server's own protocol for the given
+	 * {@link ServerConfig} else throw an Exception.
+	 */
+	private NativeConnection tryNativeConnection(ServerConfig serverConfig) throws Exception {
+		if(serverConfig.isNativeProtocol()) {
 			try {
-				KdbConnection kdbConn = new KdbConnection(overrideServerConfig(serverConfig));
+				ServerConfig sc = overrideServerConfig(serverConfig);
+				NativeConnection conn = serverConfig.isKDB() ? new KdbConnection(sc)
+						: new RayConnection(sc);
 				statusUpdate(serverConfig, true);
-				return kdbConn;
+				return conn;
 			} catch (Exception e) {
 				statusUpdate(serverConfig, false);
-				String text = "Could not connect to server: " + serverConfig.getHost() + ":" + serverConfig.getPort() 
+				String text = "Could not connect to server: " + serverConfig.getHost() + ":" + serverConfig.getPort()
 					+ "\r\n Exception: " + e.toString();
 				throw new IOException(text);
 			}
 		}
-		throw new IllegalStateException("tryKdbConnection only works for kdb");
+		throw new IllegalStateException("tryNativeConnection only works for kdb / Rayforce");
 	}
 
 	/**
@@ -598,11 +639,20 @@ public class ConnectionManager implements AutoCloseable {
 	public KdbConnection getKdbConnection(ServerConfig serverConfig) {
 		try {
 			return tryKdbConnection(serverConfig);
-		} catch (Exception e) { 
+		} catch (Exception e) {
 			return null;
 		}
 	}
-	
+
+	/** @return a native-protocol connection if possible otherwise null. */
+	public NativeConnection getNativeConnection(ServerConfig serverConfig) {
+		try {
+			return tryNativeConnection(serverConfig);
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
 	private void statusUpdate(ServerConfig serverConfig, boolean connected) {
 		
 		Boolean prevVal = serverConnected.put(serverConfig, connected);
@@ -625,6 +675,15 @@ public class ConnectionManager implements AutoCloseable {
 	public KdbConnection getKdbConnection(String serverName) {
 		ServerConfig sc = getServer(serverName);
 		return sc != null ? getKdbConnection(sc) : null;
+	}
+
+	/**
+	 * @return a native-protocol connection if possible otherwise null. Same
+	 * caveats as {@link #getKdbConnection(String)} - do not call on the GUI thread.
+	 */
+	public NativeConnection getNativeConnection(String serverName) {
+		ServerConfig sc = getServer(serverName);
+		return sc != null ? getNativeConnection(sc) : null;
 	}
 
 	public boolean isConnected(ServerConfig sc) {

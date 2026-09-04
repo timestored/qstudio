@@ -7,12 +7,13 @@ import java.util.logging.Logger;
 import kx.c;
 import kx.c.KException;
 
+import com.timestored.connections.NativeConnection;
 import com.timestored.connections.ServerConfig;
 
 /**
- * Provide a standardised connection interface to access a KDB server. 
+ * Provide a standardised connection interface to access a KDB server.
  */
-public class KdbConnection {
+public class KdbConnection implements NativeConnection {
 
 	private static final Logger LOG = Logger.getLogger(KdbConnection.class.getName());
 
@@ -51,13 +52,19 @@ public class KdbConnection {
 	}
 
 
-	public void close() throws IOException {
+	@Override public void close() throws IOException {
 		LOG.info("close");
 		closed = true;
 		c.close();
 	}
 
-	public Object query(String query) throws IOException, KException {
+	/**
+	 * kdb's console text comes from the wrapper {@link com.timestored.qstudio.model.QueryManager}
+	 * puts around the query, not from the connection.
+	 */
+	@Override public String getLastConsoleOutput() { return ""; }
+
+	@Override public Object query(String query) throws IOException, KException {
 		
 		LOG.info("querying -> " + query);
 		if(closed) {
@@ -153,8 +160,8 @@ public class KdbConnection {
 		}
 	}
 	
-	public String getName() { return host + ":" + port; }
+	@Override public String getName() { return host + ":" + port; }
 
-	public boolean isConnected() { return !closed && c.s.isConnected(); }
+	@Override public boolean isConnected() { return !closed && c.s.isConnected(); }
 
 }

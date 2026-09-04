@@ -14,7 +14,7 @@ Windows, macOS, Linux
 
 ## Suports Every Database
 
-kdb+, mySQL, QuestDB, PostgreSQL, Redis
+kdb+, RayforceDB, mySQL, QuestDB, PostgreSQL, Redis
 TimeScale, Microsoft SQL Server, H2 Database, DuckDB, Oracle
 TDengine, DolphinDB, Clickhouse, MongoDB, Druid, InfluxDB
 Derby, HSQLDB, SQLite, CSV, MS Access, JDBC

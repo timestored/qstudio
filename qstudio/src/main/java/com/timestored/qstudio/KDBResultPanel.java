@@ -161,9 +161,12 @@ class KDBResultPanel extends JPanel implements GrabableContainer {
 		JdbcTypes jdbcType = qr.getServerConfig() != null ? qr.getServerConfig().getJdbcType() : JdbcTypes.KDB;
 		
 		if(qr.isCancelled() || qr.isException()) {
-			String errMsg = qr.getE() == null ? null : qr.getE().toString();
+			// A KException from a non-kdb server (Rayforce) carries that server's error code,
+			// which KError would explain in kdb terms.
+			String errMsg = qr.getE() == null ? null
+					: qr.getE() instanceof KException ? "error: " + qr.getE().getMessage() : qr.getE().toString();
 			Box searchBox = getSearchBoxes(qr.getQuery(), errMsg, jdbcType);
-			if (qr.e instanceof KException) {
+			if (qr.e instanceof KException && jdbcType.isKDB()) {
 				// Not currently adding AI search to KX as it's useless.
 				p = KError.getDescriptionComponent((KException) qr.e);	
 			} else {
