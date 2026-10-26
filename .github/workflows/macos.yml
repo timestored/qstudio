@@ -1,0 +1,125 @@
+# Build QStudio.app / .dmg for Apple Silicon and Intel Macs. See macos/README.md
+
+name: macOS app
+
+on:
+  push:
+    paths: [ "macos/**", ".github/workflows/macos.yml" ]
+  pull_request:
+    paths: [ "macos/**", ".github/workflows/macos.yml" ]
+  workflow_dispatch:
+  release:
+    types: [ published ]
+
+env:
+  PRQLC_VERSION: "0.13.14"
+  SQLITE_JDBC_VERSION: "3.53.4.0"   # only used by the smoke test
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15          # Apple Silicon
+            arch: arm64
+            prqlc_target: aarch64-apple-darwin
+          - runner: macos-15-intel    # Intel
+            arch: x64
+            prqlc_target: x86_64-apple-darwin
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write   # to attach the .dmg to a release
+
+    steps:
+    - uses: actions/checkout@v4
+
+    # jpackage only exists in JDK 16+, so JDK 17 packages the app while the app itself runs on a JDK 11 runtime.
+    - name: Set up JDK 17 (jpackage)
+      id: jdk17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+    - name: Set up JDK 11 (build and bundled runtime)
+      id: jdk11
+      uses: actions/setup-java@v4
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+
+    - name: Build qstudio.jar
+      working-directory: qstudio
+      run: |
+        command -v ant || brew install ant
+        ant -noinput jarr
+        VERSION=$(grep -o 'VERSION = "[0-9.]*"' src/main/java/com/timestored/qstudio/QStudioFrame.java | grep -o '[0-9.]*')
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "Building QStudio $VERSION for ${{ matrix.arch }}"
+
+    - name: Gather app files
+      run: |
+        mkdir -p build/input
+        cp qstudio/target/dist/qstudio.jar build/input/
+        curl -sfL "https://github.com/PRQL/prql/releases/download/$PRQLC_VERSION/prqlc-$PRQLC_VERSION-${{ matrix.prqlc_target }}.tar.gz" | tar -xz -C build/input ./prqlc
+        chmod +x build/input/prqlc
+
+    - name: Create Java 11 runtime
+      run: |
+        J11="${{ steps.jdk11.outputs.path }}"
+        "$J11/bin/jlink" --module-path "$J11/jmods" --add-modules ALL-MODULE-PATH \
+          --strip-debug --no-header-files --no-man-pages --compress=2 --output build/runtime
+
+    - name: Create QStudio.app
+      run: |
+        "${{ steps.jdk17.outputs.path }}/bin/jpackage" --type app-image --dest build/out \
+          --name QStudio --app-version "$VERSION" --vendor TimeStored \
+          --input build/input --main-jar qstudio.jar --main-class com.timestored.qstudio.QStudioLauncher \
+          --runtime-image build/runtime --icon macos/QStudio.icns \
+          --mac-package-identifier com.timestored.qstudio \
+          --java-options '-Dprqlc.path=$APPDIR/prqlc' \
+          --java-options '--add-opens=java.base/java.net=ALL-UNNAMED' \
+          --java-options '--add-exports=java.desktop/com.apple.eawt=ALL-UNNAMED'
+        echo "APP=build/out/QStudio.app" >> $GITHUB_ENV
+
+    - name: Smoke test with bundled Java
+      run: |
+        file "$APP/Contents/runtime/Contents/Home/lib/libjli.dylib"
+        test -x "$APP/Contents/app/prqlc"
+        curl -sfL -o build/sqlite-jdbc.jar "https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/$SQLITE_JDBC_VERSION/sqlite-jdbc-$SQLITE_JDBC_VERSION.jar"
+        "$APP/Contents/runtime/Contents/Home/bin/java" -cp "$APP/Contents/app/qstudio.jar:build/sqlite-jdbc.jar" \
+          macos/Smoke.java "$APP/Contents/app/prqlc" | tee build/smoke.txt
+        grep -q "SMOKE OK" build/smoke.txt
+
+    - name: Launch QStudio.app
+      run: |
+        "$APP/Contents/MacOS/QStudio" > build/app.log 2>&1 &
+        PID=$!
+        sleep 60
+        screencapture -x build/screenshot-${{ matrix.arch }}.png || echo "screencapture failed"
+        if kill -0 $PID; then echo "QStudio still running after 60s"; else echo "QStudio exited"; cat build/app.log; exit 1; fi
+        kill $PID || true
+        grep "Finished QStudioFrame Constructor" build/app.log
+
+    - name: Create .dmg
+      run: |
+        "${{ steps.jdk17.outputs.path }}/bin/jpackage" --type dmg --dest build/dmg \
+          --name QStudio --app-version "$VERSION" --vendor TimeStored --app-image "$APP"
+        mv build/dmg/QStudio-$VERSION.dmg build/dmg/QStudio-$VERSION-macos-${{ matrix.arch }}.dmg
+        ls -la build/dmg
+
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: QStudio-macos-${{ matrix.arch }}
+        path: |
+          build/dmg/*.dmg
+          build/screenshot-*.png
+          build/app.log
+          build/smoke.txt
+
+    - name: Attach .dmg to release
+      if: github.event_name == 'release'
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: gh release upload "${{ github.event.release.tag_name }}" build/dmg/*.dmg --clobber
