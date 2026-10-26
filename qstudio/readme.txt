@@ -25,7 +25,7 @@ Changelog:
 					- Code Metrics — per-file and project-level quality analysis.
 					- Tools > Folder Statistics — code quality dashboard for open folder.
 					
-2025-01-03 - 5.03	- Fixes for many user reported exceptions and bugs.
+2026-01-03 - 5.03	- Fixes for many user reported exceptions and bugs.
 					- Histogram and bubble handle nulls / infinity better.
 					- Remember last selected server and select it on startup.
 					- Add column names from latest query to autocomplete suggestions.

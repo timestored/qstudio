@@ -52,7 +52,7 @@ Write markdown, generate beautiful reports instantly.
 
 ## Current Status
 
-Check out the [CHANGELOG.md](./CHANGELOG.md) file for the latest information.
+Check out the [changelog](./qstudio/readme.txt) for the latest information.
 
 ## Troubleshooting qStudio
 
