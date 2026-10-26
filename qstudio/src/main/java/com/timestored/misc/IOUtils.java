@@ -84,7 +84,7 @@ public class IOUtils {
 	 */
 	public static File createTempCopy(String filename, final InputStream is)
 			throws IOException {
-		File tempf = Files.createTempDir();
+		File tempf = java.nio.file.Files.createTempDirectory("qstudt").toFile();
 		File f = new File(tempf, filename);
 	    byte[] buffer = new byte[is.available()];
 	    is.read(buffer);

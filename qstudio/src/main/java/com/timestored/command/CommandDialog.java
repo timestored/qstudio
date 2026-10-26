@@ -51,7 +51,7 @@ import com.timestored.swingxx.AAction;
 public class CommandDialog extends JDialog {
 	
 	private static final long serialVersionUID = 1L;
-	private static final Dimension PREF_DIMENSION = new Dimension(300,400);
+	private static final Dimension PREF_DIMENSION = new Dimension(500,500);
 	private static final int RESULT_LIMIT = 100;
 	private final CommandPanel commandPanel;
 	private String prevSearch = "";

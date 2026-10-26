@@ -17,9 +17,7 @@
 package com.timestored.qstudio;
 
 import java.awt.BorderLayout;
-import java.awt.Component;
 import java.awt.FlowLayout;
-import java.awt.Font;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
@@ -51,7 +49,6 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumnModel;
 

@@ -36,6 +36,7 @@ import com.timestored.docs.OpenDocumentsModel;
 import com.timestored.misc.AppLaunchHelper;
 import com.timestored.misc.ErrorReporter;
 import com.timestored.plugins.PluginLoader;
+import com.timestored.qstudio.model.QueryManager;
 import com.timestored.sqldash.chart.JdbcChartPanel;
 import com.timestored.swingxx.ApplicationInstanceListener;
 import com.timestored.swingxx.ApplicationInstanceManager;
@@ -112,6 +113,9 @@ public class QStudioLauncher  {
 
 		try {
 			boolean foundPlugins = PluginLoader.loadPlugins(QStudioModel.APP_TITLE.toLowerCase());
+			if(foundPlugins) {
+				LOG.info("Plugins loaded successfully.");
+			}
 		} catch(Throwable ucve) {
 			LOG.severe("Could not load a plugin due to " + ucve.getLocalizedMessage());
 		}
@@ -170,6 +174,16 @@ public class QStudioLauncher  {
         		
         		conMan.setPreferenceStore(persistance.getPref(), Persistance.Key.CONNECTIONS.name());
         		QStudioModel qStudioModel = new QStudioModel(conMan, persistance, openDocumentsModel);
+
+        		try {
+	        		String savedServerName = my.getSelectedServer();
+	        		QueryManager queryManager = qStudioModel.getQueryManager();
+	        		if(savedServerName != null && queryManager.getServerNames().contains(savedServerName)) {
+	        			queryManager.setSelectedServerName(savedServerName);
+	        		}
+        		} catch(Exception e) {
+        			LOG.warning("Could not set saved server name due to " + e.getLocalizedMessage());
+        		}
 
         		try {
         			Class<?> clazz = Class.forName("com.timestored.pro.kdb.PluginInitialiser");

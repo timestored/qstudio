@@ -21,7 +21,6 @@ import java.awt.image.BufferedImage;
 
 import javax.swing.ImageIcon;
 
-import com.timestored.connections.JdbcTypes;
 import com.timestored.theme.Icon;
 import com.timestored.theme.IconHelper;
 

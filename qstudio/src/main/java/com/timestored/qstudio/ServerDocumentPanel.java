@@ -34,7 +34,9 @@ import java.awt.print.PrinterException;
 import java.io.File;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -87,7 +89,7 @@ import com.timestored.swingxx.TabbedPaneRightClickBlocker;
  * Tabbed interface for displaying/editing of documents in {@link OpenDocumentsModel}.
  * NOT isntance safe as it relies on a static configuration {@link JavaSyntaxKit} related.
  */
-public class ServerDocumentPanel  extends JPanel implements GrabableContainer {
+public class ServerDocumentPanel  extends JPanel implements GrabableContainer, ProblemsPanel.LintHighlightListener {
 	private static final Logger LOG = Logger.getLogger(ServerDocumentPanel.class.getName());
 	
 	private static final long serialVersionUID = 1L;
@@ -109,6 +111,8 @@ public class ServerDocumentPanel  extends JPanel implements GrabableContainer {
 	private Font editorFont = null;
 
 	private TabLayoutPolicy tabLayoutPolicy;
+	/** Cached lint problems by filename, updated by ProblemsPanel listener */
+	private Map<String, java.util.List<com.timestored.qdoc.parser.ParseError>> lintProblemsByFile = new HashMap<>();
 
 
 	static {
@@ -481,8 +485,9 @@ public class ServerDocumentPanel  extends JPanel implements GrabableContainer {
 			final QCodeEditorPanel codeEditorPanel = getComponent(openDocModel.getSelectedDocument());
 			codeEditorPanel.setContentType();
 	        refresh();
+	        // highlightLintIssues(openDocModel.getSelectedDocument()); // disabled — yellow background too intrusive
 		}
-		
+
 		@Override public void docContentModified() {
 	        refresh();
 		}
@@ -498,6 +503,81 @@ public class ServerDocumentPanel  extends JPanel implements GrabableContainer {
 		@Override public void docCaratModified() {	}
 		@Override public void folderSelected(File selectedFolder) { }
 		@Override public void ignoredFolderPatternSelected(Pattern ignoredFolderPattern) { }
+	}
+
+	// ---- Lint highlighting (squiggly underlines + gutter icons) ----
+
+	@Override public void onLintResultsChanged(Map<String, java.util.List<com.timestored.qdoc.parser.ParseError>> problemsByFile) {
+		this.lintProblemsByFile = problemsByFile;
+		// Apply highlights to the currently selected document
+		Document sel = openDocModel.getSelectedDocument();
+		if (sel != null) applyLintHighlights(sel);
+	}
+
+	private void applyLintHighlights(Document document) {
+		if (document == null) return;
+		QCodeEditorPanel panel = getComponent(document);
+		if (panel == null) return;
+		DocEditorPane editor = panel.getEditorPane();
+
+		EventQueue.invokeLater(() -> {
+			clearSquiggles(editor);
+			LintGutterPanel gutter = panel.getLintGutter();
+			if (gutter != null) gutter.clear();
+
+			String filename = document.getTitle();
+			java.util.List<com.timestored.qdoc.parser.ParseError> problems = lintProblemsByFile.get(filename);
+			if (problems == null || problems.isEmpty()) return;
+
+			String content = document.getContent();
+			if (content == null || content.isEmpty()) return;
+
+			// Apply squiggly underlines
+			javax.swing.text.Element root = editor.getDocument().getDefaultRootElement();
+			for (com.timestored.qdoc.parser.ParseError p : problems) {
+				if (p.line < 1 || p.line > root.getElementCount()) continue;
+				javax.swing.text.Element elem = root.getElement(p.line - 1);
+				int start = elem.getStartOffset();
+				int end = elem.getEndOffset() - 1;
+				try {
+					String lineText = editor.getDocument().getText(start, end - start);
+					int trimmed = lineText.length() - lineText.stripLeading().length();
+					start += trimmed;
+				} catch (javax.swing.text.BadLocationException e) { /* use full line */ }
+
+				SquigglyPainter painter;
+				switch (p.getSeverity()) {
+					case "ERROR": painter = SquigglyPainter.ERROR; break;
+					case "WARNING": painter = SquigglyPainter.WARNING; break;
+					default: painter = SquigglyPainter.INFO; break;
+				}
+				try {
+					editor.getHighlighter().addHighlight(start, end, painter);
+				} catch (javax.swing.text.BadLocationException e) { /* skip */ }
+			}
+
+			// Apply gutter icons
+			if (gutter != null) gutter.setProblems(problems);
+		});
+	}
+
+	private void clearSquiggles(javax.swing.JEditorPane editor) {
+		javax.swing.text.Highlighter h = editor.getHighlighter();
+		for (javax.swing.text.Highlighter.Highlight hl : h.getHighlights()) {
+			if (hl.getPainter() instanceof SquigglyPainter) {
+				h.removeHighlight(hl);
+			}
+		}
+	}
+
+	void clearLintHighlights() {
+		Document sel = openDocModel.getSelectedDocument();
+		if (sel == null) return;
+		QCodeEditorPanel panel = getComponent(sel);
+		if (panel == null) return;
+		clearSquiggles(panel.getEditorPane());
+		LintGutterPanel gutter = panel.getLintGutter();
+		if (gutter != null) gutter.clear();
 	}
 
 
@@ -544,21 +624,22 @@ public class ServerDocumentPanel  extends JPanel implements GrabableContainer {
 
 		private final DocEditorPane editorPane;
 		private final Document document;
-		 
+		private final LintGutterPanel lintGutter;
+
 		public QCodeEditorPanel(final Document document) {
 
 			this.document = document;
 
 			DefaultSyntaxKit.initKit(); // to make it jsysntaxpane
-			Configuration config = DefaultSyntaxKit.getConfig(DefaultSyntaxKit.class);
+			DefaultSyntaxKit.getConfig(DefaultSyntaxKit.class);
 
-	        // save positions now as setting text/type moves it 
+	        // save positions now as setting text/type moves it
 	        final int selectionStart = document.getSelectionStart();
 	        final int selectionEnd = document.getSelectionEnd();
 	        final int caretPosition = document.getCaratPosition();
-	        
+
 			editorPane = new DocEditorPane(document);
-			
+
 			setActions(document);
 
 			// set GUI layout etc
@@ -566,19 +647,45 @@ public class ServerDocumentPanel  extends JPanel implements GrabableContainer {
 			editorPane.setName("codeEditor-" + document.getTitle());
 	        JScrollPane scrPane = new JScrollPane(editorPane);
 	        // need to re-set text after setting content type
-	        
+
 	        /*
 	         * Workaround for editor pane content type handling
 	         */
-	        
+
 	        String txt = editorPane.getText();
 	        // must add to scrollpane before setting content type to allow line numbers.
 	        setContentType();
 	        editorPane.setText(txt);
-	        
+
 	        // tooltips = autocomplete
 	        editorPane.setTooltipProvider(qDocController.getTooltipProvider(document));
-	        
+
+	        // Lint gutter — colored circles for errors/warnings
+	        lintGutter = new LintGutterPanel(editorPane);
+	        // Wrap existing row header (line numbers) with gutter
+	        Component existingHeader = scrPane.getRowHeader() != null ? scrPane.getRowHeader().getView() : null;
+	        if (existingHeader != null) {
+	            JPanel combinedHeader = new JPanel(new BorderLayout());
+	            combinedHeader.add(lintGutter, BorderLayout.WEST);
+	            combinedHeader.add(existingHeader, BorderLayout.CENTER);
+	            scrPane.setRowHeaderView(combinedHeader);
+	        } else {
+	            scrPane.setRowHeaderView(lintGutter);
+	        }
+
+	        // Clear squiggly highlights when lines are added/removed
+	        editorPane.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+	            private void checkNewline(javax.swing.event.DocumentEvent e) {
+	                try {
+	                    String text = e.getDocument().getText(e.getOffset(), e.getLength());
+	                    if (text.contains("\n")) clearLintHighlights();
+	                } catch (javax.swing.text.BadLocationException ex) { /* ignore */ }
+	            }
+	            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { checkNewline(e); }
+	            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { clearLintHighlights(); } // deletes may remove newlines
+	            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { }
+	        });
+
 	        add(scrPane, BorderLayout.CENTER);
 	        
 	        // restore positions, post to EventThread to make scrollpane scroll to position
@@ -694,7 +801,7 @@ public class ServerDocumentPanel  extends JPanel implements GrabableContainer {
 			// workaround to make control-e shortcut work as jsyntaxpane key listener otherwise
 			// consumes control-e and does not pass to actionMap etc.
 			editorPane.addKeyListener(new KeyAdapter() {
-				@Override public void keyPressed(KeyEvent e) { 
+				@Override public void keyPressed(KeyEvent e) {
 					if(e.isControlDown() && e.getKeyCode()==KeyEvent.VK_E) {
 						commonActions.getqAction().actionPerformed(null);
 						e.consume();
@@ -745,6 +852,14 @@ public class ServerDocumentPanel  extends JPanel implements GrabableContainer {
 
 		public Document getDoc() {
 			return document;
+		}
+
+		DocEditorPane getEditorPane() {
+			return editorPane;
+		}
+
+		LintGutterPanel getLintGutter() {
+			return lintGutter;
 		}
 		
 	    /**

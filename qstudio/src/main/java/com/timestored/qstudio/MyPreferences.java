@@ -52,7 +52,11 @@ enum MyPreferences {
 		QUERY_WRAPPED, CODE_FONT, QUERY_WRAP_PRE, QUERY_WRAP_POST, CONNECTION_PERSISTENT,
 		FRACTION_DIGITS, QUERY_LOGGING, QUERY_LOGGING_FOLDER, CODE_THEME, LOGIN_USERNAME, LOGIN_PASSWORD, 
 		CRITICAL_KEYWORDS, CRITICAL_COLOR, SAVE_WITH_WINDOWS_LINE_ENDINGS, IGNORE_FOLDER_REGEX, OPENAI_KEY,
-		SEND_TELEMETRY, SHOW_TOOLTIPS, NUMBER_GROUPING_SIZE, UISCALE, UI_TABLAYOUT, NEGATIVE_RED, CODE_EDITOR_THEME;
+		SEND_TELEMETRY, SHOW_TOOLTIPS, NUMBER_GROUPING_SIZE, UISCALE, UI_TABLAYOUT, NEGATIVE_RED, CODE_EDITOR_THEME,
+		SELECTED_SERVER, AI_PROVIDER, AI_KEY, AI_MODEL, AI_BASE_URL,
+		REMOTE_HOST, REMOTE_PORT, REMOTE_USERNAME, REMOTE_PATH, REMOTE_PASSWORD,
+		REMOTE_KEY_PATH, REMOTE_PASSPHRASE,
+		REMOTE_MAX_FILES, REMOTE_MAX_DEPTH;
 	}
 	
 	private static final Preferences PREF = Preferences.userNodeForPackage(MyPreferences.class);
@@ -105,6 +109,15 @@ enum MyPreferences {
 	public void setMaxRowsShown(int maxRowsShown) {
 		Preconditions.checkArgument(maxRowsShown >= 0);
 		PREF.putInt(Key.MAX_ROWS_SHOWN.toString(), maxRowsShown);
+	}
+
+	/**
+	 * Clear the stored code font size, falling back to the auto-detected default.
+	 * @return the effective font size after reset.
+	 */
+	public int resetCodeFontSize() {
+		PREF.remove(Key.CODE_FONT_SIZE.toString());
+		return getCodeFontSize();
 	}
 	
 	/** @return font size used for code. */
@@ -167,6 +180,18 @@ enum MyPreferences {
 		if(Arrays.asList(f).contains(font)) {
 			PREF.put(Key.CODE_FONT.toString(), font);
 		}
+	}
+
+	/** Set the name of the currently selected server. */
+	public void setSelectedServer(String serverName) {
+		if(serverName!=null) {
+			PREF.put(Key.SELECTED_SERVER.toString(), serverName);
+		}
+	}
+
+	/** @return The name of the currently selected server, or null if not set. */
+	public String getSelectedServer() {
+		return PREF.get(Key.SELECTED_SERVER.toString(), null);
 	}
 	
 	/** @return The prefix placed before all kdb queries */
@@ -258,7 +283,113 @@ enum MyPreferences {
 	public String getOpenAIkey() {
 		return PREF.get(Key.OPENAI_KEY.toString(), "");
 	}
-	
+
+	void setAIProvider(String providerName) {
+		if(providerName!=null) {
+			PREF.put(Key.AI_PROVIDER.toString(), providerName);
+		}
+	}
+
+	public String getAIProvider() {
+		return PREF.get(Key.AI_PROVIDER.toString(), "");
+	}
+
+	void setAIKey(String aiKey) {
+		if(aiKey!=null) {
+			PREF.put(Key.AI_KEY.toString(), aiKey);
+		}
+	}
+
+	/** Return the AI API key. Falls back to the old OPENAI_KEY if AI_KEY is not set (migration). */
+	public String getAIKey() {
+		String key = PREF.get(Key.AI_KEY.toString(), "");
+		if (key.isEmpty()) {
+			key = getOpenAIkey();
+		}
+		return key;
+	}
+
+	void setAIModel(String model) {
+		if(model!=null) {
+			PREF.put(Key.AI_MODEL.toString(), model);
+		}
+	}
+
+	public String getAIModel() {
+		return PREF.get(Key.AI_MODEL.toString(), "");
+	}
+
+	void setAIBaseUrl(String baseUrl) {
+		if(baseUrl!=null) {
+			PREF.put(Key.AI_BASE_URL.toString(), baseUrl);
+		}
+	}
+
+	public String getAIBaseUrl() {
+		return PREF.get(Key.AI_BASE_URL.toString(), "");
+	}
+
+    public void setRemoteHost(String host) {
+        PREF.put(Key.REMOTE_HOST.toString(), host != null ? host : "");
+    }
+    public String getRemoteHost() {
+        return PREF.get(Key.REMOTE_HOST.toString(), "");
+    }
+
+    public void setRemotePort(int port) {
+        PREF.putInt(Key.REMOTE_PORT.toString(), port);
+    }
+    public int getRemotePort() {
+        return PREF.getInt(Key.REMOTE_PORT.toString(), 22);
+    }
+
+    public void setRemoteUsername(String username) {
+        PREF.put(Key.REMOTE_USERNAME.toString(), username != null ? username : "");
+    }
+    public String getRemoteUsername() {
+        return PREF.get(Key.REMOTE_USERNAME.toString(), "");
+    }
+
+    public void setRemotePath(String path) {
+        PREF.put(Key.REMOTE_PATH.toString(), path != null ? path : "");
+    }
+    public String getRemotePath() {
+        return PREF.get(Key.REMOTE_PATH.toString(), "");
+    }
+    public void setRemotePassword(String password) {
+        PREF.put(Key.REMOTE_PASSWORD.toString(), password != null ? password : "");
+    }
+    public String getRemotePassword() {
+        return PREF.get(Key.REMOTE_PASSWORD.toString(), "");
+    }
+
+    public void setRemoteKeyPath(String path) {
+        PREF.put(Key.REMOTE_KEY_PATH.toString(), path != null ? path : "");
+    }
+    public String getRemoteKeyPath() {
+        return PREF.get(Key.REMOTE_KEY_PATH.toString(), "");
+    }
+
+    public void setRemotePassphrase(String passphrase) {
+        PREF.put(Key.REMOTE_PASSPHRASE.toString(), passphrase != null ? passphrase : "");
+    }
+    public String getRemotePassphrase() {
+        return PREF.get(Key.REMOTE_PASSPHRASE.toString(), "");
+    }
+
+    public void setRemoteMaxFiles(int maxFiles) {
+        PREF.putInt(Key.REMOTE_MAX_FILES.toString(), maxFiles);
+    }
+    public int getRemoteMaxFiles() {
+        return PREF.getInt(Key.REMOTE_MAX_FILES.toString(), 2000);
+    }
+    public void setRemoteMaxDepth(int maxDepth) {
+        PREF.putInt(Key.REMOTE_MAX_DEPTH.toString(), maxDepth);
+    }
+    public int getRemoteMaxDepth() {
+        return PREF.getInt(Key.REMOTE_MAX_DEPTH.toString(), 20);
+    }
+
 	public void setCriticalServerColor(Color color) {
 		if(color!=null) {
 			PREF.putInt(Key.CRITICAL_COLOR.toString(), color.getRGB());
@@ -288,6 +419,15 @@ enum MyPreferences {
 	/** true if qStudio should try to maintain a connection for subsequent queries */
 	public void setShowTooltips(boolean showTooltips) {
 		PREF.putBoolean(Key.SHOW_TOOLTIPS.toString(), showTooltips);
+	}
+
+	/**
+	 * Clear the stored UI scale, falling back to the auto-detected default.
+	 * @return the effective UI scale after reset.
+	 */
+	public int resetUIScale() {
+		PREF.remove(Key.UISCALE.toString());
+		return getUIScale();
 	}
 	
 	/**

@@ -123,8 +123,13 @@ public enum HistogramViewStrategy implements ViewStrategy {
 				if (!isVisible) {
 					continue; // Skip hidden series
 				}
-				
-				dataset.addSeries(seriesName, numCol.getDoubles(), NUMBER_BINS);
+				double[] raw = numCol.getDoubles();
+				double[] clean = finiteOnly(raw);
+				if (clean.length < raw.length) {
+				    throw new ChartFormatException("Histogram data contains NULL, NaN, or infinite values in column: " + seriesName);
+				}
+
+				dataset.addSeries(seriesName, clean, NUMBER_BINS);
 			}
 			
 			XYPlot xyplot = ((XYPlot) chartPanel.getChart().getPlot());
@@ -164,6 +169,13 @@ public enum HistogramViewStrategy implements ViewStrategy {
 		
 	}
 
+	private static double[] finiteOnly(double[] values) {
+	    return java.util.Arrays.stream(values)
+	            .filter(Double::isFinite)
+	            .toArray();
+	}
+
+	
 	@Override public String toString() {
 		return HistogramViewStrategy.class.getSimpleName() + "[" + getDescription() + "]";
 	}

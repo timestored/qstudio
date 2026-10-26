@@ -21,22 +21,28 @@ public class QueryStatusBar extends JXStatusBar {
 	private final JLabel statusLabel;
 	private final JLabel rowCountLabel;
 	private final JLabel timingLabel;
-	
+	private final JLabel remoteStatusLabel;
+
 	public QueryStatusBar() {
-		
+
 		statusLabel = new JLabel("Ready");
 	    Constraint fillConstraint = new Constraint(Constraint.ResizeBehavior.FILL);
 	    Constraint fixedWidthConstraint = new Constraint();
-	    fixedWidthConstraint.setFixedWidth(100);  
+	    fixedWidthConstraint.setFixedWidth(100);
 	    pbar = new JProgressBar();
 		rowCountLabel = new JLabel("Count = 0  ");
 		timingLabel = new JLabel("Time = 0 ms   ");
 
-	    add(statusLabel, fillConstraint); 
-	    add(rowCountLabel); 
-	    add(timingLabel);  
+	    add(statusLabel, fillConstraint);
+	    add(rowCountLabel);
+	    add(timingLabel);
 	    add(pbar, fixedWidthConstraint);
-	    
+
+	    remoteStatusLabel = new JLabel("");
+	    Constraint remoteConstraint = new Constraint();
+	    remoteConstraint.setFixedWidth(200);
+	    add(remoteStatusLabel, remoteConstraint);
+
 	}
 	
 	public void startQuery(String query) {
@@ -55,8 +61,34 @@ public class QueryStatusBar extends JXStatusBar {
 	}
 
 	
+	public void setRemoteStatus(String text) {
+		EventQueue.invokeLater(() -> {
+			remoteStatusLabel.setText(text);
+			remoteStatusLabel.setForeground(null); // default color
+		});
+	}
+
+	public void setRemoteStatusError(String text) {
+		EventQueue.invokeLater(() -> {
+			remoteStatusLabel.setText(text);
+			remoteStatusLabel.setForeground(java.awt.Color.RED);
+		});
+	}
+
+	public void setRemoteStatusTooltip(String tooltip) {
+		EventQueue.invokeLater(() -> remoteStatusLabel.setToolTipText(tooltip));
+	}
+
+	public void clearRemoteStatus() {
+		EventQueue.invokeLater(() -> {
+			remoteStatusLabel.setText("");
+			remoteStatusLabel.setForeground(null);
+			remoteStatusLabel.setToolTipText(null);
+		});
+	}
+
 	/**
-	 * Update the appearance of the status bar 
+	 * Update the appearance of the status bar
 	 * @param count The number of results that were returned, setting to a negative means unknown.
 	 */
 	private void display(final String statusText, final boolean waiting, 

@@ -50,7 +50,6 @@ import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListCellRenderer;
-import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
@@ -69,7 +68,6 @@ import com.google.common.base.Preconditions;
 import com.timestored.TimeStored;
 import com.timestored.TimeStored.Page;
 import com.timestored.connections.Msg.Key;
-import com.timestored.misc.HtmlUtils;
 import com.timestored.misc.InfoLink;
 import com.timestored.misc.TextWrapper;
 import com.timestored.plugins.PluginLoader;
@@ -394,6 +392,36 @@ public class ConnectionManagerDialog extends JDialog implements ActionListener {
 		// cancel when escape pressed
 		SwingUtils.addEscapeCloseListener(this);
 		showConnection(serverConfig);
+
+		if(serverName == null) {
+			prefillFromClipboard();
+		}
+	}
+
+	private void prefillFromClipboard() {
+		try {
+			Object o = Toolkit.getDefaultToolkit().getSystemClipboard()
+					.getData(java.awt.datatransfer.DataFlavor.stringFlavor);
+			if(!(o instanceof String)) return;
+			java.util.Optional<ServerConfig> parsed = HandleParser.parse((String) o, conMan.containsKdbServer());
+			if(!parsed.isPresent()) return;
+			ServerConfig sc = parsed.get();
+			// serverTypeComboBox's ActionListener resets portTextField to the type's default port.
+			// Set the type FIRST so our port setText below is the value that survives.
+			if(sc.getJdbcType() != null) {
+				serverTypeComboBox.setSelectedItem(sc.getJdbcType().getNiceName());
+			}
+			hostTextField.setText(sc.getHost());
+			portTextField.setText(String.valueOf(sc.getPort()));
+			usernameTextField.setText(sc.getUsername() == null ? "" : sc.getUsername());
+			passwordTextField.setText(sc.getPassword() == null ? "" : sc.getPassword());
+			nameTextField.setText(sc.getName());
+			if(sc.getDatabase() != null) {
+				databaseTextField.setText(sc.getDatabase());
+			}
+		} catch(Exception ignored) {
+			/* clipboard access may fail on headless/sandboxed platforms — ignore */
+		}
 	}
 	
 	private void enableHostPort(boolean enableHostPort) {
@@ -500,7 +528,7 @@ public class ConnectionManagerDialog extends JDialog implements ActionListener {
 	
 	@Override public void actionPerformed(ActionEvent e) {
 		// called by save button
-		
+
 		try {
 			if(serverConfig!=null) {
 				conMan.updateServer(serverName, newServerConfig());

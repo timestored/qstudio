@@ -6,14 +6,14 @@ import java.util.List;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
+import com.timestored.babeldb.DBHelper;
+import com.timestored.pro.sql.SqlDocSource;
 import com.timestored.qdoc.DocSource;
 import com.timestored.qdoc.DocumentedEntity;
-import com.timestored.qdoc.DocumentedMatcher;
 import com.timestored.qdoc.OpenDocumentsDocSource;
-import com.timestored.qstudio.Language;
-import com.timestored.qstudio.QDocController;
 import com.timestored.qstudio.QStudioModel;
 import com.timestored.qstudio.model.AdminModel;
+import com.timestored.qstudio.model.QueryResult;
 import com.timestored.qstudio.model.ServerObjectTree;
 
 /**
@@ -24,6 +24,7 @@ import com.timestored.qstudio.model.ServerObjectTree;
 class KdbDocSource implements DocSource {
 
 	private final List<DocumentedEntity> staticDocs;
+	private final QStudioModel qsm;
 	private final AdminModel adminModel;
 	private static Predicate<DocumentedEntity> excludeBuiltins;
 	private final OpenDocumentsDocSource openDocsDS;
@@ -39,6 +40,7 @@ class KdbDocSource implements DocSource {
 	}
 	
 	public KdbDocSource(QStudioModel qStudioModel) {
+		this.qsm = qStudioModel;
 		this.adminModel = qStudioModel.getAdminModel();
 		this.openDocsDS = new OpenDocumentsDocSource(qStudioModel.getOpenDocumentsModel());
 		
@@ -46,6 +48,8 @@ class KdbDocSource implements DocSource {
 		docs = new ArrayList<DocumentedEntity>(Function.getKnownfunctions());
 		docs.addAll(DotQ.getKnowndotq());
 		docs.addAll(Dotz.getKnowndotz());
+		docs.addAll(DotH.getKnowndoth());
+		docs.addAll(DotJ.getKnowndotj());
 		staticDocs = docs;
 	}
 	
@@ -56,8 +60,18 @@ class KdbDocSource implements DocSource {
 		if(selectedSeverTree != null) {
 			docs.addAll(selectedSeverTree.getAllDocumentationEntities(excludeBuiltins));
 		}
+		try {
+			QueryResult prevQR = qsm.getQueryManager().getPreviousSuccessfulQR();
+			if(prevQR != null && prevQR.getRs() != null) {
+				List<String> recentColumnNames = DBHelper.getColumnNames(prevQR.getRs().getMetaData());
+				recentColumnNames.forEach(cn -> {
+					docs.add(new SqlDocSource.ColumnDocumentedEntity(cn));
+				});
+			}
+		} catch(Exception e) {} // Ignore
+		
 		docs.addAll(openDocsDS.getDocs());
-		return ImmutableList.copyOf(docs).asList();
+		return ImmutableList.copyOf(docs);
 	}
 
 }

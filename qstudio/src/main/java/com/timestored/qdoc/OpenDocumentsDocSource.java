@@ -64,7 +64,7 @@ public class OpenDocumentsDocSource implements DocSource,OpenDocumentsModel.List
 	/** maximum depth of folders to search for .q files whos docs will be read */
 	private static final int MAX_FOLDER_SEARCH_DEPTH = 8;
 	/** maximum number of .q files whos docs will be parsed */
-	private static final int MAX_FILE_PARSE = 200;
+	private static final int MAX_FILE_PARSE = 500;
 
 	protected static final String FILE_SUFFIX = ".q";
 	
@@ -87,7 +87,7 @@ public class OpenDocumentsDocSource implements DocSource,OpenDocumentsModel.List
 		if(Language.Q.equals(lang) || document.getFileEnding().length()==0) { // new files won't have suffix
 			String fp = document.getFilePath();
 			String fileId = document.getTitle();
-			ParsedQFile pqf = QFileParser.parse(document.getContent(), fp, fileId);
+			ParsedQFile pqf = QParserDocExtractor.parse(document.getContent(), fp, fileId);
 			docParseCache.put(document, pqf);
 			
 			if(fp!=null && folderParseCache.containsKey(fp)) {
@@ -152,7 +152,7 @@ public class OpenDocumentsDocSource implements DocSource,OpenDocumentsModel.List
 								LOG.log(Level.WARNING, "stopping file parsing as hit MAX_FILE_PARSE");
 								break;
 							}
-							fParseCache.put(f.getAbsolutePath(), QFileParser.parse(f));
+							fParseCache.put(f.getAbsolutePath(), QParserDocExtractor.parse(f));
 						}
 						return null;
 					}
@@ -160,6 +160,24 @@ public class OpenDocumentsDocSource implements DocSource,OpenDocumentsModel.List
 				});
 			}
 		}
+	}
+
+	/** Get all parsed files from both open documents and folder cache. */
+	public List<ParsedQFile> getParsedFiles() {
+		List<ParsedQFile> result = new ArrayList<>();
+		Set<String> seen = Sets.newHashSet();
+		for (Document doc : openDocumentsModel.getDocuments()) {
+			ParsedQFile pqf = docParseCache.get(doc);
+			if (pqf == null) pqf = parseAndCache(doc);
+			if (pqf != null && doc.getFilePath() != null) {
+				result.add(pqf);
+				seen.add(doc.getFilePath());
+			}
+		}
+		for (Entry<String, ParsedQFile> e : folderParseCache.entrySet()) {
+			if (!seen.contains(e.getKey())) result.add(e.getValue());
+		}
+		return result;
 	}
 
 	@Override public List<DocumentedEntity> getDocs() {

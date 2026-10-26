@@ -37,7 +37,6 @@ import com.timestored.misc.DirWatch;
 import com.timestored.misc.IOUtils;
 import com.timestored.misc.DirWatch.DirWatchListener;
 import com.timestored.qstudio.CommonActions;
-import com.timestored.qstudio.QStudioFrame;
 import com.timestored.qstudio.model.QueryResult;
 
 import lombok.Data;

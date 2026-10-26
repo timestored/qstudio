@@ -50,7 +50,6 @@ import kx.c.Month;
 import kx.c.Second;
 import kx.c.Timespan;
 
-import com.timestored.connections.JdbcTypes;
 import com.timestored.qstudio.kdb.KdbHelper;
 import com.timestored.qstudio.kdb.KdbType;
 

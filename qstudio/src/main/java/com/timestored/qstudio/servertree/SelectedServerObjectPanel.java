@@ -160,10 +160,7 @@ public class SelectedServerObjectPanel extends JPanel implements AdminModel.List
 				});
 				b.setIcon(sqe.getIcon());
 				b.setToolTipText(sqe.getHtmlDoc(true));
-				JButton cpButton = new JButton("",Theme.CIcon.EDIT_COPY.get16());
-//				row.add(cpButton);
 				row.add(b);
-//				row.add(new JButton("[]",Theme.CIcon.GREEN_PLAY.get()));
 				row.add(Box.createVerticalStrut(2));
 				row.add(ElementDisplayFactory.getActionButtons(queryManager, sqe.getQQueries()));
 				row.add(Box.createVerticalStrut(20));

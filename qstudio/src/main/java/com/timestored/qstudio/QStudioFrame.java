@@ -63,11 +63,13 @@ import java.util.stream.Collectors;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.ActionMap;
+import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.InputMap;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
+import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -76,6 +78,7 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
@@ -90,7 +93,6 @@ import com.formdev.flatlaf.fonts.jetbrains_mono.FlatJetBrainsMonoFont;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.google.common.io.Files;
 import com.timestored.StringUtils;
 import com.timestored.TimeStored;
 import com.timestored.TimeStored.Page;
@@ -176,7 +178,7 @@ public class QStudioFrame extends JFrame {
 	private static final int SERVER_NAME_WIDTH = 190;
 	private static final long serialVersionUID = 1L;
 	private static final String UNIQUE_ID = "UNIQ_ID";
-	public static final String VERSION = "5.01";
+	public static final String VERSION = "5.09";
 	
 	private final QStudioModel qStudioModel;
 	private final ConnectionManager conMan;
@@ -203,6 +205,8 @@ public class QStudioFrame extends JFrame {
 	private final QDocController qDocController;
 	private RecentDocumentPersister recentDocumentPersister;
 	private BackgroundDocumentsSaver backgroundDocsSaver;
+	private RemoteSyncManager remoteSyncManager;
+	private com.timestored.swingxx.QueryStatusBar queryStatusBar;
 	private JMenu fileMenu;
 	/** Stores the default layout of windows at startup, before user config loaded **/
 	private String defaultLayoutXml = "";
@@ -288,6 +292,7 @@ public class QStudioFrame extends JFrame {
         	@Override public void selectedServerChanged(String server) {
 				QStudioFrame.this.setFrameTitle();
 				QStudioFrame.this.setFrameColor();
+				myPreferences.setSelectedServer(server);
         	}
         	
         	public void queryResultReturned(ServerConfig sc, QueryResult queryResult) {
@@ -401,14 +406,35 @@ public class QStudioFrame extends JFrame {
 		DefaultDockable kdbResDockable = createDockable(Msg.get(Key.RESULT), CIcon.TAB_GO,
 				kdbResultPanel, refreshResendQueryAL, actions);
 		
-		fileTreePanel = getFileTreePanel(openDocsModel, documentActions);
+		fileTreePanel = getFileTreePanel(openDocsModel, documentActions,
+				() -> openRemoteFolder(), () -> openNotebookFolder());
+		// Clean up remote sync when folder changes or closes
+		openDocsModel.addListener(new OpenDocumentsModel.Adapter() {
+			@Override public void folderSelected(File selectedFolder) {
+				if (remoteSyncManager != null) {
+					// Check if the new folder is still the remote cache
+					if (selectedFolder == null || !remoteSyncManager.isRemoteFolder(selectedFolder)) {
+						remoteSyncManager.closeWithCleanup();
+						queryStatusBar.clearRemoteStatus();
+						remoteSyncManager = null;
+						// Clear password only so we don't auto-reconnect, but keep other settings for convenience
+						myPreferences.setRemotePassword("");
+					}
+				}
+			}
+		});
 		fileTreePanel.addListener((File selectedFile) -> {
 				if(!selectedFile.isDirectory()) { // Don't open folder as they may just be expanding tree
 					FileTreePanel.openFileOrBrowseTo(selectedFile, fl -> handleArgsFiles(fl));
 				}
 			});
-		DefaultDockable fileTreeDockable = createDockable(Msg.get(Key.FILE_TREE), 
-				CIcon.DOCUMENT_OPEN, fileTreePanel, ae -> fileTreePanel.refreshGui());
+		DefaultDockable fileTreeDockable = createDockable(Msg.get(Key.FILE_TREE),
+				CIcon.DOCUMENT_OPEN, fileTreePanel, ae -> {
+					fileTreePanel.refreshGui();
+					if (remoteSyncManager != null) {
+						remoteSyncManager.resync(QStudioFrame.this);
+					}
+				});
         
         consolePanel = new ConsolePanel();
         consolePanel.setCodeFont(myPreferences.getCodeFontFont());
@@ -436,6 +462,11 @@ public class QStudioFrame extends JFrame {
 		searchAllFilesPanel = new SearchAllFilesPanel(openDocsModel);
 		DefaultDockable searchFilesDockable = createDockable(Msg.get(Key.SEARCH_FILES),
 				CIcon.EDIT_FIND, searchAllFilesPanel, null);
+		com.timestored.qdoc.QAnalysisModel analysisModel = new com.timestored.qdoc.QAnalysisModel(openDocsModel);
+		ProblemsPanel problemsPanel = new ProblemsPanel(openDocsModel, analysisModel);
+		problemsPanel.addLintHighlightListener(serverDocumentPanel);
+		DefaultDockable problemsDockable = createDockable("Problems",
+				CIcon.WARNING, problemsPanel, null);
 
 		/*
 		 * Register the various Command Providers so that the Command Palette works
@@ -479,6 +510,8 @@ public class QStudioFrame extends JFrame {
 		am.put("searchFiles", searchFilesAction);
 		im.put(SEARCH_FILES_KS, "searchFiles");
 
+		new DisplayZoomController(this);
+
         myPreferences.addListener(() -> pushPreferencesToModels());
 		pushPreferencesToModels();
 
@@ -489,8 +522,8 @@ public class QStudioFrame extends JFrame {
 		DockableSplitDockTree tree = new DockableSplitDockTree();
 
 		SplitDockTree<Dockable>.Key docsGroup = tree.put(new Dockable[]{ documentsDockable }, documentsDockable );
-		SplitDockTree<Dockable>.Key resultsGroup = tree.put(new Dockable[]{ kdbResDockable, 
-				chartDockable, historyDockable,  consoleDockable, searchFilesDockable }, kdbResDockable ); // expWatcherDockable,
+		SplitDockTree<Dockable>.Key resultsGroup = tree.put(new Dockable[]{ kdbResDockable,
+				chartDockable, historyDockable,  consoleDockable, searchFilesDockable, problemsDockable }, kdbResDockable ); // expWatcherDockable,
 		SplitDockTree<Dockable>.Key rightSide = tree.vertical( docsGroup, resultsGroup, 0.55 );
 		SplitDockTree<Dockable>.Key leftSide = tree.vertical( serverTreeDockable, fileTreeDockable, 0.6 );
 		SplitDockTree<Dockable>.Key root = tree.horizontal( leftSide, rightSide, 1.0/5.0 );
@@ -513,6 +546,7 @@ public class QStudioFrame extends JFrame {
 		panelsMenu.add(new ToggleDockableMenuItem(chartDockable, frontend, "wChartMenuItem"));
 		panelsMenu.add(new ToggleDockableMenuItem(historyDockable, frontend, "wHistoryMenuItem"));
 		panelsMenu.add(new ToggleDockableMenuItem(searchFilesDockable, frontend, "wSearchFilesMenuItem"));
+		panelsMenu.add(new ToggleDockableMenuItem(problemsDockable, frontend, "wProblemsMenuItem"));
 		panelsMenu.addSeparator();
 		panelsMenu.add(new AAction("Restore Default Layout", ae -> DockerHelper.loadLayout(defaultLayoutXml, frontend)));
 		menuBar.add(panelsMenu);
@@ -544,7 +578,8 @@ public class QStudioFrame extends JFrame {
         add(getToolbar(commonActions, queryManager, documentActions), BorderLayout.NORTH);
         add(station, BorderLayout.CENTER);
         
-		add(getStatusBar(queryManager), BorderLayout.SOUTH);
+		queryStatusBar = getStatusBar(queryManager);
+		add(queryStatusBar, BorderLayout.SOUTH);
 
 		// @todo this one line takes 100ms
 		defaultLayoutXml = DockerHelper.getLayout(frontend);
@@ -571,8 +606,19 @@ public class QStudioFrame extends JFrame {
 				} catch (BackingStoreException e1) {
 					LOG.severe("problem flushing to persistanct");
 				}
-		        
+		        if (remoteSyncManager != null) {
+		            remoteSyncManager.close();
+		            remoteSyncManager = null;
+		            queryStatusBar.clearRemoteStatus();
+		        }
 			    System.exit(0);
+		  }
+
+		  // When the user Alt-Tabs back to qStudio, pull any edits another instance has made
+		  // to the shared preferences. Eventual-consistency is fine; window-activation is
+		  // the cheapest trigger that captures the normal workflow.
+		  @Override public void windowActivated(WindowEvent e) {
+		      conMan.refreshFromPreferences();
 		  }
 
 		});
@@ -608,6 +654,35 @@ public class QStudioFrame extends JFrame {
 				
 		        File folder = recentDocumentPersister.getOpenFolder(persistance);
 		        openDocsModel.setSelectedFolder(folder);
+
+		        // Auto-reconnect to remote if credentials are saved. Identical flow to manual
+		        // open — both call connectRemote() so key-auth and password-auth profiles
+		        // take exactly the same code path. See connectRemote() for the work.
+		        String savedHost = myPreferences.getRemoteHost();
+		        String savedPath = myPreferences.getRemotePath();
+		        String savedUser = myPreferences.getRemoteUsername();
+		        String savedPass = myPreferences.getRemotePassword();
+		        String savedKeyPath = myPreferences.getRemoteKeyPath();
+		        String savedPassphrase = myPreferences.getRemotePassphrase();
+		        int savedPort = myPreferences.getRemotePort();
+		        boolean haveBasics = !savedHost.isEmpty() && !savedPath.isEmpty() && !savedUser.isEmpty();
+		        boolean haveCreds = !savedPass.isEmpty() || !savedKeyPath.isEmpty();
+		        if (haveBasics && haveCreds) {
+		            File privateKey = savedKeyPath.isEmpty() ? null : new File(savedKeyPath);
+		            String passphrase = savedPassphrase.isEmpty() ? null : savedPassphrase;
+		            RemoteConnectionDialog.ConnectionResult conn = new RemoteConnectionDialog.ConnectionResult(
+		                    savedHost, savedPort, savedUser, savedPass, privateKey, passphrase, savedPath);
+		            SwingUtilities.invokeLater(() -> connectRemote(conn));
+		        } else if (!savedHost.isEmpty() && !savedPath.isEmpty()) {
+		            // No credentials saved — just show local cache (user can re-open manually).
+		            File cacheRoot = new File(System.getProperty("user.home"), ".qstudio/remote-cache");
+		            String hostPrefix = savedHost.replaceAll("[^a-zA-Z0-9_-]", "_") + "_" + savedPort;
+		            String remoteSuffix = savedPath.startsWith("/") ? savedPath.substring(1) : savedPath;
+		            File localRoot = new File(cacheRoot, hostPrefix + "/" + remoteSuffix);
+		            if (localRoot.exists() && localRoot.isDirectory()) {
+		                openDocsModel.setSelectedFolder(localRoot);
+		            }
+		        }
 
 				if(firstEverOpen) {
 					QStudioFrame.this.openExampleFile(QStudioFrame.class, FIRST_OPEN_FILE);
@@ -815,7 +890,7 @@ public class QStudioFrame extends JFrame {
 	public void openExampleFile(Class<?> containerClass, String file) {
 		try {
 			String welcomeCode = IOUtils.toString(containerClass, file);
-			File tempf = Files.createTempDir();
+			File tempf = java.nio.file.Files.createTempDirectory("qstudt").toFile();
 			File f = new File(tempf, file);
 			IOUtils.writeStringToFile(welcomeCode, f);
 			openDocsModel.openDocument(f);
@@ -831,9 +906,10 @@ public class QStudioFrame extends JFrame {
 	 * @param documentActions Used to get getOpenFolderAction.
 	 * @return {@link FileTreePanel} that displays the selected folder of {@link OpenDocumentsModel}
 	 */
-	private static FileTreePanel getFileTreePanel(final OpenDocumentsModel openDocsModel, 
-			final DocumentActions documentActions) {
-		
+	private static FileTreePanel getFileTreePanel(final OpenDocumentsModel openDocsModel,
+			final DocumentActions documentActions,
+			final Runnable openRemoteAction, final Runnable openNotebookAction) {
+
 		final FileTreePanel fileTreePanel = new FileTreePanel();
 		fileTreePanel.setName("DocFolderFileTreePanel");
 		openDocsModel.addListener(new OpenDocumentsModel.Adapter() {
@@ -841,7 +917,7 @@ public class QStudioFrame extends JFrame {
 				fileTreePanel.setRoot(selectedFolder);
 			}
 		});
-		
+
 		final Runnable syncSettings = () -> {
 			File openFolder = openDocsModel.getSelectedFolder();
 			fileTreePanel.setRoot(openFolder);
@@ -857,11 +933,26 @@ public class QStudioFrame extends JFrame {
 				syncSettings.run();
 			}
 		});
-		
+
 		JPanel noRootsComponent = Theme.getVerticalBoxPanel();
 		noRootsComponent.add(Theme.getSubHeader(Msg.get(Key.NO_FOLDER_SELECTED)));
 		JPanel p = new JPanel();
-		p.add(new JButton(documentActions.getOpenFolderAction()));
+		p.setLayout(new javax.swing.BoxLayout(p, javax.swing.BoxLayout.Y_AXIS));
+		JButton openFolderBtn = new JButton(documentActions.getOpenFolderAction());
+		JButton openRemoteBtn = new JButton("Open Remote SSH Folder...");
+		openRemoteBtn.setIcon(Theme.CIcon.FOLDER.get16());
+		openRemoteBtn.addActionListener(e -> openRemoteAction.run());
+		JButton openNotebookBtn = new JButton("Open Notebook Folder");
+		openNotebookBtn.setIcon(Theme.CIcon.FOLDER.get16());
+		openNotebookBtn.addActionListener(e -> openNotebookAction.run());
+		openFolderBtn.setAlignmentX(java.awt.Component.CENTER_ALIGNMENT);
+		openRemoteBtn.setAlignmentX(java.awt.Component.CENTER_ALIGNMENT);
+		openNotebookBtn.setAlignmentX(java.awt.Component.CENTER_ALIGNMENT);
+		p.add(openFolderBtn);
+		p.add(javax.swing.Box.createVerticalStrut(5));
+		p.add(openRemoteBtn);
+		p.add(javax.swing.Box.createVerticalStrut(5));
+		p.add(openNotebookBtn);
 		noRootsComponent.add(p);
 		fileTreePanel.setNoRootsComponent(noRootsComponent);
 		return fileTreePanel;
@@ -965,7 +1056,8 @@ public class QStudioFrame extends JFrame {
 		queryManager.setQueryWrapPrefix(myPreferences.getQueryWrapPre());
 		queryManager.setQueryWrapPostfix(myPreferences.getQueryWrapPost());
 		queryManager.setConnectionPersisted(myPreferences.isConnectionPersistent());
-		AIFacade.setOpenAIkey(myPreferences.getOpenAIkey());
+		AIFacade.configure(myPreferences.getAIProvider(), myPreferences.getAIKey(),
+				myPreferences.getAIModel(), myPreferences.getAIBaseUrl());
 		
 		sTreePanel.setHiddenNamespaces(myPreferences.getHiddenNamespaces());
 		consolePanel.setMaxLength(myPreferences.getMaxConsoleLength());
@@ -982,7 +1074,6 @@ public class QStudioFrame extends JFrame {
 
 		String lfname = myPreferences.getCodeTheme();
 		boolean isDarkTheme = AppLaunchHelper.isLafDark(lfname);
-		EditorConfigFactory.TCOLOR tcolor = isDarkTheme ? EditorConfigFactory.TCOLOR.DARK : EditorConfigFactory.TCOLOR.LIGHT;
 		AppLaunchHelper.setTheme(lfname);
 		SwingUtilities.updateComponentTreeUI(this);
 		ChartTheme chartTheme = isDarkTheme ? ViewStrategyFactory.DARK_THEME : ViewStrategyFactory.LIGHT_THEME;
@@ -1077,7 +1168,7 @@ public class QStudioFrame extends JFrame {
         toolbar.add(editServer).setName("editServerButton");
         Action addServer = commonActions.getAddServerAction();
         toolbar.add(addServer).setName("addServerButton");
-        
+
         return toolbar;
 	}
 
@@ -1165,6 +1256,8 @@ public class QStudioFrame extends JFrame {
     	for(Action a : toolsMenuPlugin.getPlugin(this, growler, commandManager)) {
     		toolsMenu.add(a);
     	}
+    	toolsMenu.addSeparator();
+    	toolsMenu.add(new FolderStatisticsAction(openDocsModel));
 
     	// Settings menu
         final JMenu settingsMenu = getJMenu(Msg.get(Key.SETTINGS), KeyEvent.VK_G);
@@ -1239,7 +1332,10 @@ public class QStudioFrame extends JFrame {
 		fileMenu.removeAll();
 		fileMenu.add(documentActions.getNewFileAction());
 		fileMenu.add(openFilesAction);
-		
+		fileMenu.add(new AAction("Open Remote SSH Folder...", Theme.CIcon.FOLDER.get16(), e -> openRemoteFolder()));
+		fileMenu.add(new AAction("Open Notebook Folder", Theme.CIcon.FOLDER.get16(), e -> openNotebookFolder()));
+
+
         for(Action a : documentActions.getFileActions()) {
         	fileMenu.add(new JMenuItem(a));
         }
@@ -1312,8 +1408,79 @@ public class QStudioFrame extends JFrame {
         fileMenu.add(exit);
 	}
 
+	private void openRemoteFolder() {
+        RemoteConnectionDialog dialog = new RemoteConnectionDialog(this, myPreferences);
+        dialog.setVisible(true);
+        RemoteConnectionDialog.ConnectionResult conn = dialog.getResult();
+        if (conn == null) return;
+        connectRemote(conn);
+    }
+
+    /**
+     * Single connect-and-sync flow for both manual {@link #openRemoteFolder} and the
+     * restart-time auto-reconnect. Must be called on the EDT — opens
+     * {@link SyncProgressDialog} which shows progress, supports cancel, and routes
+     * success / error / cancellation through callbacks. Symmetric handling means a
+     * key-auth and password-auth profile take exactly the same code path.
+     */
+    private void connectRemote(RemoteConnectionDialog.ConnectionResult conn) {
+        if (remoteSyncManager != null) {
+            remoteSyncManager.closeWithCleanup();
+            remoteSyncManager = null;
+            queryStatusBar.clearRemoteStatus();
+        }
+
+        com.timestored.sync.SftpClient client;
+        if (conn.getPrivateKey() != null) {
+            client = new com.timestored.sync.SftpClient(conn.getHost(), conn.getPort(),
+                    conn.getUsername(), conn.getPrivateKey(), conn.getPassphrase());
+        } else {
+            client = new com.timestored.sync.SftpClient(conn.getHost(), conn.getPort(),
+                    conn.getUsername(), conn.getPassword());
+        }
+
+        File cacheRoot = new File(System.getProperty("user.home"), ".qstudio/remote-cache");
+        com.timestored.sync.DirectorySyncer syncer = new com.timestored.sync.DirectorySyncer(
+                client, conn.getHost(), conn.getPort(), conn.getRemotePath(), cacheRoot);
+        syncer.setMaxFiles(myPreferences.getRemoteMaxFiles());
+        syncer.setMaxDepth(myPreferences.getRemoteMaxDepth());
+
+        new SyncProgressDialog(this, syncer, conn.getHost(), myPreferences.getRemoteMaxFiles(),
+                new SyncProgressDialog.SyncCallback() {
+            @Override public void onSuccess(com.timestored.sync.SyncResult.MirrorResult result) {
+                openDocsModel.setSelectedFolder(syncer.getLocalRoot());
+                remoteSyncManager = new RemoteSyncManager(syncer, openDocsModel, consolePanel, queryStatusBar,
+                        conn.getUsername(), conn.getHost(), conn.getPort(), conn.getRemotePath(), documentActions);
+                consolePanel.appendMessage("[Remote] Connected to " + conn.getUsername() + "@"
+                        + conn.getHost() + ":" + conn.getPort() + " — mirrored "
+                        + result.getFilesDownloaded() + " files");
+                if (result.getSkippedFiles() != null && !result.getSkippedFiles().isEmpty()) {
+                    remoteSyncManager.showSkippedFilesDialog(QStudioFrame.this, result.getSkippedFiles());
+                }
+            }
+            @Override public void onCancelled() {
+                openDocsModel.setSelectedFolder(syncer.getLocalRoot());
+                remoteSyncManager = new RemoteSyncManager(syncer, openDocsModel, consolePanel, queryStatusBar,
+                        conn.getUsername(), conn.getHost(), conn.getPort(), conn.getRemotePath(), documentActions);
+                consolePanel.appendMessage("[Remote] Sync cancelled. Partial cache available. Close remote folder to clear.");
+            }
+            @Override public void onError(Exception ex) {
+                syncer.close();
+                javax.swing.JOptionPane.showMessageDialog(QStudioFrame.this,
+                        "Failed to mirror remote directory:\n" + ex.getMessage(),
+                        "Remote Sync Error", javax.swing.JOptionPane.ERROR_MESSAGE);
+            }
+        }).run();
+    }
+
+	private void openNotebookFolder() {
+		File notebookDir = new File(QStudioModel.APP_HOME, "sqlnotebook");
+		notebookDir.mkdirs();
+		openDocsModel.setSelectedFolder(notebookDir);
+	}
+
 	/**
-	 * 
+	 *
 	 * @param wipeLicense wipes everything, license and first ever run date.
 	 * 	meaning the software would revert to a free trial.
 	 */

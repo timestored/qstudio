@@ -29,6 +29,7 @@ import javax.swing.AbstractAction;
 import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -38,6 +39,7 @@ import javax.swing.JTextField;
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.timestored.misc.AIFacade;
 import com.timestored.swingxx.SwingUtils;
 import com.timestored.theme.Theme;
 
@@ -129,72 +131,121 @@ class PreferencesDialog extends JDialog {
 
 	
 	private static class MiscPreferencesPanel extends PreferencesPanel {
-		
+
 		private static final long serialVersionUID = 1L;
 		private final JCheckBox saveWithWindowsLineEndingsCheckBox;
 		private final JTextField hideNsTextField;
 		private final JTextField hideFoldersTextField;
-		private final JTextField openaiKeyField;
+		private final JComboBox<String> aiProviderCombo;
+		private final JTextField aiKeyField;
+		private final JComboBox<String> aiModelCombo;
+		private final JTextField aiBaseUrlField;
 
 		public MiscPreferencesPanel(MyPreferences myPreferences, Component container) {
 			super(myPreferences, container);
 			Box panel = Box.createVerticalBox();
 			panel.setBorder(Theme.getCentreBorder());
-			
+
 			saveWithWindowsLineEndingsCheckBox = new JCheckBox();
 			String tooltipText = "<html>Files will be saved with \\r\\n line endings,<br/>" +
 					" compared to \\n standard found on linux/mac</html>";
 			panel.add(getFormRow(saveWithWindowsLineEndingsCheckBox, "Save with \\r\\n Windows Line Ending:", tooltipText));
 			panel.add(Box.createVerticalStrut(10));
 
-			/* hide namespace config */
 			hideNsTextField = new JTextField(20);
-			tooltipText = "<html>These namespaces will not be displayed in the server tree panel.</html>";
-			panel.add(getFormRow(hideNsTextField, "Hidden Namespaces:", null));
-			panel.add(Box.createVerticalStrut(10));			
-
-			/* hide namespace config */
-			hideFoldersTextField = new JTextField(20);
-			tooltipText = "<html>These folders will not be searched when opening files using the Command Bar (Ctrl+P).</html>";
-			panel.add(getFormRow(hideFoldersTextField, "Regex Filter To Hide Folders:", tooltipText));
+			panel.add(getFormRow(hideNsTextField, "Hidden Namespaces:", "<html>These namespaces will not be displayed in the server tree panel.</html>"));
 			panel.add(Box.createVerticalStrut(10));
-			
 
-			JLabel label = new JLabel("This will send details on your database to OpenAI!!!");
-			label.setForeground(Color.RED);
-			panel.add(getFormRow(label, "Warning:", null));
+			hideFoldersTextField = new JTextField(20);
+			panel.add(getFormRow(hideFoldersTextField, "Regex Filter To Hide Folders:",
+					"<html>These folders will not be searched when opening files using the Command Bar (Ctrl+P).</html>"));
+			panel.add(Box.createVerticalStrut(10));
+
+			// --- AI Configuration ---
+			JLabel warningLabel = new JLabel("This will send details on your database to the AI provider!");
+			warningLabel.setForeground(Color.RED);
+			panel.add(getFormRow(warningLabel, "Warning:", null));
 			panel.add(getFormRow(new JLabel("Do NOT add a key unless you are happy to send those details."), "Warning:", null));
-			openaiKeyField = new JTextField(40);
-			tooltipText = "<html>This key will be used to generate AI queries.</html>";
-			panel.add(getFormRow(openaiKeyField, "OpenAI Key:", null));
-			panel.add(Box.createVerticalStrut(10));	
-			
+			panel.add(Box.createVerticalStrut(5));
+
+			// Provider
+			aiProviderCombo = new JComboBox<>(AIFacade.getProviderNames().toArray(new String[0]));
+			panel.add(getFormRow(aiProviderCombo, "AI Provider:", "<html>Select which AI provider to use for query generation.</html>"));
+			panel.add(Box.createVerticalStrut(5));
+
+			// API Key
+			aiKeyField = new JTextField(40);
+			panel.add(getFormRow(aiKeyField, "API Key:", "<html>The API key for the selected provider.</html>"));
+			panel.add(Box.createVerticalStrut(5));
+
+			// Model (editable combo with prepopulated options)
+			aiModelCombo = new JComboBox<>();
+			aiModelCombo.setEditable(true);
+			panel.add(getFormRow(aiModelCombo, "Model:", "<html>Select a model or type a custom model name. First option is the default.</html>"));
+			panel.add(Box.createVerticalStrut(5));
+
+			// Base URL
+			aiBaseUrlField = new JTextField(40);
+			panel.add(getFormRow(aiBaseUrlField, "Base URL (optional):",
+					"<html>Override the API base URL. Required for Custom provider.<br/>For OpenAI-compatible endpoints (Ollama, LM Studio, Azure, vLLM, internal APIs).</html>"));
+			panel.add(Box.createVerticalStrut(10));
+
+			// Update model options when provider changes
+			aiProviderCombo.addActionListener(e -> updateModelOptions());
+
 			setLayout(new BorderLayout());
 			add(panel, BorderLayout.NORTH);
-			
 			refresh();
+		}
+
+		private void updateModelOptions() {
+			String provider = (String) aiProviderCombo.getSelectedItem();
+			Object currentModel = aiModelCombo.getSelectedItem();
+			aiModelCombo.removeAllItems();
+			String[] models = AIFacade.getModelOptions(provider);
+			for (String m : models) {
+				aiModelCombo.addItem(m);
+			}
+			// Restore previous selection if it was custom-typed
+			if (currentModel != null && !currentModel.toString().isEmpty()) {
+				aiModelCombo.setSelectedItem(currentModel);
+			}
 		}
 
 		@Override void refresh() {
 			saveWithWindowsLineEndingsCheckBox.setSelected(myPreferences.isSaveWithWindowsLineEndings());
-
-			String hid = Joiner.on(" ").join(myPreferences.getHiddenNamespaces());
-			hideNsTextField.setText(hid);
-			openaiKeyField.setText(myPreferences.getOpenAIkey());
-			
+			hideNsTextField.setText(Joiner.on(" ").join(myPreferences.getHiddenNamespaces()));
 			hideFoldersTextField.setText(myPreferences.getIgnoreFilterRegex());
+
+			String provider = myPreferences.getAIProvider();
+			if (provider != null && !provider.isEmpty()) {
+				aiProviderCombo.setSelectedItem(provider);
+			} else if (myPreferences.getOpenAIkey() != null && !myPreferences.getOpenAIkey().isEmpty()) {
+				aiProviderCombo.setSelectedItem("OpenAI");
+			}
+			updateModelOptions();
+			aiKeyField.setText(myPreferences.getAIKey());
+			String savedModel = myPreferences.getAIModel();
+			if (savedModel != null && !savedModel.isEmpty()) {
+				aiModelCombo.setSelectedItem(savedModel);
+			}
+			aiBaseUrlField.setText(myPreferences.getAIBaseUrl());
 		}
 
 		@Override void saveSettings() {
 			myPreferences.setSaveWithWindowsLineEndings(saveWithWindowsLineEndingsCheckBox.isSelected());
-			String[] ns = hideNsTextField.getText().split(" ");
-			myPreferences.setHiddenNamespaces(ns);
-			myPreferences.setOpenAIkey(openaiKeyField.getText().trim());
-			
+			myPreferences.setHiddenNamespaces(hideNsTextField.getText().split(" "));
 			myPreferences.setIgnoreFilterRegex(hideFoldersTextField.getText());
+
+			String selectedProvider = (String) aiProviderCombo.getSelectedItem();
+			myPreferences.setAIProvider(selectedProvider != null ? selectedProvider : "");
+			myPreferences.setAIKey(aiKeyField.getText().trim());
+			Object modelObj = aiModelCombo.getSelectedItem();
+			myPreferences.setAIModel(modelObj != null ? modelObj.toString().trim() : "");
+			myPreferences.setAIBaseUrl(aiBaseUrlField.getText().trim());
 		}
 
 		@Override void cancel() { }
-		
+
 	}
 }

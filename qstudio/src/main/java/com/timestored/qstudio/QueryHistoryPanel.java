@@ -27,7 +27,6 @@ import java.util.LinkedList;
 import java.util.List;
 
 import javax.swing.Action;
-import javax.swing.Icon;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JTabbedPane;

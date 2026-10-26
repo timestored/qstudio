@@ -83,8 +83,6 @@ public class CsvLoaderFrame extends JFrame implements CsvLoaderModel.Listener {
 	/** counter to choose a likely free name for a table */
 	private static int count = 1;
 
-	private static final int PREF_WIDTH = 1000;
-	private static final int PREF_HEIGHT = 800;
 	private static final int MIN_HEIGHT = 600;
 	private static final int MIN_WIDTH = 700;
 	private static final long serialVersionUID = 1L;
@@ -491,10 +489,10 @@ public class CsvLoaderFrame extends JFrame implements CsvLoaderModel.Listener {
 		if(!rowSpinner.getValue().equals(csvConfig.getSkipLines())) {
 			rowSpinner.setValue(csvConfig.getSkipLines());
 		}
-		if(!separatorTF.getText().equals(csvConfig.getSeparator())) {
+		if(!separatorTF.getText().equals(""+csvConfig.getSeparator())) {
 			separatorTF.setText(""+csvConfig.getSeparator());
 		}
-		if(!quoteTF.getText().equals(csvConfig.getQuote())) {
+		if(!quoteTF.getText().equals(""+csvConfig.getQuote())) {
 			quoteTF.setText(""+csvConfig.getQuote());
 		}
 		if(!headerCheckBox.isSelected()==csvConfig.containsHeader()) {
@@ -518,7 +516,7 @@ public class CsvLoaderFrame extends JFrame implements CsvLoaderModel.Listener {
 		loadButton.setEnabled(validFile);
 		// preview
 		previewPanel.removeAll();
-		if(validFile) {
+		if(pfile!=null && validFile) {
 			String t = "CSV Importer - ";
 			t += pfile!=null ? pfile.getName() : "";
 			setTitle(t);

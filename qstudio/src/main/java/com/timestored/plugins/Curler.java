@@ -207,7 +207,7 @@ public class Curler {
 
 	static void curlDownloadFileTo(String url, File f) throws IOException {
 		URLdetails ud = new URLdetails(Objects.requireNonNull(url));
-		String auth = ud.getAuth() == null || ud.getAuth().length() < 1 ? "a:b" : ud.getAuth(); 
+//		String auth = ud.getAuth() == null || ud.getAuth().length() < 1 ? "a:b" : ud.getAuth(); 
 		// -L is follow redirects, --fail causes 404 etc. to throw errors
 		String[] args =  new String[] {"curl", "--globoff", "-L", "--fail", "-o", f.getAbsolutePath(), getUrlArgForCurl(ud)};
 		runArgs(args);

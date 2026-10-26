@@ -27,7 +27,6 @@ import java.util.logging.Logger;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.timestored.qstudio.Language;
 import com.timestored.qstudio.qdoc.ContextualDocCompleter;

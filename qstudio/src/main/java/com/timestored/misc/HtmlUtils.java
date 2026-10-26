@@ -33,7 +33,6 @@ import javax.swing.JOptionPane;
 
 import com.google.common.base.Joiner;
 import com.timestored.TimeStored;
-import com.timestored.swingxx.SwingUtils;
 import com.timestored.theme.Theme;
 
 /** Utility methods useful for generating HTML */

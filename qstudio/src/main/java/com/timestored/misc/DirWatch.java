@@ -53,7 +53,8 @@ public class DirWatch {
 	
 	private FileAlterationMonitor monitor;
 	private FileAlterationObserver fao;
-	
+	private volatile Thread monitorThread;
+
 	public DirWatch(long refreshTimer, FileFilter fileFilter, boolean ignoreFileChanges) {
 		this.fileFilter = fileFilter;
 		this.fileAlterationListener = new ChangedFileAlterationListener(ignoreFileChanges);
@@ -63,22 +64,31 @@ public class DirWatch {
 	public void setRoot(File root) throws Exception {
 		Preconditions.checkNotNull(root);
 		stop();
-		
+
 	    fao = new FileAlterationObserver(root, fileFilter);
 	    fao.addListener(fileAlterationListener);
 	    monitor = new FileAlterationMonitor(refreshTimer, fao);
+	    monitor.setThreadFactory(r -> {
+	        monitorThread = new Thread(r, "DirWatch-" + root.getName());
+	        monitorThread.setDaemon(true);
+	        return monitorThread;
+	    });
 	    monitor.start();
 	}
 
-	
+
 	/**
-	 * 
+	 *
 	 */
 	public void stop() {
 		if(fao != null) {
 			fao.removeListener(fileAlterationListener);
 		}
 		if(monitor != null) {
+			// Interrupt the monitor thread to wake it from sleep immediately
+			if (monitorThread != null) {
+				monitorThread.interrupt();
+			}
 			monitor.removeObserver(fao);
 			fao = null;
 			try {
@@ -87,6 +97,7 @@ public class DirWatch {
 				LOG.log(Level.WARNING, "problem stopping", e);
 			}
 			monitor = null;
+			monitorThread = null;
 		}
 	}
 	

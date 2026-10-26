@@ -16,7 +16,6 @@
  */
 package com.timestored.jgrowl;
 
-import java.awt.Component;
 import java.awt.EventQueue;
 import java.awt.Point;
 import java.awt.Window;
@@ -240,9 +239,9 @@ class FadingGrowler {
 //			win.setOpacity(alpha);
 		} catch (Exception ex) {
 			if(win instanceof JWindow) {
-				((JWindow)win).getRootPane().putClientProperty("Window.alpha", new Float(alpha));	
+				((JWindow)win).getRootPane().putClientProperty("Window.alpha", Float.valueOf(alpha));	
 			}else if(win instanceof JFrame) {
-				((JFrame)win).getRootPane().putClientProperty("Window.alpha", new Float(alpha));	
+				((JFrame)win).getRootPane().putClientProperty("Window.alpha", Float.valueOf(alpha));	
 			}
 		}
 	}

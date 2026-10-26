@@ -35,7 +35,6 @@ import kx.c.KException;
 import com.timestored.kdb.KdbConnection;
 import com.timestored.qstudio.QStudioLauncher;
 import com.timestored.qstudio.model.AdminModel;
-import com.timestored.theme.Theme;
 
 /**
  * The fallback handler for showing a KDB entity, shows console representation.

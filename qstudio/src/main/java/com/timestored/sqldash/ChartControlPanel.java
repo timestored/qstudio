@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JCheckBox;
@@ -27,7 +26,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import com.timestored.TimeStored;
 import com.timestored.misc.HtmlUtils;
-import com.timestored.qstudio.UpdateHelper;
 import com.timestored.sqldash.chart.ChartTheme;
 import com.timestored.sqldash.chart.ViewStrategy;
 import com.timestored.sqldash.chart.ViewStrategyFactory;

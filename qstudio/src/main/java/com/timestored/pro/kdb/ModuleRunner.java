@@ -7,7 +7,7 @@ import java.util.Collection;
 import com.google.common.base.Joiner;
 import com.timestored.misc.IOUtils;
 import com.timestored.qdoc.ParsedQFile;
-import com.timestored.qdoc.QFileParser;
+import com.timestored.qdoc.QParserDocExtractor;
 
 /**
  * Allows running kdb modules, e.g. debugging / profiling.
@@ -62,7 +62,7 @@ class ModuleRunner {
 	public static String getRunQUnitQuery(String testq) throws IOException {
 
 		String fakeName = "test.q"; // needed for parser but not important
-		ParsedQFile parsedQF = QFileParser.parse(testq, fakeName, fakeName);
+		ParsedQFile parsedQF = QParserDocExtractor.parse(testq, fakeName, fakeName);
 		Collection<String> namespaces = parsedQF.getNamespaces();
 		if(namespaces.isEmpty()) {
 			throw new IllegalArgumentException("no namespaces found in this file");
@@ -90,7 +90,7 @@ class ModuleRunner {
 	public static String getRunScriptModuleLoad(String qcode) throws IOException {
 
 		String fakeName = "test.q"; // needed for parser but not important
-		ParsedQFile parsedQF = QFileParser.parse(qcode, fakeName, fakeName);
+		ParsedQFile parsedQF = QParserDocExtractor.parse(qcode, fakeName, fakeName);
 		Collection<String> namespaces = parsedQF.getNamespaces();
 		if(namespaces.isEmpty()) {
 			return qcode;

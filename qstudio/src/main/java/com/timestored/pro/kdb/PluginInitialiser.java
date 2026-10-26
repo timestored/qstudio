@@ -57,7 +57,6 @@ import com.timestored.qstudio.model.ServerObjectTree;
 import com.timestored.qstudio.model.DatabaseDirector.ActionsGenerator;
 import com.timestored.qstudio.model.DatabaseDirector.ActionsGeneratorSupplier;
 import com.timestored.qstudio.servertree.SelectedServerObjectPanel;
-import com.timestored.qstudio.servertree.ServerListPanel;
 import com.timestored.swingxx.AAction;
 import com.timestored.theme.Theme;
 
@@ -78,8 +77,6 @@ public class PluginInitialiser {
 	public static void init() {
 		
 		ServerObjectTree.setGET_TREE_QUERY(DatabaseManager.GET_TREE_QUERY);
-		
-		ServerListPanel.setReportGenerator(DatabaseHtmlReport::generate);
 		
 		SelectedServerObjectPanel.registerServerDescriptionPanelSupplier(JdbcTypes.KDB, adminModel -> {
 			return new com.timestored.pro.kdb.ServerDescriptionPanel(adminModel);
@@ -113,15 +110,15 @@ public class PluginInitialiser {
 			return new DocumentedMatcher(Language.Q, new KdbDocSource(qsm), "[","]",";", false, new KdbCustomAutocompleter());
 		});
 		QDocController.registerDocMatcherSupplier(() -> {
-			SqlDocSource ds = new SqlDocSource(qsm.getAdminModel(), SqlFunctions::getKnownFunctions);
+			SqlDocSource ds = new SqlDocSource(qsm, SqlFunctions::getKnownFunctions);
 			return new DocumentedMatcher(Language.SQL, ds, "(", ")", ",", true, null);
 		});
 		QDocController.registerDocMatcherSupplier(() -> {
-			SqlDocSource ds = new SqlDocSource(qsm.getAdminModel(), DosDocs::getKnownFunctions);
+			SqlDocSource ds = new SqlDocSource(qsm, DosDocs::getKnownFunctions);
 			return new DocumentedMatcher(Language.DOLPHIN,ds, "(", ")", ",", true, null);
 		});
 		QDocController.registerDocMatcherSupplier(() -> {
-			SqlDocSource ds = new SqlDocSource(qsm.getAdminModel(), RflDocs::getKnownFunctions);
+			SqlDocSource ds = new SqlDocSource(qsm, RflDocs::getKnownFunctions);
 			return new DocumentedMatcher(Language.RFL,ds, "(", ")", " ", true, null);
 		});
 		
@@ -261,9 +258,6 @@ public class PluginInitialiser {
 				int port = notebookServer.start();
 				notebookServer.refreshPageList();
 				OpenDocumentsModel openDocsModel = qsm.getOpenDocumentsModel();
-				if(openDocsModel.getSelectedFolder() == null) {
-					openDocsModel.setSelectedFolder(MARKDOWN_DIR);
-				}
 				if(exampleFileCreated != null) {
 					openDocsModel.openDocument(exampleFileCreated);
 				}
@@ -274,7 +268,7 @@ public class PluginInitialiser {
 				LOG.info("Failed to start server.");
 			}
 		}
-		if(markdownServerButton != null) {
+		if(markdownServerButton != null && notebookServer != null) {
 			markdownServerButton.setIcon(notebookServer != null ? Theme.CIcon.MARKDOWN_GREEN.get16() : Theme.CIcon.MARKDOWN_GREY.get16());
 			markdownServerButton.setToolTipText("Open Notebook Page: " + notebookServer.getHttpMarkdown(null));
 		}

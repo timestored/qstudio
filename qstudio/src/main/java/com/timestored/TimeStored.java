@@ -244,7 +244,7 @@ public class TimeStored {
 	 * that I can track usage and alter it in future if necessary. 
 	 */
 	public static String getRedirectPage(String url, String purpose) {
-		return "http://www.timestored.com/r?url=" + URLEncoder.encode(url)
-				+ "&source=qstudio&purpose=" + URLEncoder.encode(purpose);
+		return "http://www.timestored.com/r?url=" + URLEncoder.encode(url, java.nio.charset.StandardCharsets.UTF_8)
+				+ "&source=qstudio&purpose=" + URLEncoder.encode(purpose, java.nio.charset.StandardCharsets.UTF_8);
 	}
 }

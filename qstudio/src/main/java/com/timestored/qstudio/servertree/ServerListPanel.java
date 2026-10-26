@@ -67,6 +67,7 @@ import com.timestored.connections.ServerConfig;
 import com.timestored.kdb.KdbConnection;
 import com.timestored.messages.Msg;
 import com.timestored.messages.Msg.Key;
+import com.timestored.pro.kdb.DatabaseHtmlReport;
 import com.timestored.qstudio.BackgroundExecutor;
 import com.timestored.qstudio.CommonActions;
 import com.timestored.qstudio.QStudioModel;
@@ -81,8 +82,6 @@ import com.timestored.swingxx.JTreeHelper;
 import com.timestored.swingxx.JTreeHelper.IdentifiableNode;
 import com.timestored.swingxx.SwingUtils;
 import com.timestored.theme.Theme;
-
-import lombok.Setter;
 
 public class ServerListPanel extends JPanel  implements AdminModel.Listener {
 
@@ -373,24 +372,7 @@ public class ServerListPanel extends JPanel  implements AdminModel.Listener {
 		
 
 		@Override public void addMenuItems(JPopupMenu menu) {
-
-			JMenuItem m;
-			
-//			m = new JMenuItem("Refresh all servers.", Theme.CIcon.ARROW_REFRESH.get());
-//			m.setName("miRefreshAll");
-//			m.addActionListener(new ActionListener() {
-//				@Override public void actionPerformed(ActionEvent e) {
-//					BackgroundExecutor.EXECUTOR.execute(new Runnable() {
-//						@Override public void run() {
-//							adminModel.refresh();
-//						}
-//					});
-//				}
-//			});
-//			menu.add(m);
-//			menu.addSeparator();
 			menu.add(new AddFolderMenuItem(""));
-//			
 			menu.addSeparator();
 			for(Action a : commonActions.getServerActions()) {
 				menu.add(new JMenuItem(a));
@@ -519,42 +501,39 @@ public class ServerListPanel extends JPanel  implements AdminModel.Listener {
 			menu.add(refreshMenuItem);
 			menu.add(commonActions.getCloseConnServerAction(sc));
 
-			if(reportGenerator != null) {
-				JMenuItem generateTableDocs = new JMenuItem("Generate Table Docs " + serverModel.getName());
-				generateTableDocs.setEnabled(sc.isKDB());
-				generateTableDocs.setName("ssgenerateTableDocs");
-				generateTableDocs.addActionListener(new ActionListener() {
-	
-					@Override public void actionPerformed(ActionEvent e) {
-						
-						File myDocs = new JFileChooser().getFileSystemView().getDefaultDirectory();
-						if(savedDocFile == null) {
-							savedDocFile = new File(myDocs, "table-docs.html");
-						}
-						savedDocFile = SwingUtils.askUserSaveLocation(savedDocFile, "html");
-						
-				        if (savedDocFile != null) {
-				            try {
-				            	KdbConnection kdbConn = serverModel.getConnection();
-				            	if(kdbConn == null) {
-				            		throw new IOException("Could not connect to server: " + serverModel.getName());
-				            	}
-				            	reportGenerator.generate(kdbConn, savedDocFile);
-	
-								SwingUtils.offerToOpenFile(Msg.get(Key.DOCS_GENERATED), savedDocFile, 
-										Msg.get(Key.OPEN_DOCS_NOW), Msg.get(Key.CLOSE));
-							} catch (Exception ioe) {
-								String msg = Msg.get(Key.ERROR_SAVING) + ": " + savedDocFile + "\r\n" + ioe.toString();
-						        LOG.warning(msg);
-						        JOptionPane.showMessageDialog(null, msg, Msg.get(Key.ERROR_SAVING), JOptionPane.ERROR_MESSAGE);
-							}
-				        } else {
-				        	LOG.info(Msg.get(Key.SAVE_CANCELLED));
-				        }
+			JMenuItem generateTableDocs = new JMenuItem("Generate Table Docs " + serverModel.getName());
+			generateTableDocs.setEnabled(sc.isKDB());
+			generateTableDocs.setName("ssgenerateTableDocs");
+			generateTableDocs.addActionListener(new ActionListener() {
+
+				@Override public void actionPerformed(ActionEvent e) {
+					
+					File myDocs = new JFileChooser().getFileSystemView().getDefaultDirectory();
+					if(savedDocFile == null) {
+						savedDocFile = new File(myDocs, "table-docs.html");
 					}
-				});
-				menu.add(generateTableDocs);
-			}
+					savedDocFile = SwingUtils.askUserSaveLocation(savedDocFile, "html");
+					
+			        if (savedDocFile != null) {
+			            try {
+			            	KdbConnection kdbConn = serverModel.getConnection();
+			            	if(kdbConn == null) {
+			            		throw new IOException("Could not connect to server: " + serverModel.getName());
+			            	}
+			            	DatabaseHtmlReport.generate(kdbConn, savedDocFile);
+							SwingUtils.offerToOpenFile(Msg.get(Key.DOCS_GENERATED), savedDocFile, 
+									Msg.get(Key.OPEN_DOCS_NOW), Msg.get(Key.CLOSE));
+						} catch (Exception ioe) {
+							String msg = Msg.get(Key.ERROR_SAVING) + ": " + savedDocFile + "\r\n" + ioe.toString();
+					        LOG.warning(msg);
+					        JOptionPane.showMessageDialog(null, msg, Msg.get(Key.ERROR_SAVING), JOptionPane.ERROR_MESSAGE);
+						}
+			        } else {
+			        	LOG.info(Msg.get(Key.SAVE_CANCELLED));
+			        }
+				}
+			});
+			menu.add(generateTableDocs);
 			
 			
 			menu.add(commonActions.getEditServerAction(sc));
@@ -569,11 +548,6 @@ public class ServerListPanel extends JPanel  implements AdminModel.Listener {
 			return serverModel;
 		}
 	}
-
-	public static interface ReportGenerator {
-		void generate(KdbConnection kdbConnection, File savedDocFile) throws Exception;
-	}
-	@Setter private static ReportGenerator reportGenerator = null;
 
 }
 

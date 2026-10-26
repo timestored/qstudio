@@ -17,14 +17,15 @@
 package com.timestored.qdoc;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -52,7 +53,7 @@ public class HtmlPqfOutputter {
 	 * The maximum string length of the short entity description in the 
 	 * overview table. 
 	 */
-	private static final int SD_LENGTH = 60;
+	private static final int SUMMARY_LENGTH = 400;
 
 	private static final String MANLISTING_HEADER = "// Generated qdoc tables to allow programmatic use of documentation.\r\n"
 			+ ".man.funcs:([] fullname:(); ns:(); description:(); name:(); other:());\r\n"
@@ -138,16 +139,22 @@ public class HtmlPqfOutputter {
 		}
 		List<ParsedQFile> parsedDocs = Lists.newArrayList();
 		for(Document d : documents) {
-			ParsedQFile pqf = QFileParser.parse(d.getContent(), d.getFilePath(), d.getTitle());
+			ParsedQFile pqf = QParserDocExtractor.parse(d.getContent(), d.getFilePath(), d.getTitle());
 			parsedDocs.add(pqf);
 		}
 		String[] nsFileHtmls = generateIndexListing(parsedDocs);
 		
 		// output each HTML file
 		for(ParsedQFile pqf : parsedDocs) {
+			String filename = pqf.getFileTitle() + FILE_SUFFIX;
+			File tgtFile = new File(outdir, filename);
+			if(pqf.isIgnored()) {
+				if(tgtFile.exists() && !tgtFile.delete()) {
+					addLogError(errors, "Could not remove ignored documentation for " + pqf.getFileTitle());
+				}
+				continue;
+			}
 			try {
-				String filename = pqf.getFileTitle() + FILE_SUFFIX;
-				File tgtFile = new File(outdir, filename);
 				String html = generateHTML(pqf, baseWeblink);
 				html = getTemplate(pqf.getFileTitle(), html, nsFileHtmls);
 				writeFile(html, tgtFile);
@@ -159,10 +166,13 @@ public class HtmlPqfOutputter {
 		try {
 			File tgtFile = new File(outdir, "man.q");
 			System.out.println("writing: " + tgtFile.getAbsolutePath());
-			FileWriter fw = new FileWriter(tgtFile);
-			fw.write(MANLISTING_HEADER);
-			generateQhelpTable(parsedDocs, fw);
-			fw.close();
+			Writer fw = new OutputStreamWriter(new java.io.FileOutputStream(tgtFile), StandardCharsets.UTF_8);
+			try {
+				fw.write(MANLISTING_HEADER);
+				generateQhelpTable(parsedDocs, fw);
+			} finally {
+				fw.close();
+			}
 		} catch (IOException e) {
 			addLogError(errors, "man.q");
 		}
@@ -229,12 +239,15 @@ public class HtmlPqfOutputter {
 		sb.append("<tr><th>File</th><th>Description</th>");
 		
 		for(ParsedQFile pqf : pqfiles) {
+			if(pqf.isIgnored()) {
+				continue;
+			}
 			String fn = pqf.getFileTitle() + FILE_SUFFIX;
 			sb.append("<tr><td>");
 			makeLink(fn, pqf.getFileTitle());
 			sb.append(makeLink(fn, pqf.getFileTitle()));
 			sb.append("</td><td>");
-			sb.append(pqf.getHeaderDoc());
+			sb.append(toOverviewDescription(pqf.getHeaderDoc()));
 			sb.append("</td></tr>");
 		}
 		sb.append("</table>");
@@ -260,7 +273,7 @@ public class HtmlPqfOutputter {
 		return "\"" + s.replace("\"", "\\\"") + "\"";
 	}
 
-	private static void generateQhelpTable(List<ParsedQFile> pqfiles, FileWriter w) throws IOException {
+	private static void generateQhelpTable(List<ParsedQFile> pqfiles, Writer w) throws IOException {
 		for(ParsedQFile pqFile : pqfiles) {
 			w.write(".man.registerFile (");
 			w.write(esc(pqFile.getFileTitle()));
@@ -311,7 +324,7 @@ public class HtmlPqfOutputter {
 	}
 
 
-	private static void writeArg(FileWriter w, String name, String tag, String subTag,
+	private static void writeArg(Writer w, String name, String tag, String subTag,
 			String description) throws IOException {
 		w.write(".man.registerArg (");
 		w.write(esc(name));
@@ -335,18 +348,28 @@ public class HtmlPqfOutputter {
 		// file links
 		List<String> fileLinks = Lists.newArrayList();
 		for(ParsedQFile pqf : pqfiles) {
+			if(pqf.isIgnored()) {
+				continue;
+			}
 			String fn = pqf.getFileTitle() + FILE_SUFFIX;
 			fileLinks.add(makeLI(fn, pqf.getFileTitle()));
 			Collections.sort(fileLinks);
 		}
 		
-		// build map from namespace's to distinct files
+		// build map from top-level namespace's to distinct files
 		Multimap<String, String> namespaceToFiles = ArrayListMultimap.create();
 		for(ParsedQFile pqf : pqfiles) {
+			if(pqf.isIgnored()) {
+				continue;
+			}
 			for(ParsedQEntity pqe : pqf.getQEntities()) {
-				Collection<String> files = namespaceToFiles.get(pqe.getNamespace());
+				if(!isHtmlVisible(pqe)) {
+					continue;
+				}
+				String namespace = getTopLevelNamespace(pqe.getNamespace());
+				Collection<String> files = namespaceToFiles.get(namespace);
 				if(files==null || !files.contains(pqf.getFileTitle())) {
-					namespaceToFiles.put(pqe.getNamespace(), pqf.getFileTitle());
+					namespaceToFiles.put(namespace, pqf.getFileTitle());
 				} 
 			}
 		}
@@ -398,25 +421,87 @@ public class HtmlPqfOutputter {
 		StringBuilder s = new StringBuilder();
 			s.append("\r\n\t<div id='headerDoc'>");
 			s.append(pqf.getHeaderDoc());
-			s.append(HtmlUtils.toList(pqf.getHeaderTags(), true));
+			s.append(HtmlUtils.toList(getVisibleHeaderTags(pqf), true));
+			ParsedQEntity.appendExamplesHtml(s, getHeaderExamples(pqf), baseWeblink);
 			
 			s.append("</div>");
 			
-			s.append("\r\n\t<div id='summary'>");
-			s.append("<h2>Entity Summary</h2>");
-			appendTableOverview(s, pqf);
-			s.append("</div>");
+			if(hasVisibleEntities(pqf)) {
+				s.append("\r\n\t<div id='summary'>");
+				s.append("<h2>Entity Summary</h2>");
+				appendTableOverview(s, pqf);
+				s.append("</div>");
+			}
 			
-			s.append("\r\n\t<div class='details'>");
-			s.append("\r\n\t<h2>Entity Details</h2>");
-			appendEntityDetails(s, pqf, baseWeblink);
-			s.append("</div>");
+			if(hasVisibleEntityDetails(pqf)) {
+				s.append("\r\n\t<div class='details'>");
+				s.append("\r\n\t<h2>Entity Details</h2>");
+				appendEntityDetails(s, pqf, baseWeblink);
+				s.append("</div>");
+			}
 		return s.toString();
 	}
 
 	/** @return true iff the documented entity is for internal use only */
 	private static boolean isInternal(ParsedQEntity e) {
-		return e.getDocName().contains(".i.");
+		String fullName = e.getDocName();
+		return fullName.contains(".i.") || fullName.endsWith(".i");
+	}
+
+	/**
+	 * qdoc HTML treats only q's top-level namespaces as namespaces. A dotted
+	 * assignment such as .termbox.color.red is a value under .termbox, not a
+	 * namespace page for .termbox.color.
+	 */
+	private static String getTopLevelNamespace(String namespace) {
+		if(namespace == null || namespace.equals(".") || !namespace.startsWith(".")) {
+			return ".";
+		}
+		int secondDot = namespace.indexOf('.', 1);
+		return secondDot < 0 ? namespace : namespace.substring(0, secondDot);
+	}
+
+	/** @return true iff this entity should appear in generated HTML pages. */
+	private static boolean isHtmlVisible(ParsedQEntity e) {
+		return !e.isIgnored() && !isInternal(e) && e.getNamespace().equals(getTopLevelNamespace(e.getNamespace()));
+	}
+
+	private static boolean hasVisibleEntities(ParsedQFile pqf) {
+		for(ParsedQEntity e : pqf.getQEntities()) {
+			if(isHtmlVisible(e)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static boolean hasVisibleEntityDetails(ParsedQFile pqf) {
+		for(ParsedQEntity e : pqf.getQEntities()) {
+			if(hasDetails(e) && isHtmlVisible(e)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static Map<String, String> getVisibleHeaderTags(ParsedQFile pqf) {
+		Map<String, String> tags = pqf.getHeaderTags();
+		if(tags.isEmpty() || !tags.containsKey(ParsedQEntity.IGNORE_TAG)) {
+			return tags;
+		}
+		java.util.Map<String, String> visibleTags = new java.util.HashMap<String, String>(tags);
+		visibleTags.remove(ParsedQEntity.IGNORE_TAG);
+		return visibleTags;
+	}
+
+	private static Map<String, String> getHeaderExamples(ParsedQFile pqf) {
+		Map<String, String> examples = new LinkedHashMap<String, String>();
+		for(Entry<String, Map<String, String>> tag : pqf.getHeaderNamedTags().entrySet()) {
+			if(ParsedQEntity.isExampleTag(tag.getKey())) {
+				examples.putAll(tag.getValue());
+			}
+		}
+		return examples;
 	}
 	
 	/** @return true if more than just name/namespace is known about this entity. */
@@ -432,14 +517,22 @@ public class HtmlPqfOutputter {
 	private static String getHtmlId(ParsedQEntity e) {
 		return e.getDocName().replace('.', '-');
 	}
+
+	private static String getHtmlDisplayName(ParsedQEntity e) {
+		List<String> paramNames = e.getParamNames();
+		if(paramNames == null) {
+			return e.getDocName();
+		}
+		return e.getDocName() + "[" + Joiner.on(";").join(paramNames) + "]";
+	}
 	
 
 	private static void appendEntityDetails(StringBuilder s, ParsedQFile pqf, String baseWeblink) {
 		for(ParsedQEntity e : pqf.getQEntities()) {
-			if(hasDetails(e) && !isInternal(e)) {
+			if(hasDetails(e) && isHtmlVisible(e)) {
 				s.append("\r\n\t\t<div class='entity' id='"+getHtmlId(e)+"'>");
 				s.append("<h2>");
-				s.append(e.getDocName());
+				s.append(getHtmlDisplayName(e));
 				s.append("</h2>");
 				s.append(HtmlUtils.extractBody(e.getHtmlDoc(false, baseWeblink)));
 				s.append("</div>");
@@ -453,23 +546,27 @@ public class HtmlPqfOutputter {
 		s.append("\n<tr><th>Entities</th><th>Short Description</th></tr>");
 		
 		for(ParsedQEntity e : pqf.getQEntities()) {
-			// Ignore internal functions, we don't want to generate HTML for them
-			if(!isInternal(e)) {
+			// Ignore internal and nested dictionary entries in generated HTML.
+			if(isHtmlVisible(e)) {
 				s.append("\r\n\t\t<tr><td>");
 				if(hasDetails(e)) {
 					s.append("<a href='#"+getHtmlId(e)+"'>");
-					s.append(e.getDocName());
+					s.append(getHtmlDisplayName(e));
 					s.append("</a>");
 				} else {
-					s.append(e.getDocName());
+					s.append(getHtmlDisplayName(e));
 				}
 				s.append("</td><td>");
-				String sd = e.getShortDescription();
-				s.append(sd.length()<=SD_LENGTH ? sd : sd.substring(0, SD_LENGTH));
+				s.append(toOverviewDescription(e.getShortDescription()));
 				s.append("</td></tr>");
 			}
 		}
 		s.append("\r\n</tbody></table>");
+	}
+
+	private static String toOverviewDescription(String description) {
+		String sd = ParsedQEntity.getFirstSentence(description);
+		return sd.length()<=SUMMARY_LENGTH ? sd : sd.substring(0, SUMMARY_LENGTH);
 	}
 
 

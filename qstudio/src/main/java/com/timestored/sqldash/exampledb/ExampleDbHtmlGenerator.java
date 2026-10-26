@@ -75,8 +75,6 @@ public class ExampleDbHtmlGenerator {
 		StringBuilder sb = new StringBuilder();
 		sb.append(NL);
 
-		String dbName = exampleChartDB.getDbType().getNiceName();
-
 		/*
 		 * Header with title and description of overall database
 		 */

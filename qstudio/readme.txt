@@ -9,7 +9,31 @@ ___________________________________________________________________
 
 Changelog:
 
-2025-12-04 - 5.00   - First Fully Open Source Release.
+2026-10-26 - 5.09	- Upgrade DuckDB to 2.0.0.0. Supports both Apple Silicon and Intel Macs.
+					- Upgrade SQLite driver to 3.53.4.0. Old 3.42.0.0 driver could crash on macOS.
+					- qDoc - improved tag and code example rendering.
+
+2026-05-02 - 5.08	- Display Zoom — Ctrl+Plus/Minus/Zero or Ctrl+MouseScroll resizes UI or code font.
+					- Remote SSH Folders auto-reconnect on restart for both password and private-key profiles.
+
+2026-04-11 - 5.07	- Remote SSH Folder Sync - parallel downloads, cache cleanup, skipped file reporting.
+					- q Linter - UI Integration - Squiggly underlines + gutter markers.
+					- Cross-file lint: UNDEFINED_REFERENCE, WRONG_ARG_COUNT, PARAM_TYPE_MISMATCH.
+
+2026-04-04 - 5.05	- q Linter.
+					- Problems Panel — shows lint warnings and parse errors with click-to-navigate.
+					- Code Metrics — per-file and project-level quality analysis.
+					- Tools > Folder Statistics — code quality dashboard for open folder.
+					
+2025-01-03 - 5.03	- Fixes for many user reported exceptions and bugs.
+					- Histogram and bubble handle nulls / infinity better.
+					- Remember last selected server and select it on startup.
+					- Add column names from latest query to autocomplete suggestions.
+					- Add ability to copy table header names.
+                    
+2025-12-31 - 5.02   - Add Auto-Pivot for Time series charts from long to wide format.
+
+2025-12-04 - 5.01   - First Fully Open Source Release.
 
 2025-12-03 - 4.40   - Add chart themes. Excel / tableau / powerbi.
 					- Add comprehensive chart configuration ability.

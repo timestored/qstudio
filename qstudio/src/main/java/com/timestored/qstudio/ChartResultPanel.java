@@ -17,7 +17,6 @@
 package com.timestored.qstudio;
 
 import java.awt.BorderLayout;
-import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
@@ -28,7 +27,6 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.Random;
 
-import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -37,10 +35,8 @@ import javax.swing.JPanel;
 import com.google.common.base.Preconditions;
 import com.timestored.StringUtils;
 import com.timestored.TimeStored;
-import com.timestored.connections.ServerConfig;
 import com.timestored.jgrowl.Growler;
 import com.timestored.misc.HtmlUtils;
-import com.timestored.qstudio.model.QueryAdapter;
 import com.timestored.qstudio.model.QueryManager;
 import com.timestored.qstudio.model.QueryResult;
 import com.timestored.sqldash.ChartAppearancePanel;
@@ -51,7 +47,6 @@ import com.timestored.sqldash.chart.ChartTheme;
 import com.timestored.swingxx.SwingUtils;
 import com.timestored.theme.Icon;
 import com.timestored.theme.Theme;
-import com.timestored.theme.Theme.InputLabeller;
 
 /**
  * Display chart and control panel that allows configuring chart.

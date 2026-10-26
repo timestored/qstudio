@@ -5,8 +5,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import com.timestored.babeldb.SimpleResultSet;
-
 public class ColBuilder {
 	List<Object> colValues = new ArrayList<>();
 	List<String> colNames = new ArrayList<>();

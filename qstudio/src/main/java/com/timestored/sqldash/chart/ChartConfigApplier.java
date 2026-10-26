@@ -6,7 +6,6 @@ import java.awt.Shape;
 import java.awt.Stroke;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Rectangle2D;
-import java.util.Map;
 
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.NumberAxis;
@@ -21,7 +20,6 @@ import org.jfree.chart.renderer.category.LineAndShapeRenderer;
 import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.title.LegendTitle;
-import org.jfree.chart.title.TextTitle;
 import org.jfree.data.category.CategoryDataset;
 import org.jfree.data.xy.XYDataset;
 import org.jfree.ui.RectangleEdge;
@@ -176,8 +174,8 @@ public class ChartConfigApplier {
             if (!config.isRangeAxisAutoRange()) {
                 Double min = config.getRangeAxisMin();
                 Double max = config.getRangeAxisMax();
-                // Use Double.compare to properly handle edge cases
-                if (min != null && max != null && Double.compare(min, max) < 0) {
+                // Use Double.compare to properly handle edge cases. Check its finite to prevent exceptions in bubble charts.
+                if (min != null && max != null && Double.isFinite(min) && Double.isFinite(max) && Double.compare(min, max) < 0) {
                     numAxis.setRange(min, max);
                 }
             } else {

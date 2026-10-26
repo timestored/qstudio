@@ -24,7 +24,6 @@ import org.jfree.util.Log;
 
 import com.google.common.base.Preconditions;
 import com.timestored.connections.JdbcTypes;
-import com.timestored.sqldash.chart.ChartAppearanceConfig.AxisPosition;
 import com.timestored.sqldash.theme.DBIcons;
 import com.timestored.theme.Icon;
 

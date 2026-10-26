@@ -2,7 +2,6 @@ package com.timestored.sqldash;
 
 import java.io.File;
 import java.io.IOException;
-import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.logging.Handler;
@@ -115,7 +114,7 @@ public class SqlChart {
 			try {
 				ConnectionManager connMan = ConnectionManager.newInstance();
 				connMan.addServer(sc);
-				Connection conn = DriverManager.getConnection(sc.getUrl(), sc.getUsername(), sc.getPassword());
+				DriverManager.getConnection(sc.getUrl(), sc.getUsername(), sc.getPassword());
 				CachedRowSet rs = connMan.executeQuery(sc, chartParams.query);
 
 			    File file = chartParams.file;

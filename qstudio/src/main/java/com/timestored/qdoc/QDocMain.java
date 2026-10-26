@@ -18,15 +18,16 @@
 package com.timestored.qdoc;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 
 import com.google.common.collect.Lists;
 import com.timestored.docs.Document;
+import com.timestored.misc.HtmlUtils;
+import com.timestored.qdoc.parser.*;
 
 /**
  * Allows running qDoc on files / directories from the command line. 
@@ -74,6 +75,98 @@ public class QDocMain {
 		List<String> errors = HtmlPqfOutputter.output(docs, target, baseWeblink);
 		for(String e : errors) {
 			System.err.println("Error: " + e);
+		}
+
+		/* Generate metrics and lint reports */
+		generateReports(docs, target);
+	}
+
+	public static void generateReports(List<Document> docs, File target) {
+		List<QMetricsReport> allMetrics = new ArrayList<>();
+		StringBuilder lintCsv = new StringBuilder("file,line,col,severity,rule,message\n");
+
+		for (Document doc : docs) {
+			String code = doc.getContent();
+			String name = doc.getTitle();
+			if (code == null || code.trim().isEmpty()) continue;
+
+			allMetrics.add(QCodeMetrics.analyze(code, name));
+
+			for (ParseError e : QLinter.lint(code, name)) {
+				String severity = "WARNING";
+				if (e.ruleId != null) {
+					try { severity = QLintRule.valueOf(e.ruleId).severity.name(); }
+					catch (IllegalArgumentException ex) {}
+				}
+				lintCsv.append(String.format("%s,%d,%d,%s,%s,\"%s\"\n",
+					name, e.line, e.col, severity,
+					e.ruleId != null ? e.ruleId : "PARSE_ERROR",
+					e.message.replace("\"", "\"\"")));
+			}
+		}
+
+		try {
+			writeFile(QMetricsReport.toCsv(allMetrics), new File(target, "metrics.csv"));
+			writeFile(lintCsv.toString(), new File(target, "lint.csv"));
+			System.out.println("Generated metrics.csv and lint.csv");
+		} catch (IOException e) {
+			System.err.println("Error writing CSV: " + e.getMessage());
+		}
+
+		try {
+			String metricsHtml = HtmlUtils.getHead("Code Metrics", "") + QMetricsReport.toHtmlTable(allMetrics) + HtmlUtils.getTail();
+			writeFile(metricsHtml, new File(target, "metrics.html"));
+			writeFile(generateLintHtml(docs), new File(target, "lint.html"));
+			System.out.println("Generated metrics.html and lint.html");
+		} catch (IOException e) {
+			System.err.println("Error writing HTML: " + e.getMessage());
+		}
+	}
+
+	private static String generateLintHtml(List<Document> docs) {
+		StringBuilder sb = new StringBuilder();
+		sb.append(HtmlUtils.getHead("Lint Report", ""));
+		sb.append("<h1>Lint Report</h1>\n");
+
+		Map<String, Integer> ruleCounts = new LinkedHashMap<>();
+		int totalErrors = 0, totalWarnings = 0;
+		List<ParseError> allErrors = new ArrayList<>();
+
+		for (Document doc : docs) {
+			String code = doc.getContent();
+			if (code == null) continue;
+			for (ParseError e : QLinter.lint(code, doc.getTitle())) {
+				allErrors.add(e);
+				String rule = e.ruleId != null ? e.ruleId : "PARSE_ERROR";
+				ruleCounts.merge(rule, 1, Integer::sum);
+				if (e.ruleId != null) {
+					try {
+						if (QLintRule.valueOf(e.ruleId).severity == QLintRule.Severity.ERROR) totalErrors++;
+						else totalWarnings++;
+					} catch (IllegalArgumentException ex) { totalWarnings++; }
+				} else {
+					totalErrors++;
+				}
+			}
+		}
+
+		sb.append("<p>Total: ").append(allErrors.size()).append(" (")
+			.append(totalErrors).append(" errors, ")
+			.append(totalWarnings).append(" warnings)</p>\n");
+
+		sb.append("<h2>By Rule</h2>\n<table border='1' cellpadding='4' cellspacing='0'>\n");
+		sb.append("<tr><th>Rule</th><th>Count</th></tr>\n");
+		for (Map.Entry<String, Integer> e : ruleCounts.entrySet()) {
+			sb.append(String.format("<tr><td>%s</td><td>%d</td></tr>\n", e.getKey(), e.getValue()));
+		}
+		sb.append("</table>\n");
+		sb.append(HtmlUtils.getTail());
+		return sb.toString();
+	}
+
+	private static void writeFile(String content, File file) throws IOException {
+		try (OutputStreamWriter w = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)) {
+			w.write(content);
 		}
 	}
 

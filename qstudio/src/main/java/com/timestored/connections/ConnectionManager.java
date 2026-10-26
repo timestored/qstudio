@@ -173,15 +173,15 @@ public class ConnectionManager implements AutoCloseable {
 		return Collections.unmodifiableList(s);
 	}
 	
-	/** add server but do not notify listeners */ 
-	private void addServerSilently(ServerConfig serverConnection) {
+	/** add server but do not notify listeners. @return true iff the list actually changed */
+	private boolean addServerSilently(ServerConfig serverConnection) {
 		Preconditions.checkNotNull(serverConnection);
 		synchronized (LOCK) {
 			String name = serverConnection.getName();
 			ServerConfig existingSC = getServer(name);
 			if(existingSC!=null) {
 				if(existingSC.equals(serverConnection)) {
-					return;
+					return false;  // identical entry already exists — no-op
 				} else {
 					throw new IllegalArgumentException("Server name must be unique. " +
 							"Cant use this call to update settings.");
@@ -190,28 +190,30 @@ public class ConnectionManager implements AutoCloseable {
 			serverConns.add(serverConnection);
 			serverConnected.put(serverConnection, Boolean.FALSE);
 			LOG.info("added server: " + serverConnection.toString());
+			return true;
 		}
 	}
-	
+
 	/**
-	 * Add a {@link ServerConfig}. 
+	 * Add a {@link ServerConfig}.
 	 * @param serverConnection the connection you want added, the name of the
 	 * server must be unique to this manager.
-	 * @throws IllegalArgumentException If name is already present and your trying to change its 
+	 * @throws IllegalArgumentException If name is already present and your trying to change its
 	 * 		settings. Note exception not thrown if all details the same.
 	 */
 	public void addServer(ServerConfig serverConnection) {
+		boolean added;
 		synchronized (LOCK) {
 			reloadFromPreferences();
-			addServerSilently(serverConnection);
-			save();	
+			added = addServerSilently(serverConnection);
+			if(added) save();
 		}
-		notifyListenersServerAdded(serverConnection);
+		if(added) notifyListenersServerAdded(serverConnection);
 	}
-	
+
 
 	/**
-	 * Add a list of {@link ServerConfig}s where possible. 
+	 * Add a list of {@link ServerConfig}s where possible.
 	 * @param connections the connections you want added, server names must be unique to this manager.
 	 * @return The list of configs that failed to add, one reason could be duplicate name but
 	 * 	different ports, {@link #addServer(ServerConfig)}.
@@ -219,21 +221,24 @@ public class ConnectionManager implements AutoCloseable {
 	public List<ServerConfig> addServer(List<ServerConfig> connections) {
 
 		List<ServerConfig> failedConfigs = new ArrayList<ServerConfig>();
+		List<ServerConfig> actuallyAdded = new ArrayList<ServerConfig>();
 		synchronized (LOCK) {
 			reloadFromPreferences();
 			Preconditions.checkNotNull(connections);
 			for(ServerConfig sc : connections) {
 				try {
-					addServerSilently(sc);
+					if(addServerSilently(sc)) {
+						actuallyAdded.add(sc);
+					}
 				} catch(IllegalArgumentException iae) {
 					LOG.log(Level.WARNING, "Could not add sc: " + sc.toString(), iae);
 					failedConfigs.add(sc);
 				}
-				
+
 			}
-			save();
+			if(!actuallyAdded.isEmpty()) save();
 		}
-		connections.forEach(sc -> notifyListenersServerAdded(sc));
+		actuallyAdded.forEach(sc -> notifyListenersServerAdded(sc));
 		return failedConfigs;
 	}
 	
@@ -700,6 +705,9 @@ public class ConnectionManager implements AutoCloseable {
 	private boolean reloadFromPreferences() {
 		if(preferences != null) {
 			synchronized (LOCK) {
+				// Pull other processes' writes into this JVM's in-memory prefs tree before reading.
+				try { preferences.sync(); }
+				catch (java.util.prefs.BackingStoreException e) { LOG.log(Level.FINE, "prefs sync failed", e); }
 				StringBuilder sb = new StringBuilder(preferences.get(prefKey, ""));
 				for(int i=0; i<MAX_STORAGE_SLOTS; i++) {
 					sb.append(preferences.get(prefKey + i, ""));
@@ -742,8 +750,7 @@ public class ConnectionManager implements AutoCloseable {
 					preferences.put(prefKey, txt);
 				} else {
 					preferences.put(prefKey, txt.substring(0, Preferences.MAX_VALUE_LENGTH));
-					txt.substring(Preferences.MAX_VALUE_LENGTH);
-					
+
 					for(int i=0; i<MAX_STORAGE_SLOTS; i++) {
 						int stPos = (i+1)*Preferences.MAX_VALUE_LENGTH;
 						int endPos = Math.min((i+2)*Preferences.MAX_VALUE_LENGTH, txt.length());
@@ -754,6 +761,9 @@ public class ConnectionManager implements AutoCloseable {
 						}
 					}
 				}
+				// Push writes to backing store so other qStudio instances can pick them up.
+				try { preferences.flush(); }
+				catch (java.util.prefs.BackingStoreException e) { LOG.log(Level.FINE, "prefs flush failed", e); }
 			}
 		}
 	}

@@ -26,12 +26,10 @@ import javax.swing.Box;
 import javax.swing.JCheckBox;
 import javax.swing.JFormattedTextField;
 import javax.swing.JLabel;
-import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-import com.google.common.base.Preconditions;
 import com.timestored.theme.Theme;
 
 /**

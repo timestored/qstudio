@@ -89,7 +89,7 @@ public abstract class BuiltinDocumentedEntities implements DocumentedEntity,DocS
 			sb.append("<br/><br/><a href='");
 			sb.append(TimeStored.getRedirectPage(link, "qdoc"));
 			sb.append("&qdoc=");
-			sb.append(URLEncoder.encode(docname));
+			sb.append(URLEncoder.encode(docname, java.nio.charset.StandardCharsets.UTF_8));
 			sb.append("'>Open online doc</a>");
 		}
 		sb.append("</body></html>");

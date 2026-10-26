@@ -33,6 +33,8 @@ import javax.swing.tree.TreeSelectionModel;
 
 import com.google.common.base.Preconditions;
 
+import lombok.Getter;
+
 /**
  * Represents a node in a tree that has text / icon / tooltip, can action when
  * clicked and has a right click popup menu. You must call the
@@ -41,39 +43,25 @@ import com.google.common.base.Preconditions;
  */
 class CustomNode {
 
-	private String title;
-	private String tooltip;
-	private ImageIcon icon;
-	private static final DefaultTreeCellRenderer RENDERER = new CustomNodeRenderer();
+	@Getter private String text;
+	@Getter private String tooltip;
+	@Getter private ImageIcon icon;
 
 	public CustomNode(String title) {
 		this(title, null, null);
 	}
 
 	public CustomNode(String title, String tooltip, ImageIcon icon) {
-		this.title = Preconditions.checkNotNull(title);
+		this.text = Preconditions.checkNotNull(title);
 		this.tooltip = tooltip;
 		this.icon = icon;
 	}
 
 	protected void setText(String title) {
-		this.title = title;
+		this.text = title;
 	}
 
-	public String getText() {
-		return title;
-	}
-
-	public String getTooltip() {
-		return tooltip;
-	}
-
-	public ImageIcon getIcon() {
-		return icon;
-	}
-
-	public void doSelectionAction() {
-	};
+	public void doSelectionAction() { };
 
 	/** Add the actions this item supports to a menu */
 	public void addMenuItems(JPopupMenu menu) { 	}
@@ -86,7 +74,7 @@ class CustomNode {
 	public static void configure(JTree tree) {
 
 	    ToolTipManager.sharedInstance().registerComponent(tree);
-        tree.setCellRenderer(RENDERER);
+        tree.setCellRenderer(new CustomNodeRenderer());
 	    
 	    tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
 
@@ -119,8 +107,10 @@ class CustomNode {
 					CustomNode cn = (CustomNode) node.getUserObject();
 					setText(cn.getText());
 					setToolTipText(cn.getTooltip());
-					if(cn.getIcon()!=null) {
-						setIcon(cn.getIcon());
+					// Only set custom icon if one is provided and properly initialized
+					ImageIcon customIcon = cn.getIcon();
+					if(customIcon != null && customIcon.getImage() != null) {
+						setIcon(customIcon);
 					}
 				}
 			}

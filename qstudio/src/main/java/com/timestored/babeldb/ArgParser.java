@@ -7,7 +7,7 @@ import java.util.List;
 import lombok.Data;
 
 
-public class ArgParser {
+class ArgParser {
 	private final String s;
 	private final char[] ca;
 	private int p = 0;
@@ -68,10 +68,11 @@ public class ArgParser {
 		char c = ca[p];
 		int st = p;
 		switch(c) {
-			case '\'': p++; st=p; skipUntil('\''); l.add(s.substring(st, p)); p++; break;
-			case '\"': p++; st=p; skipUntil('"'); l.add(s.substring(st, p)); p++;  break;
-			case '(': p++; st=p; skipUntil(')'); l.add(s.substring(st, p)); p++;  break;
-			case '{': p++; st=p; skipUntil('}'); l.add(s.substring(st, p)); p++;  break;
+			case '\'': p++; st=p; skipUntil('\''); l.add(s.substring(st, p).replace("\\'", "'")); p++; break;
+			case '\"': p++; st=p; skipUntil('"'); l.add(s.substring(st, p).replace("\\\"", "\"")); p++;  break;
+			case '(': p++; st=p; skipUntil(')'); l.add(s.substring(st, p).replace("\\(", ")")); p++;  break;
+			// Keeps the {} curly braces as assumes it's json {a:11, b:12} e.g. query_web(http://....., {bid:NUMBER, sym:VARCHAR})
+			case '{': p++; st=p; skipUntil('}'); l.add(s.substring(st-1, p+1)); p++;  break; 
 			default: st=p; while(p < ca.length && ca[p] != ',' && ca[p] != ')') { p++; } l.add(s.substring(st, p));  break; 
 		}
 	}

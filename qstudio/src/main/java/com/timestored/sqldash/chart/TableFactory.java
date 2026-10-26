@@ -4,7 +4,10 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Point;
+import java.awt.Toolkit;
 import java.awt.Window;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
@@ -23,6 +26,7 @@ import javax.sql.rowset.serial.SerialException;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.JLabel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
@@ -51,7 +55,9 @@ import com.timestored.misc.HtmlUtils;
 import com.timestored.qstudio.QStudioFrame;
 import com.timestored.qstudio.kdb.DataComparator;
 import com.timestored.qstudio.kdb.KdbHelper;
-import com.timestored.sqldash.chart.RenderProvider.*;
+import com.timestored.sqldash.chart.RenderProvider.ConditionalNumberRenderer;
+import com.timestored.sqldash.chart.RenderProvider.MarkdownLink;
+import com.timestored.swingxx.AAction;
 import com.timestored.swingxx.SaveTableMouseAdapter;
 import com.timestored.theme.Theme;
 
@@ -138,7 +144,56 @@ public class TableFactory {
 		scrollPane.setRowHeaderView(rowTable);
 		scrollPane.setColumnHeaderView(table.getTableHeader());
 		scrollPane.setCorner(JScrollPane.UPPER_LEFT_CORNER, rowTable.getTableHeader());
+		
+		table.getTableHeader().addMouseListener(new HeaderCopyMouseAdapter(table));
+		
 		return scrollPane;
+	}
+	
+	private static class HeaderCopyMouseAdapter extends MouseAdapter {
+		private final JXTable table;
+		
+		public HeaderCopyMouseAdapter(JXTable table) {
+			this.table = table;
+		}
+		
+		private static void copyToClipboard(String text) {
+			StringSelection selection = new StringSelection(text);
+			Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+			clipboard.setContents(selection, selection);
+		}
+
+		@Override public void mouseReleased(MouseEvent e) {
+			
+			if(SwingUtilities.isRightMouseButton(e)) {
+				int col = table.getTableHeader().columnAtPoint(e.getPoint());
+				if(col >= 0) {
+					String columnTitle = table.getColumnName(col);
+					JPopupMenu menu = new JPopupMenu();
+					menu.add(new AAction("Copy Column Title", ae -> copyToClipboard(columnTitle)));
+					menu.add(new AAction("Copy All Column Titles (CSV)", ae -> {
+							StringBuilder csv = new StringBuilder();
+							for(int i = 0; i < table.getColumnCount(); i++) {
+								if(i > 0) {
+									csv.append(",");
+								}
+								csv.append(table.getColumnName(i));
+							}
+							copyToClipboard(csv.toString());
+						}));
+					menu.add(new AAction("Copy All Column Titles (KDB Symbols)", ae -> {
+							String[] columnNames = new String[table.getColumnCount()];
+							for(int i = 0; i < table.getColumnCount(); i++) {
+								columnNames[i] = table.getColumnName(i);
+							}
+							String kdbSymbols = KdbHelper.asLine(columnNames, false);
+							copyToClipboard(kdbSymbols);
+						}));
+					menu.show(e.getComponent(), e.getX(), e.getY());
+				}
+			}
+		}
+		
 	}
 
 	private static JXTable getRowTable(final TableModel tableModel, final JXTable table) {

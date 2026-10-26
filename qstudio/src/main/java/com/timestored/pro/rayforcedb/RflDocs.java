@@ -47,7 +47,7 @@ public class RflDocs extends BuiltinDocumentedEntities implements DocSource {
 				SimpleResultSet rs = BabelDBJdbcDriver.fromTxt(json);
 				while(rs.next()) {
 					String location = gt(rs, "location");
-					String title = gt(rs, "title");
+//					String title = gt(rs, "title");
 					String text = gt(rs, "text");
 					String docname = location.substring(location.lastIndexOf("/") + 1, location.lastIndexOf(".")).replace(")", "-");
 					KNOWN_FUNCS.add(new RflDocs(docname, location, text));

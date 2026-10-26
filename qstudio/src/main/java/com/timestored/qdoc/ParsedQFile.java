@@ -77,7 +77,7 @@ public class ParsedQFile {
 	 * Get a list of all q entities defined at topmost level within source file.
 	 * Order of list will be same as order of occurrence in file. 
 	 */
-	List<ParsedQEntity> getQEntities() {
+	public List<ParsedQEntity> getQEntities() {
 		return qEntities;
 	}
 
@@ -133,6 +133,15 @@ public class ParsedQFile {
 	Map<String,String> getHeaderTags() {
 		Map<String, String> e = Collections.emptyMap();
 		return headerDoc==null ? e : headerDoc.tags;
+	}
+
+	Map<String, Map<String,String>> getHeaderNamedTags() {
+		Map<String, Map<String,String>> e = Collections.emptyMap();
+		return headerDoc==null ? e : headerDoc.namedTags;
+	}
+
+	boolean isIgnored() {
+		return getHeaderTags().containsKey(ParsedQEntity.IGNORE_TAG);
 	}
 	
 	

@@ -4,27 +4,20 @@ import java.awt.BorderLayout;
 import java.awt.Container;
 import java.awt.Dimension;
 
-import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.JDialog;
 import javax.swing.JEditorPane;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
 import javax.swing.event.HyperlinkEvent;
-import javax.swing.event.HyperlinkListener;
 
 import com.google.common.base.Preconditions;
 import com.timestored.TimeStored;
 import com.timestored.misc.HtmlUtils;
-import com.timestored.misc.InfoLink;
 import com.timestored.theme.Icon;
 import com.timestored.theme.Theme;
 

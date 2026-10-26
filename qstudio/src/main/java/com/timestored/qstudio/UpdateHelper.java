@@ -11,11 +11,8 @@ import java.io.IOException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.Calendar;
-import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -146,13 +143,6 @@ public class UpdateHelper {
 		}
 	}
 	
-
-
-	private static String getPropAsParam(String name) {
-		String s = System.getProperty(name);
-		return s == null ? "" : URLEncoder.encode(s);
-	}
-
 	public static JScrollPane getNewsPanel(JdbcTypes jdbcType) {
 		boolean isDarkTheme = AppLaunchHelper.isLafDark(MyPreferences.INSTANCE.getCodeTheme());
 		return getNewsPanel(jdbcType, TimeStored.getRandomLongNewsHtml(isDarkTheme));

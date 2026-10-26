@@ -38,7 +38,7 @@ import com.timestored.qstudio.model.TableModelHtmlConverter;
 /**
  * Allows generating an HTML report on the database structure.
  */
-class DatabaseHtmlReport {
+public class DatabaseHtmlReport {
 
 	private static final String QSTUDIO_LINK = "<a class='qlogo' href='" + Page.QSTUDIO.url() + "' target='a'>q<span>Studio</span></a>";
 	

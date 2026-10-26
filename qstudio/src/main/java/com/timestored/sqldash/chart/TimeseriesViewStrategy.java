@@ -9,10 +9,13 @@ import java.awt.Color;
 import java.awt.Component;
 import java.sql.Date;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
@@ -43,6 +46,8 @@ import com.timestored.theme.Theme.CIcon;
 public enum TimeseriesViewStrategy implements ViewStrategy {
 
 	INSTANCE;
+	
+	private static final Logger LOG = Logger.getLogger(TimeseriesViewStrategy.class.getName());
 
 	private static final String KDB_QUERY = "([] dt:2013.01.01+til 21; cosineWave:cos a; \r\n\t sineWave:sin a:0.6*til 21)";
 	private static final String DUCKDB_QUERY = "WITH b AS (SELECT DATE '2013-01-01'+INTERVAL '1 day'*i dt,i FROM generate_series(0,20)t(i))\r\nSELECT dt,COS(i) cosineWave,SIN(0.6*i) sineWave FROM b";
@@ -62,6 +67,27 @@ public enum TimeseriesViewStrategy implements ViewStrategy {
 
 			@Override public Component getView(ResultSet rs, ChartResultSet colResultSet) 
 					throws ChartFormatException {
+				
+				// Apply auto-pivoting for time-series charts
+				ResultSet processedRS = rs;
+				try {
+					if(rs != null) {
+						ResultSet pivRS = TimeSeriesPivotManager.pivotIfNeeded(rs);
+						if(pivRS != null) {
+							processedRS = pivRS;
+						}
+					}
+				} catch(IllegalArgumentException | SQLException e) { 
+					LOG.log(Level.WARNING, "Auto-pivot application failed, using original data", e);
+					processedRS = rs;
+				}
+
+				try {
+					colResultSet = ChartResultSet.getInstance(processedRS);
+				} catch(IllegalArgumentException | SQLException e) { 
+					LOG.log(Level.WARNING, "ChartResultSet failed", e);
+				}
+				
 
 				TimeSeriesCollection leftDataset = new TimeSeriesCollection();
 				TimeSeriesCollection rightDataset = new TimeSeriesCollection();
@@ -179,7 +205,7 @@ public enum TimeseriesViewStrategy implements ViewStrategy {
 	
 	@Override public boolean supportsAppearanceConfig() { return true; }
 
-
+	
 	static void setTimeTooltipRenderer(ChartResultSet colResultSet, XYItemRenderer renderer) {
 		// once we have data set the tooltip appropriately
 		// set tooltip specific to date type
@@ -302,11 +328,15 @@ public enum TimeseriesViewStrategy implements ViewStrategy {
 		ExampleView sineEV = new ExampleView(name, description, new TestCase(name, resultSet, KDB_QUERY, DUCKDB_QUERY));
 		return sineEV;
 	}
-
-	private static final String[] FORMATA = 
-		{ "The first date/time column found will be used for the x-axis.",
-				"Each numerical column represents one time series line on the chart." };
-
+	
+	
+	private static final String[] FORMATA = {
+			"The first date/time column found will be used for the x-axis.",
+			"Each numerical column represents one time series line on the chart.",
+			"If the result is in long format (time, series, value) and the data proves a valid series dimension exists, it will be automatically pivoted into aligned series.",
+			"Auto-pivoting occurs only when there is exactly one time column, one numeric value column, and a single non-numeric series column with no overlapping (time, series) rows.",
+			"If the time column is already unique, or the structure is ambiguous, no pivoting is performed."
+		};
 
 	@Override public String getFormatExplainationHtml() {
 		return "<ol><li>" + Joiner.on("</li><li>").join(FORMATA) + "</li></ol>";

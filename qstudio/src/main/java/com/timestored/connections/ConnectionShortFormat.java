@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.google.common.base.Preconditions;
 
@@ -153,40 +154,39 @@ public class ConnectionShortFormat {
 		return pr;
 	}
 
-	/**
-	 * Compose the list of {@link ServerConfig}s into a single string.
-	 * @return ShortFormat string, see class notes for details.
-	 */
 	public static String compose(List<ServerConfig> serverConfs, JdbcTypes defaultServerType) {
-		
-		StringBuilder sb = new StringBuilder();
-		
-		for(int i=0; i<serverConfs.size(); i++) {
-			if(i > 0) {
-				sb.append("\r\n");
-			}
-			ServerConfig sc = serverConfs.get(i);
-			String hp = sc.getHost() + ":" + sc.getPort();
-			
-			// optional name/jdbcType
-			if(!sc.getName().equals(hp)) {
-				sb.append(sc.getName()).append("@");
-			}
-			if(!defaultServerType.equals(sc.getJdbcType())) {
-				sb.append(sc.getJdbcType().name()).append("#");
-			}
-			
-			sb.append(hp);
-			
-			// optional username / password
-			if(!sc.getUsername().isEmpty() || !sc.getPassword().isEmpty()) {
-				sb.append(":").append(sc.getUsername());
-			}
-			if(!sc.getPassword().isEmpty()) {
-				sb.append(":").append(sc.getPassword());
-			}
-		}
-		
-		return sb.toString();
+	    return serverConfs.stream()
+	            .map(sc -> toString(sc, defaultServerType))
+	            .collect(Collectors.joining("\r\n"));
+	}
+
+	public static String toString(ServerConfig sc) {
+		return toString(sc, JdbcTypes.KDB);
+	}
+	
+	public static String toString(ServerConfig sc, JdbcTypes defaultServerType) {
+	    StringBuilder sb = new StringBuilder();
+
+	    String hp = sc.getHost() + ":" + sc.getPort();
+
+	    // optional name/jdbcType
+	    if (!sc.getName().equals(hp)) {
+	        sb.append(sc.getName()).append("@");
+	    }
+	    if (!defaultServerType.equals(sc.getJdbcType())) {
+	        sb.append(sc.getJdbcType().name()).append("#");
+	    }
+
+	    sb.append(hp);
+
+	    // optional username / password
+	    if (!sc.getUsername().isEmpty() || !sc.getPassword().isEmpty()) {
+	        sb.append(":").append(sc.getUsername());
+	    }
+	    if (!sc.getPassword().isEmpty()) {
+	        sb.append(":").append(sc.getPassword());
+	    }
+
+	    return sb.toString();
 	}
 }

@@ -19,14 +19,12 @@ package com.timestored.swingxx;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Desktop;
-import java.awt.EventQueue;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
@@ -318,6 +316,8 @@ public class FileTreePanel extends JPanel {
 		if(files == null) {
 			removeAll();
 			add(noRootsComponent, BorderLayout.CENTER);
+			revalidate();
+			repaint();
 		} else {
 			files = DirWatch.getFiles(fileFilter, root);
 			fileCache.addAll(DirWatch.generateFileCache(files, fileFilter));

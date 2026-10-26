@@ -19,6 +19,7 @@ package com.timestored.qstudio;
 import java.awt.BorderLayout;
 import java.awt.HeadlessException;
 import java.awt.Toolkit;
+import java.awt.Window;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
@@ -47,12 +48,19 @@ import java.util.stream.Collectors;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
+import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
+import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JDialog;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import javax.swing.text.JTextComponent;
 import javax.swing.text.TextAction;
 
@@ -87,6 +95,7 @@ import com.timestored.qstudio.model.QueryResult;
 import com.timestored.qstudio.model.ServerQEntity;
 import com.timestored.qstudio.model.TableSQE;
 import com.timestored.swingxx.AAction;
+import com.timestored.swingxx.SwingUtils;
 import com.timestored.theme.ShortcutAction;
 import com.timestored.theme.Theme;
 import com.timestored.theme.Theme.CIcon;
@@ -208,7 +217,7 @@ public class CommonActions implements CommandProvider {
 		
 		generateAIQueryAction = new GenerateAIQueryAction("AI Text to SQL");
 		aIExplainAction = new AIExplainAction("AI Explain SQL");
-		generateAIAction = new GenerateAIAction("Ask OpenAI");
+		generateAIAction = new GenerateAIAction("Ask AI");
 		googleAction = new GoogleAction("Google");
 		
         qLineAction = new ShortcutAction(Msg.get(Key.QUERY_LINE),
@@ -463,7 +472,14 @@ public class CommonActions implements CommandProvider {
 			return;
 		}
 
-		ServerConfig sc = connectionManager.getServer(queryManager.getSelectedServerName());
+		String selName = queryManager.getSelectedServerName();
+		if(selName == null) {
+			JOptionPane.showMessageDialog(parent,
+					"No server is currently selected. Pick one from the dropdown, or add a server.",
+					Msg.get(Key.NO_CONNECTIONS), JOptionPane.WARNING_MESSAGE);
+			return;
+		}
+		ServerConfig sc = connectionManager.getServer(selName);
 		String qryToRun = qry;
 		try {
 			if(openDocumentsModel.getSelectedDocument().getFileEnding().toLowerCase().equals("prql")) {
@@ -728,20 +744,20 @@ public class CommonActions implements CommandProvider {
 			super(name);
 	        putValue(Action.SMALL_ICON, Theme.CIcon.AI.get16());
 	        putValue(MNEMONIC_KEY, KeyEvent.VK_O);
-	        putValue(SHORT_DESCRIPTION, "Send your question to OpenAI.");
+	        putValue(SHORT_DESCRIPTION, "Send your question to AI.");
 		}
 
 		@Override public void actionPerformed(ActionEvent e) {
 	    	JTextComponent txtc = getTextComponent(e);
 	    	Function<String,String> queryReplace = (String selectedText) -> {
 				try {
-					return AIFacade.queryOpenAIstructured(selectedText).getFirstContent();
+					return AIFacade.queryAIstructured(selectedText).getFirstContent();
 				} catch (IOException e1) {
 					LOG.warning("Error AI : " + e1);
 					return "Error AI : " + e1;
 				}
 	    	};
-	    	performOpenAIQueryReplace(txtc, queryReplace, true);
+	    	performAIQueryReplace(txtc, queryReplace, true);
 		}
 	}
 
@@ -767,28 +783,26 @@ public class CommonActions implements CommandProvider {
 		}
 	}
 	
-	public static boolean checkForOpenAIkey() {
-		final String OPENAI_INSTRUCT = "You must first configure an OpenAI key in Settings->Preferences...->Misc";
-		boolean hasKey = AIFacade.getOpenAIkey() != null && AIFacade.getOpenAIkey().trim().length() > 1;
-		if(!hasKey) {
-			JOptionPane.showMessageDialog(null, OPENAI_INSTRUCT);
+	public static boolean checkForAIProvider() {
+		if (!AIFacade.isConfigured()) {
+			JOptionPane.showMessageDialog(null, AIFacade.getConfigurationHelp());
 			new PreferencesDialog(MyPreferences.INSTANCE, null);
+			return false;
 		}
-		return hasKey;
+		return true;
 	}
-	
 	/**
 	 * @param atEnd If true, place the replacement text at the end of the current selection. Otherwise place it before.
 	 */
-	public void performOpenAIQueryReplace(JTextComponent txtc, Function<String,String> performQuery, boolean atEnd) {
-		if(!checkForOpenAIkey()) {
+	public void performAIQueryReplace(JTextComponent txtc, Function<String,String> performQuery, boolean atEnd) {
+		if(!checkForAIProvider()) {
 			return;
 		}
     	String selectedTxt = openDocumentsModel.getSelectedDocument().getSelectedText();
     	// was possible for caret to be outside bounds when at very end of text
 		String fullTxt = txtc.getText().replace("\r","");
 		int end = txtc.getSelectionEnd();
-		int start = txtc.getSelectionStart(); 
+		int start = txtc.getSelectionStart();
     	if(selectedTxt.trim().length() == 0) {
     		selectedTxt = openDocumentsModel.getSelectedDocument().getCurrentLine();
     		for(;end >= 0 && end < fullTxt.length(); end++) {
@@ -802,25 +816,92 @@ public class CommonActions implements CommandProvider {
     			}
     		}
     	}
-		try {
-			String queryRes = performQuery.apply(selectedTxt);
-			LOG.info("queryOpenAIstructured:" + selectedTxt);
-			if(atEnd) {
-				String newTxt = "\n" + queryRes;
-				txtc.setCaretPosition(end);
-				txtc.replaceSelection(newTxt);
-				txtc.setSelectionStart(end);
-				txtc.setSelectionEnd(end + newTxt.length());
-			} else { // at start - before selection
-				String newTxt = queryRes + "\n";
-				txtc.setCaretPosition(start);
-				txtc.replaceSelection(newTxt);
-				txtc.setSelectionStart(start);
-				txtc.setSelectionEnd(start + newTxt.length());
+
+		final String queryInput = selectedTxt;
+		final int insertPos = atEnd ? end : start;
+
+		// Insert placeholder comment at the insertion point
+		String placeholder = "\n/ -- AI thinking... --\n";
+		txtc.setCaretPosition(insertPos);
+		txtc.replaceSelection(placeholder);
+		final int placeholderStart = insertPos;
+		final int placeholderEnd = insertPos + placeholder.length();
+
+		// Build a modal progress dialog with Cancel
+		Window ancestor = SwingUtilities.getWindowAncestor(txtc);
+		JDialog progressDialog = ancestor instanceof JFrame
+				? new JDialog((JFrame) ancestor, "AI Query", true)
+				: new JDialog((JDialog) ancestor, "AI Query", true);
+		JPanel panel = new JPanel(new BorderLayout(10, 10));
+		panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+		JProgressBar progressBar = new JProgressBar();
+		progressBar.setIndeterminate(true);
+		progressBar.setStringPainted(true);
+		progressBar.setString("Querying AI...");
+		JButton cancelButton = new JButton("Cancel");
+		panel.add(progressBar, BorderLayout.CENTER);
+		JPanel btnPanel = new JPanel();
+		btnPanel.add(cancelButton);
+		panel.add(btnPanel, BorderLayout.SOUTH);
+		progressDialog.setContentPane(panel);
+		progressDialog.pack();
+		progressDialog.setSize(Math.max(progressDialog.getWidth(), 300), progressDialog.getHeight());
+		progressDialog.setLocationRelativeTo(txtc);
+		progressDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+		SwingUtils.addEscapeCloseListener(progressDialog);
+
+		SwingWorker<String, Void> worker = new SwingWorker<String, Void>() {
+			@Override protected String doInBackground() {
+				return performQuery.apply(queryInput);
 			}
-		} catch (Exception e1) {
-			LOG.warning("Problem queryOpenAIstructured: " + e1);
-		}
+			@Override protected void done() {
+				progressDialog.dispose();
+				try {
+					// Remove placeholder
+					String currentTxt = txtc.getText().replace("\r", "");
+					int phStart = currentTxt.indexOf(placeholder.replace("\r", ""));
+					if (phStart >= 0) {
+						txtc.setSelectionStart(phStart);
+						txtc.setSelectionEnd(phStart + placeholder.length());
+						if (isCancelled()) {
+							txtc.replaceSelection("");
+							return;
+						}
+					} else if (isCancelled()) {
+						return;
+					}
+					String queryRes = get();
+					LOG.info("queryAIstructured:" + queryInput);
+					String newTxt = atEnd ? ("\n" + queryRes) : (queryRes + "\n");
+					if (phStart >= 0) {
+						txtc.replaceSelection(newTxt);
+						txtc.setSelectionStart(phStart);
+						txtc.setSelectionEnd(phStart + newTxt.length());
+					} else {
+						txtc.setCaretPosition(insertPos);
+						txtc.replaceSelection(newTxt);
+						txtc.setSelectionStart(insertPos);
+						txtc.setSelectionEnd(insertPos + newTxt.length());
+					}
+				} catch (Exception e1) {
+					LOG.warning("Problem queryAIstructured: " + e1);
+				}
+			}
+		};
+
+		cancelButton.addActionListener(e -> {
+			worker.cancel(true);
+			progressDialog.dispose();
+		});
+		progressDialog.addWindowListener(new java.awt.event.WindowAdapter() {
+			@Override public void windowClosing(java.awt.event.WindowEvent e) {
+				worker.cancel(true);
+				progressDialog.dispose();
+			}
+		});
+
+		worker.execute();
+		progressDialog.setVisible(true); // blocks EDT until dialog is disposed
 	}
 	
 	private JdbcTypes getJdbcType() {
@@ -835,12 +916,12 @@ public class CommonActions implements CommandProvider {
 	        putValue(Action.SMALL_ICON, Theme.CIcon.ROBOT_GO.get16());
 	        putValue(ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_F7,0));
 	        putValue(MNEMONIC_KEY, KeyEvent.VK_A);
-	        putValue(SHORT_DESCRIPTION, "Send your question to OpenAI to generate the SQL.");
-			
+	        putValue(SHORT_DESCRIPTION, "Send your question to AI to generate the SQL.");
+
 		}
 
 		@Override public void actionPerformed(ActionEvent e) {
-        	
+
 	    	JTextComponent txtc = getTextComponent(e);
 	    	Function<String,String> queryReplace = (String selectedText) -> {
 	        	// Try to get table info for query
@@ -849,12 +930,12 @@ public class CommonActions implements CommandProvider {
 				if (st != null && st.size() > 0) {
 					try {
 					List<TableSQE> tables = st.stream().filter(se -> se.getType().equals(CAtomTypes.TABLE)).map(se -> (TableSQE)se).collect(Collectors.toList());
-							
+
 					tblInfo = tables.stream()
 								.map(se -> {
 									String s = "";
 									if(se.getQQueries().size()>0) {
-										s += se.getQQueries().get(0).getQuery() + "\n";	
+										s += se.getQQueries().get(0).getQuery() + "\n";
 									}
 									s += se.getFullName() + " Columns: " + Joiner.on(",").join(se.getColNames()) + "\n";
 									return s;
@@ -864,17 +945,17 @@ public class CommonActions implements CommandProvider {
 						LOG.warning("Could not populate tblInfo for AI query:" + e2);
 					}
 				}
-				LOG.info("queryOpenAIstructured:" + selectedText);
+				LOG.info("queryAIstructured:" + selectedText);
 				try {
-					AIresult air = AIFacade.queryOpenAIstructured(getJdbcType(), tblInfo, selectedText);
+					AIresult air = AIFacade.queryAIstructured(getJdbcType(), tblInfo, selectedText);
 					return air.getFirstCode().trim();
 				} catch (IOException e1) {
 					LOG.warning("Error AI : " + e1);
 					return "Error AI : " + e1;
 				}
 	    	};
-	    	
-	    	performOpenAIQueryReplace(txtc, queryReplace, true);
+
+	    	performAIQueryReplace(txtc, queryReplace, true);
 		}
 	}
 
@@ -884,8 +965,8 @@ public class CommonActions implements CommandProvider {
 	        putValue(Action.SMALL_ICON, Theme.CIcon.ROBOT_COMMENT.get16());
 	        putValue(ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_F6,0));
 	        putValue(MNEMONIC_KEY, KeyEvent.VK_E);
-	        putValue(SHORT_DESCRIPTION, "Ask OpenAI to explain the SQL.");
-			
+	        putValue(SHORT_DESCRIPTION, "Ask AI to explain the SQL.");
+
 		}
 
 		@Override public void actionPerformed(ActionEvent e) {
@@ -895,18 +976,18 @@ public class CommonActions implements CommandProvider {
 				String aiQry = "For the " + getJdbcType() + " database ";
 				aiQry += "explain this SQL code:\n```\n";
 				aiQry += selectedText + "\n```\n";
-				
-				LOG.info("queryOpenAIstructured:" + aiQry);
+
+				LOG.info("queryAIstructured:" + aiQry);
 				try {
-					AIresult air = AIFacade.queryOpenAIstructured(aiQry);
+					AIresult air = AIFacade.queryAIstructured(aiQry);
 					return "\n" + com + air.getFirstContent().trim().replace("\n", ("\n" + com));
 				} catch (IOException | IllegalStateException e1) {
 					LOG.warning("Error AI : " + e1);
 					return "\n" + com + e1.toString().replace("\n", ("\n" + com));
 				}
 	    	};
-	    	
-	    	performOpenAIQueryReplace(txtc, queryReplace, false);
+
+	    	performAIQueryReplace(txtc, queryReplace, false);
 		}
 	}
 }

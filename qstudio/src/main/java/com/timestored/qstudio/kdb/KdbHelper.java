@@ -246,7 +246,7 @@ public class KdbHelper {
 					if (vals.getClass().isArray()) {
 						return Array.getLength(vals);
 					} else {
-						return ((Flip) k).x.length;
+						return ((Flip) d.x).x.length;
 					}
 				} else {
 					if(d.x.getClass().isArray()) {

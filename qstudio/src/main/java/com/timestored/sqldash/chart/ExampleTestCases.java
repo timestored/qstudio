@@ -1,7 +1,6 @@
 package com.timestored.sqldash.chart;
 
 import java.sql.ResultSet;
-import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.sql.Date;
 

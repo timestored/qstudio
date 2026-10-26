@@ -1,7 +1,6 @@
 package com.timestored.sqldash.chart;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;

@@ -30,6 +30,7 @@ import javax.swing.KeyStroke;
 
 import kx.c.KException;
 import kx.jdbc;
+import lombok.Getter;
 import net.jcip.annotations.ThreadSafe;
 
 import com.google.common.base.Preconditions;
@@ -59,6 +60,7 @@ import com.timestored.theme.Theme;
 	private final ConnectionManager connectionManager;
 	private String previousQuery = "";
 	private String previousQueryTitle = null;
+	@Getter private QueryResult previousSuccessfulQR;
 	private PivotFormConfig previousPivotConfig = null;
 	private String selectedServerName;
 	private boolean queryWrapped = true;
@@ -73,6 +75,7 @@ import com.timestored.theme.Theme;
 	private long maxReturnedObjectSize;
 
 	private KdbConnection conn;
+
 
 
 	/**
@@ -191,14 +194,20 @@ import com.timestored.theme.Theme;
 		
 	}
 	
+	/** ONLY FOR TESTING **/
+	public QueryResult sendQuerySync(final String query) {
+		return sendQuery(null, query, selectedServerName, null);
+	}
+	
 	/**
 	 * Send a query to the currently selected server and notify listeners of the result.
 	 * @param query The actual kdb query that is sent.
 	 * @param queryTitle The query reported as being sent, useful for hiding long internal queries.
 	 * 	null makes this default to actual query.
+	 * @return 
 	 * @IllegalStateException If no valid server is currently selected
 	 */
-	private void sendQuery(PivotFormConfig pivotConfig, final String query, final String serverName,  final String queryTitle) {
+	private QueryResult sendQuery(PivotFormConfig pivotConfig, final String query, final String serverName,  final String queryTitle) {
 
 		synchronized (this) {
 			cancelQuery = false;	
@@ -239,14 +248,15 @@ import com.timestored.theme.Theme;
 					}
 					long millisTaken = System.currentTimeMillis() - curMillis;
 					qr = QueryResult.successfulResult(sc, title, pivotConfig, null, crs, "", millisTaken);
+					previousSuccessfulQR = qr;
 					sendQRtoListeners(sc, qr);
-					return;
+					return qr;
 				}
 			} catch (Throwable e) {
 				Exception ee = e instanceof Exception ? ((Exception)e) : new IOException(e);
 				qr = QueryResult.exceptionResult(sc, title, pivotConfig, ee, System.currentTimeMillis() - curMillis);
 				sendQRtoListeners(sc, qr);
-				return;
+				return qr;
 			}
 		}
 
@@ -339,6 +349,7 @@ import com.timestored.theme.Theme;
 		
 	    // must do as connection must still be "open" for rs to work
 		sendQRtoListeners(sc, qr);
+		previousSuccessfulQR = qr;
 		
 		try {
 			if(!connectionPersisted) {
@@ -350,7 +361,7 @@ import com.timestored.theme.Theme;
 				LOG.warning("error refrshing watches /  closing connection");
 			}
 		}
-
+		return qr;
 	}
 
 	@Override public void close() throws Exception {
@@ -423,25 +434,25 @@ import com.timestored.theme.Theme;
 	 * @param serverName name of a server in {@link ConnectionManager}.
 	 */
 	public synchronized void setSelectedServerName(final String serverName) {
-
-		boolean changeToNull = serverName == null && this.selectedServerName!=null;
-		boolean actualChange = serverName!=null && !serverName.equals(this.selectedServerName);
-		if(changeToNull || actualChange) {
-			conn = null;
-			this.selectedServerName = null;
-			if(actualChange) {
-				ServerConfig sc = connectionManager.getServer(serverName);
-				this.selectedServerName = sc==null ? null : serverName;
+		// Resolve the target name against ConnectionManager up-front so the field is never
+		// transiently null mid-method. Listeners fire with the resolved name, so a listener
+		// reading getSelectedServerName() sees the same value it received as an argument.
+		String resolved = null;
+		if(serverName != null) {
+			ServerConfig sc = connectionManager.getServer(serverName);
+			resolved = sc == null ? null : serverName;
+		}
+		if(java.util.Objects.equals(resolved, this.selectedServerName)) {
+			return; // already at target state — no-op
+		}
+		this.conn = null;
+		this.selectedServerName = resolved;
+		for(QueryListener l : listeners) {
+			try {
+				l.selectedServerChanged(resolved);
+			} catch(Exception e) {
+				LOG.severe("Error notifying listener:" + l + ": " + e);
 			}
-			for(QueryListener l : listeners) {
-				try {
-					l.selectedServerChanged(serverName);
-				} catch(Exception e) {
-					LOG.severe("Error notifying listener:" + l); // Don't break all listeners if one fails.
-				}
-			}
-		} else {
-			LOG.fine("Ignoring setSelectedServerName: " + serverName + "as already set");
 		}
 	}
 	
@@ -474,6 +485,11 @@ import com.timestored.theme.Theme;
 
 	public List<String> getServerNames() {
 		return serverNames;
+	}
+
+	/** @return the {@link ServerConfig} for the named server, or null if not found. */
+	public ServerConfig getServer(String name) {
+		return connectionManager.getServer(name);
 	}
 
 	public void setQueryWrapPrefix(String queryWrapPre) {

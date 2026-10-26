@@ -20,7 +20,6 @@ package com.timestored.qdoc;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -51,6 +50,8 @@ public class ParsedQEntity implements QEntity, Comparable<ParsedQEntity> {
 	public static final String EXCEPTION_TAG = "exception";
 	public static final String COLUMN_TAG = "col";
 	public static final String EXAMPLE_TAG = "example";
+	public static final String SUMMARY_TAG = "summary";
+	public static final String IGNORE_TAG = "ignore";
 	public static final String RETURN_TAG = "return";
 	private static final Map<String,String> EMPTY_MAP = Collections.emptyMap();
 	
@@ -66,32 +67,37 @@ public class ParsedQEntity implements QEntity, Comparable<ParsedQEntity> {
 	
 	private final ParsedQFile parentFile;
 	private final int offset;
+	/** Parameter names for functions. null = not a function. empty = explicit 0-arg {[]}. */
+	private final List<String> paramNames;
 
 
 	/**
-	 * 
 	 * @param parentFile specifies the parent file to this entity. null is permitted, note
 	 * 	entities are considered equal regardless of what file they are in.
 	 */
-	static ParsedQEntity get(ParsedQFile parentFile, String name, String namespace, 
+	static ParsedQEntity get(ParsedQFile parentFile, String name, String namespace,
 			ParsedComments pec, int offset) {
-		
-		return new ParsedQEntity(parentFile, name, namespace, pec.docDescription, 
-				pec.namedTags, pec.tags, 
-				pec.returnDescription, offset);
+		return get(parentFile, name, namespace, pec, offset, null);
 	}
-	
+
+	static ParsedQEntity get(ParsedQFile parentFile, String name, String namespace,
+			ParsedComments pec, int offset, List<String> paramNames) {
+		return new ParsedQEntity(parentFile, name, namespace, pec.docDescription,
+				pec.namedTags, pec.tags,
+				pec.returnDescription, offset, paramNames);
+	}
+
 	/**
 	 * @param parentFile specifies the parent file to this entity. null is NOT permitted, note
 	 * 	entities are considered equal regardless of what file they are in.
 	 */
-	private ParsedQEntity(ParsedQFile parentFile, String name, 
-			String namespace, String docDescription, 
+	private ParsedQEntity(ParsedQFile parentFile, String name,
+			String namespace, String docDescription,
 			Map<String, Map<String, String>> namedTags,
 			Map<String, String> tags,
 			String returnDescription,
-			int offset) {
-		
+			int offset, List<String> paramNames) {
+
 		this.name = Preconditions.checkNotNull(name);
 		this.namespace = Preconditions.checkNotNull(namespace);
 		this.docDescription = (docDescription == null ? "" : docDescription);
@@ -101,7 +107,11 @@ public class ParsedQEntity implements QEntity, Comparable<ParsedQEntity> {
 		this.tags = Preconditions.checkNotNull(tags);
 		this.parentFile = Preconditions.checkNotNull(parentFile);
 		this.offset = offset;
+		this.paramNames = paramNames;
 	}
+
+	/** Parameter names. null = not a function. Empty list = explicit 0-arg. */
+	public List<String> getParamNames() { return paramNames; }
 	
 	
 	/**
@@ -122,8 +132,8 @@ public class ParsedQEntity implements QEntity, Comparable<ParsedQEntity> {
 		if(exceptionDescriptions != null) {
 			namedTags.put(EXCEPTION_TAG, Collections.unmodifiableMap(exceptionDescriptions));
 		}
-		return new ParsedQEntity(parentFile, name, namespace, docDescription, 
-				namedTags, EMPTY_MAP, returnDescription, offset);
+		return new ParsedQEntity(parentFile, name, namespace, docDescription,
+				namedTags, EMPTY_MAP, returnDescription, offset, null);
 	}
 
 	/** {@inheritDoc} */ @Override 
@@ -145,12 +155,24 @@ public class ParsedQEntity implements QEntity, Comparable<ParsedQEntity> {
 		if(hasDocs) {
 			StringBuilder sb = new StringBuilder();
 			sb.append(HtmlUtils.START);
-			sb.append("<p>" + docDescription + "</p>");	
+			if(shortFormat) {
+				String shortDescription = getShortDescription();
+				if(shortDescription != null && !shortDescription.trim().isEmpty()) {
+					sb.append(toDescriptionHtml(shortDescription));
+				}
+				sb.append(HtmlUtils.END);
+				return sb.toString();
+			}
+			sb.append(toDescriptionHtml(docDescription));
 			
 			Map<String,String> namesToDescs = Maps.newHashMap();
+			Map<String, String> examples = Maps.newLinkedHashMap();
 			
 			for(Entry<String, String> e : tags.entrySet()) {
 				String k = e.getKey();
+				if(k.equals(SUMMARY_TAG) || k.equals(IGNORE_TAG)) {
+					continue;
+				}
 				if(k.equals(RETURN_TAG)) {
 					k = "Return";
 				}
@@ -167,31 +189,67 @@ public class ParsedQEntity implements QEntity, Comparable<ParsedQEntity> {
 					k = "Columns";
 				}
 				
-				if(k.equals(EXAMPLE_TAG) || k.toLowerCase().equals("eg")) {
-					k = "Examples";
-					List<String> examples = new ArrayList<>();
-					e.getValue().forEach((String u, String vv) -> {
-						String txt = u;
-						if(baseWeblink!=null && baseWeblink.length()>0) {
-							try {
-								String args = URLEncoder.encode(u, "UTF-8");
-								txt = "<a href='" + baseWeblink + args + "' target='a'>"+u+"</a>";
-							} catch (UnsupportedEncodingException e1) {}
-						}
-						examples.add("<code>" + txt + "</code>");
-					});
-					namesToDescs.put(k + ": ", HtmlUtils.toList(examples));
+				if(isExampleTag(k)) {
+					examples.putAll(e.getValue());
 				} else {
-					namesToDescs.put(k + ": ", HtmlUtils.toList(e.getValue(), true));
+					String listClass = "qd-tags";
+					if(k.equals("Parameters")) {
+						listClass = "qd-parameters";
+					} else if(k.equals("Exceptions")) {
+						listClass = "qd-exceptions";
+					} else if(k.equals("Columns")) {
+						listClass = "qd-columns";
+					}
+					namesToDescs.put(k + ": ", HtmlUtils.toList(e.getValue(), true).replace("<ul>", "<ul class='" + listClass + "'>"));
 				}
 			}
 			
-			sb.append(HtmlUtils.toTable(namesToDescs, true));
+			String tableClass = "qd-tags";
+			if(namedTags.containsKey(PARAM_TAG)) {
+				tableClass += " qd-parameters";
+			}
+			if(!namesToDescs.isEmpty()) {
+				sb.append(HtmlUtils.toTable(namesToDescs, true).replace("<table>", "<table class='" + tableClass + "'>"));
+			}
+			appendExamplesHtml(sb, examples, baseWeblink);
 			sb.append(HtmlUtils.END);
 			s = sb.toString();
 		}
 		
 		return s;
+	}
+
+	static boolean isExampleTag(String tag) {
+		return EXAMPLE_TAG.equals(tag) || "eg".equalsIgnoreCase(tag);
+	}
+
+	static void appendExamplesHtml(StringBuilder sb, Map<String, String> examples, String baseWeblink) {
+		if(examples.isEmpty()) {
+			return;
+		}
+		sb.append("<div class='qd-examples'><h3>Examples</h3>");
+		for(String example : examples.keySet()) {
+			sb.append("<div class='qd-example'>");
+			sb.append("<pre class='qd-example-code'><code class='language-q'>").append(example).append("</code></pre>");
+			if(baseWeblink!=null && baseWeblink.length()>0) {
+				try {
+					String args = URLEncoder.encode(example, "UTF-8");
+					sb.append("<a class='qd-example-link' href='").append(baseWeblink).append(args)
+						.append("' target='a' title='Run example'>&#8599;</a>");
+				} catch (UnsupportedEncodingException e) {}
+			}
+			sb.append("</div>");
+		}
+		sb.append("</div>");
+	}
+
+	private static String toDescriptionHtml(String description) {
+		StringBuilder sb = new StringBuilder();
+		String[] paragraphs = description.split("(\\n\\s*){2,}");
+		for(String paragraph : paragraphs) {
+			sb.append("<p class='qd-description'>").append(paragraph.trim()).append("</p>");
+		}
+		return sb.toString();
 	}
 
 	/** {@inheritDoc} */ @Override 
@@ -203,7 +261,7 @@ public class ParsedQEntity implements QEntity, Comparable<ParsedQEntity> {
 		 return (namespace.equals(".") ? "" : namespace + ".") + name;
 	}
 	
-	String getDocDescription() {
+	public String getDocDescription() {
 		return docDescription;
 	}
 
@@ -241,6 +299,10 @@ public class ParsedQEntity implements QEntity, Comparable<ParsedQEntity> {
 	 */
 	public String getTag(String tag) {
 		return tags.get(tag);
+	}
+
+	boolean isIgnored() {
+		return tags.containsKey(IGNORE_TAG) || namedTags.containsKey(IGNORE_TAG);
 	}
 	
 	Map<String, String> getParamTags() {
@@ -321,9 +383,34 @@ public class ParsedQEntity implements QEntity, Comparable<ParsedQEntity> {
 
 	/** @return Description up till the first full stop. */
 	public String getShortDescription() {
-		String s = getDocDescription();
-		int p = s.indexOf('.');
+		String summary = tags.get(SUMMARY_TAG);
+		if(summary != null && !summary.trim().isEmpty()) {
+			return summary;
+		}
+		return getFirstSentence(getDocDescription());
+	}
+
+	static String getFirstSentence(String s) {
+		int p = firstSentenceEnd(s);
 		return p==-1 ? s : s.substring(0, p+1);
+	}
+
+	private static int firstSentenceEnd(String s) {
+		for(int i=0; i<s.length(); i++) {
+			if(isSentencePunctuation(s.charAt(i)) && isSentenceTerminator(s, i)) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	private static boolean isSentencePunctuation(char c) {
+		return c=='.' || c=='?';
+	}
+
+	private static boolean isSentenceTerminator(String s, int i) {
+		char next = i+1 < s.length() ? s.charAt(i+1) : '\0';
+		return next=='\0' || Character.isWhitespace(next);
 	}
 
 	public void gotoDefinition(OpenDocumentsModel openDocumentsModel) throws IOException {

@@ -144,7 +144,7 @@ public class QueryResult implements QueryResultI {
 	}
 
 	/**
-	 * Implements QueryResultI and provides cached rowset to allow using Bable in both Pulse and qStudio
+	 * Implements QueryResultI and provides cached rowset to allow using Babel in both Pulse and qStudio
 	 * babel can't be trusted to go through RS once only.
 	 */
 	@Override public RowSet getRs() { 

@@ -55,7 +55,6 @@ import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
-import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
 import javax.swing.text.DefaultEditorKit;
@@ -77,7 +76,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.timestored.messages.Msg;
 import com.timestored.messages.Msg.Key;
-import com.timestored.qstudio.UpdateHelper;
 import com.timestored.swingxx.AAction;
 import com.timestored.swingxx.SwingUtils;
 import com.timestored.theme.Icon;
@@ -560,7 +558,7 @@ public class DocumentActions {
 	}
 
 
-	private void closeWithConfirmation(Document document) {
+	public void closeWithConfirmation(Document document) {
 		LOG.info("closeWithConfirmation: " + document);
 		try {
 			if(document.hasUnsavedChanges()) {

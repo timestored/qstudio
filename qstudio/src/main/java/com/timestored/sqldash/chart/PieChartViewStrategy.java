@@ -4,7 +4,6 @@ import java.awt.Component;
 import java.sql.ResultSet;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.jfree.chart.ChartFactory;
@@ -14,15 +13,12 @@ import org.jfree.chart.labels.StandardPieToolTipGenerator;
 import org.jfree.chart.plot.MultiplePiePlot;
 import org.jfree.chart.plot.PiePlot;
 import org.jfree.data.category.DefaultCategoryDataset;
-import org.jfree.data.general.DefaultPieDataset;
-import org.jfree.data.general.PieDataset;
 import org.jfree.util.TableOrder;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.timestored.connections.JdbcTypes;
-import com.timestored.sqldash.chart.ChartResultSet.NumericCol;
 import com.timestored.sqldash.theme.DBIcons;
 import com.timestored.theme.Icon;
 
@@ -88,32 +84,6 @@ public enum PieChartViewStrategy implements ViewStrategy {
 			}
 		});
 		
-	}
-
-	/** Contains the details for one pie chart. */
-	private static class PieGroup {
-		private final PieDataset dataset;
-		private final String title;
-		
-		private PieGroup(PieDataset pieDataset, String title) {
-			this.dataset = pieDataset;
-			this.title = title;
-		}
-	}
-	
-	private List<PieGroup> createPies(ChartResultSet chartResultSet) {
-
-		List<PieGroup> res = new ArrayList<PieGroup>();
-		for (NumericCol numCol : chartResultSet.getNumericColumns()) {
-			DefaultPieDataset dataset = new DefaultPieDataset();
-			double[] pieVals = numCol.getDoubles();
-			for (int r=0; r<pieVals.length; r++) {
-				dataset.setValue(chartResultSet.getRowLabel(r), pieVals[r]); 
-			}
-			res.add(new PieGroup(dataset, numCol.getLabel()));
-		}
-		
-		return res;
 	}
 
 	@Override public String getDescription() { return "Pie Chart"; }

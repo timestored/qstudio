@@ -48,10 +48,10 @@ import javax.sql.rowset.serial.SerialArray;
 import javax.sql.rowset.serial.SerialJavaObject;
 
 import com.google.common.base.Preconditions;
-import com.timestored.qstudio.kdb.KdbHelper;
 import com.timestored.sqldash.chart.SqlHelper;
 
 import jakarta.annotation.Nullable;
+import kx.jdbc.ExtendedResultSet;
 import lombok.Data;
 import lombok.Getter;
 
@@ -270,6 +270,7 @@ public class DBHelper {
 	}
 
 	
+
 	
 	final public static String toFancyString(ResultSet rs, boolean withTypesInHeader) throws SQLException {
 
@@ -369,10 +370,7 @@ public class DBHelper {
 	    return missing <= 0 ? s : s + " ".repeat(missing);
 	}
 
-	
-	
-	
-	
+		
 	
 	
 	final public static String toString(ResultSet rs, boolean withTypesInHeader) throws SQLException {
@@ -395,6 +393,7 @@ public class DBHelper {
 		sb.append("\r\n");
 		rs.beforeFirst();
 		Object o = null;
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
 		while (rs.next()) {
 			for (int i = 1; i <= cn; i++) {
 				int ct = rsmd.getColumnType(i);
@@ -406,7 +405,12 @@ public class DBHelper {
 						if(o == null || rs.wasNull()) {
 							sb.append(" ");
 						} else if(o instanceof Date) {
-							sb.append(new SimpleDateFormat("yyyy-MM-dd").format((Date)o));
+							String dt = sdf.format((Date)o);
+							if(dt.startsWith("1970-")) {
+								sb.append(""+o);	
+							} else {
+								sb.append(dt);
+							}
 						} else {
 							sb.append(""+o);
 						}
@@ -429,14 +433,15 @@ public class DBHelper {
     public static CachedRowSet toCRS(ResultSet rs) throws SQLException {
     	if(rs == null) {
     		return null;
-    	} else if(rs instanceof CachedRowSet) {
+    	}
+    	if(rs instanceof CachedRowSet) {
     		return (CachedRowSet) rs;
     	}
 		CachedRowSet crs = RowSetProvider.newFactory().createCachedRowSet();
     	crs.populate(rs);
     	return crs;
     }
-
+    
 
 	public static String convertArrayToString(Object o) throws SQLException {
 		if(o == null) {
@@ -507,7 +512,7 @@ public class DBHelper {
 		r += "\"" + s.replace("\"", "\\\"") + "\"";
 		return r;
 	}
-	
+
 	public static ColumnInfo[] getColumnInfos(ResultSet rs) throws SQLException {
 		ResultSetMetaData rsmd = rs.getMetaData();
 		int cn = rsmd.getColumnCount();
@@ -534,8 +539,8 @@ public class DBHelper {
 		private String min = null;
 		private String max = null;
 
-		@Override public String getColumnInfo() {
-			return super.getColumnInfo() + ((count > 1 && min != null && max != null) ? ("\nmin: " + min + "\nmax: " + max) : ""); 
+		@Override public String getColumnInfo(NumericColumnInfoFormatter formatter) {
+			return super.getColumnInfo(formatter) + ((count > 1 && min != null && max != null) ? ("\nmin: " + min + "\nmax: " + max) : ""); 
 		}
 
 		@Override public void addEntry(Object o, boolean wasNull) {
@@ -548,7 +553,7 @@ public class DBHelper {
 		}
 		
 		@Override public String toString() {
-			return getColumnInfo();
+			return getColumnInfo(d -> Double.toString(d));
 		}
 	}
 	
@@ -567,7 +572,7 @@ public class DBHelper {
 			}
 		}
 		
-		public String getColumnInfo() { 
+		public String getColumnInfo(NumericColumnInfoFormatter formatter) { 
 			if(count == 0) {
 				return "";
 			}
@@ -583,19 +588,23 @@ public class DBHelper {
 		}
 		
 		@Override public String toString() {
-			return getColumnInfo();
+			return getColumnInfo(d -> Double.toString(d));
 		}
+	}
+
+	public static interface NumericColumnInfoFormatter {
+		String format(double d);
 	}
 	
 	private static class NumericColumnInfo extends ColumnInfo {
 		@Getter private double min = Double.POSITIVE_INFINITY;
 		@Getter private double max = Double.NEGATIVE_INFINITY;
 		@Getter private double sum = 0;
-
-		@Override public String getColumnInfo() {
-			return super.getColumnInfo() + "\nmin: " + KdbHelper.formatFloatingPt(min)
-				+ "\nmax: " + KdbHelper.formatFloatingPt(max) + "\nsum: " + KdbHelper.formatFloatingPt(sum)
-				 + "\naverage: " + KdbHelper.formatFloatingPt(sum/(super.count-super.nullCount)); 
+		
+		@Override public String getColumnInfo(NumericColumnInfoFormatter formatter) {
+			return super.getColumnInfo(formatter) + "\nmin: " + formatter.format(min)
+				+ "\nmax: " + formatter.format(max) + "\nsum: " + formatter.format(sum)
+				 + "\naverage: " + formatter.format(sum/(super.count-super.nullCount)); 
 		}
 
 		@Override public void addEntry(Object o, boolean wasNull) {
@@ -610,9 +619,32 @@ public class DBHelper {
 		}
 		
 		@Override public String toString() {
-			return getColumnInfo();
+			return getColumnInfo(d -> Double.toString(d));
 		}
 	}
-}
+	
+	/**
+	 * Rename columns in a ResultSet using a map of oldName -> newName.
+	 * @throws IllegalArgumentException if a key does not exist or renames collide
+	 */
+	public static ResultSet renameColumns(ResultSet rs,Map<String, String> renameMap) throws SQLException {
+		return ColumnRenamingResultSet.renameColumns(rs, renameMap);
+	}
 
+	public static ResultSet renameColumns(ResultSet rs, List<String> newColumnNames) throws SQLException {
+		return ColumnRenamingResultSet.renameColumns(rs, newColumnNames);
+	}
+
+	public static ResultSet deleteColumns(ResultSet rs, Collection<String> columnNames) throws SQLException {
+		return DeletingColumnResultSet.deleteColumns(rs, columnNames);
+	}
+
+	public static ResultSet sort(ResultSet rs, List<String> sortColumns) throws SQLException {
+		return new SortedResultSet(rs, sortColumns);
+	}
+
+	public static ResultSet pivot(ResultSet rs, List<String> byCols, List<String> pivotCols) throws SQLException {
+		return PivotProvider.pivotInMemory(rs, byCols, pivotCols);
+	}
+}
 

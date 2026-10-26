@@ -160,6 +160,7 @@ public class AppLaunchHelper {
 		}
 	}
 	
+	@SuppressWarnings({ "unchecked", "rawtypes" }) // reflection API forces this
     private static void setApplicationIconImagePrivate(BufferedImage image) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException, ClassNotFoundException {
         Class appClass = Class.forName("com.apple.eawt.Application");
         Object application = appClass.getMethod("getApplication", new Class[0]).invoke(null, new Object[0]);
@@ -199,7 +200,7 @@ public class AppLaunchHelper {
         }
     }
 
-
+	@SuppressWarnings({ "unchecked", "rawtypes" }) // reflection API forces this
     private static Object getNSApplication() throws ClassNotFoundException {
         try {
             Class applicationClass = Class.forName("com.apple.cocoa.application.NSApplication");

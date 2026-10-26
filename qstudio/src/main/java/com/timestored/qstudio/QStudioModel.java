@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
@@ -199,6 +198,7 @@ public class QStudioModel {
 		@Override public ServerConfig getServer(String serverName) { return connectionManager.getServer(serverName); }
 		@Override public boolean isEmpty() { return connectionManager.isEmpty(); }
 		@Override public void close() { }
+		@Override public List<String> getServerWithDocs() {  return Collections.emptyList(); }
 		
 	}
 

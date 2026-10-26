@@ -1,7 +1,6 @@
 package com.timestored.sqldash.chart;
 
 import java.awt.*;
-import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.*;
@@ -12,7 +11,6 @@ import com.timestored.blueprint.BlueprintIcon;
 import com.timestored.sqldash.chart.ChartAppearanceConfig.AxisPosition;
 import com.timestored.sqldash.chart.ChartAppearanceConfig.LegendPosition;
 import com.timestored.sqldash.chart.ChartAppearanceConfig.LineStyle;
-import com.timestored.sqldash.chart.ChartAppearanceConfig.MarkerShape;
 
 /**
  * Chart config editor with:

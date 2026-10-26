@@ -89,6 +89,9 @@ class ConsolePanel extends JPanel implements QueryListener,GrabableContainer {
 	
 	private void app(String msg) { scText.appendMessage(msg); }
 
+    /** Append a message to the console from external callers (e.g. sync manager). */
+    public void appendMessage(String msg) { scText.appendMessage(msg); }
+
 	@Override public void serverListingChanged(List<String> serverNames) { }
 	
 	public void setCodeFont(Font f) { scText.setTextareaFont(f); }

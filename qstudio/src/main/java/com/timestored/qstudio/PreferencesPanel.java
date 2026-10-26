@@ -29,7 +29,7 @@ public abstract class PreferencesPanel extends JPanel {
 
 	PreferencesPanel(final MyPreferences myPreferences, Component container) {
 		this.myPreferences = Preconditions.checkNotNull(myPreferences);
-		this.container = Preconditions.checkNotNull(container);
+		this.container = container;
 	}
 		
 	/** Take the persisted values and show them values in the GUI */

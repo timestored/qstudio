@@ -1,3 +1,4 @@
+package com.timestored.babeldb;
 
 /*******************************************************************************
  *
@@ -23,7 +24,6 @@
  *
  ******************************************************************************/
 
-package com.timestored.babeldb;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -71,6 +71,38 @@ public class PivotProvider {
 		return new PivotResultSet(rs, byCols, pivotCols);
 	}
 	
+	/**
+	 * Fully materializes, sorts, and pivots a ResultSet in memory.
+	 *
+	 * <p>Performs a strict pivot operation without aggregation. The input must satisfy
+	 * several invariants or an exception is thrown.</p>
+	 *
+	 * <h3>Requirements</h3>
+	 * <ul>
+	 *   <li>All columns in {@code byCols} and {@code pivotCols} must exist.</li>
+	 *   <li>{@code byCols} and {@code pivotCols} must be disjoint.</li>
+	 *   <li>The combination of {@code byCols} and {@code pivotCols} must uniquely
+	 *       identify rows (no duplicates).</li>
+	 * </ul>
+	 *
+	 * <h3>Behavior</h3>
+	 * <ul>
+	 *   <li>Input is fully materialized and sorted by {@code byCols}.</li>
+	 *   <li>No aggregation is performed; duplicate keys cause failure.</li>
+	 *   <li>Missing pivot values produce {@code null} cells.</li>
+	 * </ul>
+	 *
+	 * @param rs        input ResultSet (fully consumed)
+	 * @param byCols    columns defining output rows
+	 * @param pivotCols columns whose values define pivoted columns
+	 * @return a pivoted ResultSet
+	 * @throws SQLException if a JDBC access error occurs
+	 * @throws IllegalArgumentException if pivot invariants are violated
+	 */
+	public static ResultSet pivotInMemory(ResultSet rs, List<String> byCols, List<String> pivotCols) throws SQLException {
+		SortedResultSet srs = new SortedResultSet(rs, byCols);
+		return new PivotResultSet(srs, byCols, pivotCols);
+	}
 
 	public static String pivotSQL(JdbcTypes jdbcTypes, List<String> groupbylist, List<String> pivotlist, String sel, String translation) {
 		boolean isKDB = jdbcTypes.isKDB();

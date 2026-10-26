@@ -23,7 +23,6 @@ import java.util.List;
 import javax.swing.KeyStroke;
 
 import com.google.common.collect.Lists;
-import com.timestored.docs.DocumentActions;
 import com.timestored.docs.OpenDocumentsModel;
 import com.timestored.qstudio.model.QueryManager;
 import com.timestored.theme.Theme;

@@ -237,15 +237,15 @@ class KDBResultPanel extends JPanel implements GrabableContainer {
 		}
 		JButton openAiButton = new JButton("AI", Theme.CIcon.AI.get16());
 		openAiButton.addActionListener(e -> {
-			boolean hasKey = CommonActions.checkForOpenAIkey();
+			boolean configured = CommonActions.checkForAIProvider();
 
-			if(hasKey) {
+			if(configured) {
 				openAiButton.setEnabled(false);
 				BackgroundExecutor.EXECUTOR.execute(() -> {
 					try {
-						String aiQry = "I ran the SQL query: \n```\n" + qry + "\n```\n" + "which causes this SQL database error in " 
-					+ db + ": " + errMsg + "\nWhat is causing the error and how do I fix it?"; 
-						AIresult r = AIFacade.queryOpenAIstructured(aiQry);
+						String aiQry = "I ran the SQL query: \n```\n" + qry + "\n```\n" + "which causes this SQL database error in "
+					+ db + ": " + errMsg + "\nWhat is causing the error and how do I fix it?";
+						AIresult r = AIFacade.queryAIstructured(aiQry);
 						JOptionPane.showMessageDialog(null, r.getFirstContent());
 						openAiButton.setEnabled(true);
 					} catch (IOException e1) {

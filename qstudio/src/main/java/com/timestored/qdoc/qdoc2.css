@@ -223,3 +223,83 @@ td, th {
 }
 
 .wy-nav-content{max-width:1000px;}
+
+#headerDoc,
+.overviewSummary {
+    margin-bottom: 1.5rem;
+}
+
+.details {
+    margin-top: 1.5rem;
+}
+
+.qd-tags {
+    width: 100%;
+}
+
+.qd-tags th,
+.qd-tags td {
+    padding: .5rem .75rem;
+    vertical-align: top;
+}
+
+.qd-tags th {
+    width: 1%;
+    white-space: nowrap;
+    text-align: left;
+}
+
+.qd-tags td > ul {
+    margin-bottom: 0;
+}
+
+.qd-tags td > ul > li + li {
+    margin-top: .4rem;
+}
+
+.qd-examples {
+    margin: 18px 0 24px;
+}
+
+.qd-examples h3 {
+    margin-bottom: 8px;
+}
+
+.qd-example {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    margin: 8px 0;
+}
+
+.qd-example-code {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    overflow-x: auto;
+}
+
+.qd-example-code code.hljs,
+.qd-example-code code.language-q {
+    display: block;
+    background: #f8f8f8;
+    color: #333;
+}
+
+.qd-example-link {
+    flex: 0 0 auto;
+    min-width: 28px;
+    height: 28px;
+    line-height: 26px;
+    text-align: center;
+    border: 1px solid #d6d6d6;
+    background: #f8f8f8;
+    color: #2980b9;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.qd-example-link:hover {
+    background: #eef5fb;
+    text-decoration: none;
+}

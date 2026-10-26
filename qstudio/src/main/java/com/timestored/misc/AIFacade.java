@@ -16,24 +16,66 @@
  */
 package com.timestored.misc;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.timestored.connections.JdbcTypes;
 
 import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
 
 public class AIFacade {
 
-	@Getter @Setter private static String openAIkey = "";
+	private static final Map<String, AIProvider> PROVIDERS = new LinkedHashMap<>();
+	private static AIProvider activeProvider;
+
+	static {
+		register(new OpenAIProvider());
+		register(new ClaudeProvider());
+		register(new CustomAIProvider());
+		activeProvider = PROVIDERS.values().iterator().next();
+	}
+
+	private static void register(AIProvider p) {
+		PROVIDERS.put(p.getName(), p);
+	}
+
+	/** Configure the active provider and its credentials. Called from preferences. */
+	public static void configure(String providerName, String apiKey, String model, String baseUrl) {
+		AIProvider p = PROVIDERS.get(providerName);
+		if (p == null) {
+			// Fall back to first provider if name doesn't match
+			p = PROVIDERS.values().iterator().next();
+		}
+		activeProvider = p;
+		p.setApiKey(apiKey);
+		p.setModel(model);
+		p.setBaseUrl(baseUrl);
+	}
+
+	public static List<String> getProviderNames() {
+		return new ArrayList<>(PROVIDERS.keySet());
+	}
+
+	public static String[] getModelOptions(String providerName) {
+		AIProvider p = PROVIDERS.get(providerName);
+		return p != null ? p.getModelOptions() : new String[] { "default" };
+	}
+
+	public static boolean isConfigured() {
+		return activeProvider != null && activeProvider.isConfigured();
+	}
+
+	public static String getConfigurationHelp() {
+		return activeProvider != null ? activeProvider.getConfigurationHelp()
+				: "You must configure an AI provider in Settings -> Preferences -> AI";
+	}
+
+	// ---- SQL / KDB prompt templates ----
 
 	private static final String SQL_PREP = "You are an sql expert. Given an input question, step by step create a syntactically correct sql query to run.\r\n"
 			+ "Unless the user specifies in the question a specific number of examples to obtain, query for at most 1000 results using the LIMIT clause as per SQL. You can order the results to return the most informative data in the database.\r\n"
@@ -61,147 +103,92 @@ public class AIFacade {
 	private static final String KDB_Q3 = "Question: Find the price of 'NFLX' trades in 15 minute bars from trades?";
 	private static final String KDB_A3 = "Answer: select count i by 15 xbar time.minute from trade where sym=`NFLX";
 
-	private static final String getKDBMessages(String tblInfo, String question) {
+	private static List<ChatMessage> getKDBMessages(String tblInfo, String question) {
 		String tbls = tblInfo != null ? tblInfo : "";
-		return "[{\"role\": \"user\", \"content\": \"" + KDB_PREP.replace("\n", "\\n").replace("\r", "\\r").replace("\"", "\\\"")
-				+ tbls.replace("\n", "\\n").replace("\r", "\\r") + "\"}\r\n"
-				+ ",{\"role\": \"user\", \"content\": \"" + KDB_Q1 + "\"}\r\n"
-				+ ",{\"role\": \"assistant\", \"content\": \"" + KDB_A1 + "\"}\r\n"
-				+ ",{\"role\": \"user\", \"content\": \"" + KDB_Q2 + "\"}\r\n"
-				+ ",{\"role\": \"assistant\", \"content\": \"" + KDB_A2 + "\"}\r\n"
-				+ ",{\"role\": \"user\", \"content\": \"" + KDB_Q3 + "\"}\r\n"
-				+ ",{\"role\": \"assistant\", \"content\": \"" + KDB_A3 + "\"}\r\n"
-				+ ",{\"role\": \"user\", \"content\": \"Question: "
-				+ question.replace("\n", "\\n").replace("\r", "\\r") + "\"}\r\n"
-				+ ",{\"role\": \"assistant\", \"content\": \"Answer: \"}\r\n" + "]\r\n";
+		List<ChatMessage> msgs = new ArrayList<>();
+		msgs.add(ChatMessage.system(KDB_PREP + tbls));
+		msgs.add(ChatMessage.user(KDB_Q1));
+		msgs.add(ChatMessage.assistant(KDB_A1));
+		msgs.add(ChatMessage.user(KDB_Q2));
+		msgs.add(ChatMessage.assistant(KDB_A2));
+		msgs.add(ChatMessage.user(KDB_Q3));
+		msgs.add(ChatMessage.assistant(KDB_A3));
+		msgs.add(ChatMessage.user("Question: " + question));
+		msgs.add(ChatMessage.assistant("Answer: "));
+		return msgs;
 	}
 
-	private static final String getSQLMessages(String tblInfo, String question) {
+	private static List<ChatMessage> getSQLMessages(String tblInfo, String question) {
 		String tbls = tblInfo != null ? tblInfo : "";
-		return "[{\"role\": \"user\", \"content\": \"" + SQL_PREP.replace("\n", "\\n").replace("\r", "\\r").replace("\"", "\\\"")
-				+ tbls.replace("\n", "\\n").replace("\r", "\\r") + "\"}\r\n"
-				+ ",{\"role\": \"user\", \"content\": \"" + SQL_Q1 + "\"}\r\n"
-				+ ",{\"role\": \"assistant\", \"content\": \"" + SQL_A1 + "\"}\r\n"
-				+ ",{\"role\": \"user\", \"content\": \"" + SQL_Q2 + "\"}\r\n"
-				+ ",{\"role\": \"assistant\", \"content\": \"" + SQL_A2 + "\"}\r\n"
-				+ ",{\"role\": \"user\", \"content\": \"" + SQL_Q3 + "\"}\r\n"
-				+ ",{\"role\": \"assistant\", \"content\": \"" + SQL_A3 + "\"}\r\n"
-				+ ",{\"role\": \"user\", \"content\": \"Question: "
-				+ question.replace("\n", "\\n").replace("\r", "\\r") + "\"}\r\n"
-				+ ",{\"role\": \"assistant\", \"content\": \"Answer: \"}\r\n" + "]\r\n";
+		List<ChatMessage> msgs = new ArrayList<>();
+		msgs.add(ChatMessage.system(SQL_PREP + tbls));
+		msgs.add(ChatMessage.user(SQL_Q1));
+		msgs.add(ChatMessage.assistant(SQL_A1));
+		msgs.add(ChatMessage.user(SQL_Q2));
+		msgs.add(ChatMessage.assistant(SQL_A2));
+		msgs.add(ChatMessage.user(SQL_Q3));
+		msgs.add(ChatMessage.assistant(SQL_A3));
+		msgs.add(ChatMessage.user("Question: " + question));
+		msgs.add(ChatMessage.assistant("Answer: "));
+		return msgs;
 	}
 
-	
+	// ---- Public query methods ----
+
 	@Data
 	public static class AIresult {
 		private final String jsonReturned;
 		private final String firstContent;
 		private final String firstCode;
 	}
-	
-	public static AIresult queryOpenAIstructured(JdbcTypes jdbcType, String tblInfo, String question) throws IOException {
-		String ret = queryOpenAI(jdbcType, tblInfo, question);
-		return processJSON(ret);
+
+	public static AIresult queryAIstructured(JdbcTypes jdbcType, String tblInfo, String question) throws IOException {
+		List<ChatMessage> msgs = jdbcType.isKDB() ? getKDBMessages(tblInfo, question) : getSQLMessages(tblInfo, question);
+		String response = activeProvider.chat(msgs);
+		return processResponse(response);
 	}
 
-	private static String unescape(String qCode) {
-		return qCode.replace("\\\\", "\\").replace("\\t", "\t")
-				.replace("\\r", "\r").replace("\\n", "\n")
-				.replace("\\\"", "\"");
-	}
-	
-	public static String queryOpenAI(JdbcTypes jdbcType, String tblInfo, String question) throws IOException {
-		if(openAIkey == null || openAIkey.length() < 2) {
-			throw new IllegalStateException("Open AI key isn't set");
-		}
-		
-		// Below line is needed to make call work in bundled JRE
-		// To test you must do full build and run with JRE.
-		System.setProperty("https.protocols", "TLSv1.2");
-		String msgs = jdbcType.isKDB() ? getKDBMessages(tblInfo, question) : getSQLMessages(tblInfo, question);
-		return queryOpenAIRaw(msgs);
+	public static AIresult queryAIstructured(String singleQuestion) throws IOException {
+		List<ChatMessage> msgs = new ArrayList<>();
+		msgs.add(ChatMessage.user(singleQuestion));
+		String response = activeProvider.chat(msgs);
+		return processResponse(response);
 	}
 
-	public static AIresult queryOpenAIstructured(String singleQuestion) throws IOException {
-		String qry = singleQuestion.replace("\n", "\\n").replace("\r", "\\r").replace("\"", "\\\"");
-		String qryJson = "[{\"role\": \"user\", \"content\": \"" + qry + "\"}]";
-		String ret = queryOpenAIRaw(qryJson);
-		return processJSON(ret);
-	}	
-	
-	
-	private static String queryOpenAIRaw(String msgs) throws IOException {
-		
-//		String msgs = getKDBMessages(tblInfo, question) ;
-		final String jsonInputString = "{\r\n" + "\r\n" + "    \"model\": \"gpt-3.5-turbo\",\r\n" + "\r\n"
-				+ "    \"messages\": " + msgs + "\r\n" + "  }";
-		final String url = "https://api.openai.com/v1/chat/completions";
-		HttpURLConnection urlConnection = (HttpURLConnection) ((new URL(url).openConnection()));
-		urlConnection.setDoOutput(true);
-		urlConnection.setRequestProperty("Authorization", "Bearer " + openAIkey);
-		urlConnection.setRequestProperty("Accept", "application/json");
-		urlConnection.setRequestProperty("Content-Type", "application/json");
-		urlConnection.setRequestMethod("POST");
-		urlConnection.setConnectTimeout(15000);
-		urlConnection.setReadTimeout(15000);
-		try (OutputStream os = urlConnection.getOutputStream()) {
-			System.out.println(jsonInputString);
-			byte[] input = jsonInputString.getBytes("utf-8");
-			os.write(input, 0, input.length);
-		}
-		if (urlConnection.getResponseCode() == HttpURLConnection.HTTP_OK) { // success
-			StringBuffer response = new StringBuffer();
-			try (BufferedReader in = new BufferedReader(new InputStreamReader(urlConnection.getInputStream()))) {
-				String inputLine;
-				while ((inputLine = in.readLine()) != null) {
-					response.append(inputLine).append("\n");
-				}
+	static AIresult processResponse(String responseText) {
+		String firstContent = responseText;
+		String firstCode = responseText;
+
+		String[] starts = new String[] { "answer:", "correct one:", "query:" };
+		String lowerS = firstCode.toLowerCase();
+		for (String st : starts) {
+			if (lowerS.indexOf(st) > 0) {
+				firstCode = firstCode.substring(lowerS.indexOf(st) + st.length());
+				break;
 			}
-			return response.toString();
-		}
-		return "{\"error\":" + urlConnection.getResponseCode() + ", \"errmsg\":\"" + urlConnection.getResponseMessage().replace('\"', '\'')+ "\"}";
-	}
-	
-	static AIresult processJSON(String rawJSON) {
-		String firstContent = "";
-		String firstCode = "";
-		if(rawJSON.contains("\"errmsg\":") || rawJSON.contains("\"error\":")) {
-			throw new IllegalStateException(rawJSON);
 		}
 
-		int cIdx = rawJSON.indexOf("\"content\":");
-		int logIdx = rawJSON.indexOf("logprobs");
-		if(cIdx > 0 && logIdx > cIdx) {
-			String s = rawJSON.substring(cIdx + "\"content\":".length(), logIdx);
-			int p = s.lastIndexOf("}");
-			if(p > 0) {
-				s = s.substring(0, p);
-				if(s.indexOf("\"") >= 0 && s.lastIndexOf("\"") > s.indexOf("\"")) {
-					s = s.substring(s.indexOf("\"")+1, s.lastIndexOf("\""));
-				}
-				firstContent = s;
-				firstCode = s;
-				String[] starts = new String[] { "answer:", "correct one:",  "query:" };
-				String lowerS = s.toLowerCase();
-				for(String st : starts) {
-					if(lowerS.indexOf(st) > 0) {
-						firstCode = s.substring(lowerS.indexOf(st) + st.length());
-						break;
-					}
-				}
-
-				int firstCidx = firstCode.indexOf("```\n");
-				if(firstCidx >= 0 && firstCode.lastIndexOf("```") > firstCidx) {
-					firstCode = firstCode.substring(firstCidx + "```\n".length(), firstCode.lastIndexOf("```"));
+		int firstCidx = firstCode.indexOf("```\n");
+		if (firstCidx >= 0 && firstCode.lastIndexOf("```") > firstCidx) {
+			firstCode = firstCode.substring(firstCidx + "```\n".length(), firstCode.lastIndexOf("```"));
+		}
+		// Also handle ```sql or ```q fenced blocks
+		if (firstCode.equals(responseText)) {
+			int langIdx = firstCode.indexOf("```");
+			if (langIdx >= 0) {
+				int nlAfterFence = firstCode.indexOf('\n', langIdx);
+				int closingFence = firstCode.lastIndexOf("```");
+				if (nlAfterFence >= 0 && closingFence > nlAfterFence) {
+					firstCode = firstCode.substring(nlAfterFence + 1, closingFence);
 				}
 			}
 		}
-		firstCode = unescape(firstCode);
-		firstContent = unescape(firstContent);
+
+		firstCode = firstCode.trim();
 		firstContent = wrap(firstContent, 120, "\n", false, "", "");
-		return new AIresult(rawJSON, firstContent, firstCode);
+		return new AIresult(responseText, firstContent, firstCode);
 	}
-	
+
 	/**Wraps a source String into a series of lines having a maximum specified length.  The source is
 	 * wrapped at: spaces, horizontal tabs, system newLine characters, or a specified newLine character
 	 * sequence.  Existing newLine character sequences in the source string, whether they be the system
@@ -217,40 +204,14 @@ public class AIFacade {
 	 * <code>longWordLinePrefix</code> can contain the horizontal tab character, the results are not
 	 * guaranteed because no attempt is made to determine the quantity of character positions occupied by a
 	 * horizontal tab.</p>
-	 * 
-	 * Example usage:
-	 * <pre>
-	 * wrap( "  A very long word is Abracadabra in my book", 11, "\n", true, "-", "  ");</pre>
-	 * returns (note the effect of the single-character lineFeed):
-	 * <pre>
-	 *   A very
-	 * long word
-	 * is Abraca-
-	 *   dabra in
-	 * my book</pre>
-	 * Whereas, the following:
-	 * <pre>
-	 * wrap( "  A very long word is Abracadabra in my book", 11, null, true, null, "  ");</pre>
-	 * returns (due to the 2-character system linefeed):
-	 * <pre>
-	 *   A very
-	 * long
-	 * word is A
-	 *   bracada
-	 *   bra in
-	 * my book</pre>
 	 *
 	 * @param src  the String to be word wrapped, may be null
 	 * @param lineLength the maximum line length, including the length of <code>newLineStr</code> and, when
-	 *        applicable, <code>longWordLinePrefix</code>.  If the value is insufficient to accommodate
-	 *        these two parameters + 1 character, it will be increased accordingly.
-	 * @param newLineStr the string to insert for a new line, or <code>null</code> to use the value
-	 *        reported as the system line separator by the JVM
+	 *        applicable, <code>longWordLinePrefix</code>.
+	 * @param newLineStr the string to insert for a new line, or <code>null</code> to use the system line separator
 	 * @param wrapLongWords  when <code>false</code>, words longer than <code>wrapLength</code> will not be broken
-	 * @param longWordBreak string with which to precede <code>newLineStr</code> on each line of a broken word,
-	 *        excepting the last line, or <code>null</code> if this feature is not to be used
-	 * @param longWordLinePrefix string with which to prefix each line of a broken word, subsequent
-	 *        to the first line, or <code>null</code> if no prefix is to be used
+	 * @param longWordBreak string with which to precede <code>newLineStr</code> on each line of a broken word
+	 * @param longWordLinePrefix string with which to prefix each line of a broken word, subsequent to the first line
 	 * @return a line with newlines inserted, or <code>null</code> if <code>src</code> is null
 	 */
 	public static String wrap(String src, int lineLength, String newLineStr, boolean wrapLongWords,
@@ -261,7 +222,7 @@ public class AIFacade {
 		String nl = newLineStr == null ? System.getProperty("line.separator") : newLineStr;
 		String lwb = longWordBreak == null ? "" : longWordBreak;
 		String lwprefix = longWordLinePrefix == null ? "" : longWordLinePrefix;
-		int lLength = lineLength - newLineStr.length();
+		int lLength = lineLength - nl.length();
 		if (lLength < 1) {
 			lLength = 1;
 		}

@@ -79,6 +79,11 @@ class Dotz extends BuiltinDocumentedEntities implements DocumentedEntity,DocSour
 		dz.add(new Dotz(".z.pm","HTTP methods callback (OPTIONS, PATCH, PUT, DELETE)."));
 		dz.add(new Dotz(".z.pq","Callback for qcon protocol connections."));
 		dz.add(new Dotz(".z.r","Indicates whether updates in this context are blocked."));
+		dz.add(new Dotz(".z.M","Module namespace name."));
+		dz.add(new Dotz(".z.m","Module namespace."));
+		dz.add(new Dotz(".z.X","Raw command line (before parsing)."));
+		dz.add(new Dotz(".z.wc","WebSocket close callback."));
+		dz.add(new Dotz(".z.wo","WebSocket open callback."));
 
 		knownDotz = Collections.unmodifiableList(dz);
 	}

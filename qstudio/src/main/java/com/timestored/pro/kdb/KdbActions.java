@@ -21,7 +21,6 @@ import com.timestored.misc.IOUtils;
 import com.timestored.qstudio.CommonActions;
 import com.timestored.qstudio.Persistance;
 import com.timestored.qstudio.QStudioModel;
-import com.timestored.qstudio.UpdateHelper;
 import com.timestored.theme.ShortcutAction;
 import com.timestored.theme.Theme;
 

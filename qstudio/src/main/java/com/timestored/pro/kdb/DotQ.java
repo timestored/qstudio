@@ -116,8 +116,15 @@ class DotQ extends BuiltinDocumentedEntities implements DocumentedEntity,DocSour
 		dq.add(new DotQ(".Q.Xf","Deprecated. Create empty nested-vector file."));
 		dq.add(new DotQ(".Q.x","Non-command command-line arguments from .Q.opt/.z.X."));
 		dq.add(new DotQ(".Q.st","Timespace statistics helper (documented as ts/st)."));
+		dq.add(new DotQ(".Q.A","Upper-case alphabet (\"ABCDEFGHIJKLMNOPQRSTUVWXYZ\")."));
+		dq.add(new DotQ(".Q.a","Lower-case alphabet (\"abcdefghijklmnopqrstuvwxyz\")."));
+		dq.add(new DotQ(".Q.an","All alphanumerics (alphabets and digits)."));
+		dq.add(new DotQ(".Q.K","Version date for which q.k was written."));
+		dq.add(new DotQ(".Q.vt","Table types (set by .Q.bv), used during partitioned select."));
+		dq.add(new DotQ(".Q.p1","Partitioned select helper, used internally by .Q.ps."));
+		dq.add(new DotQ(".Q.ps","Partitioned select — applies a where-clause to each partition."));
 
-		
+
 		knownDotQ = Collections.unmodifiableList(dq);
 	}
 

@@ -16,10 +16,8 @@
  */
 package com.timestored.qstudio;
 
-import java.awt.Desktop;
 import java.awt.event.ActionEvent;
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -33,7 +31,9 @@ import com.timestored.docs.Document;
 import com.timestored.docs.OpenDocumentsModel;
 import com.timestored.messages.Msg;
 import com.timestored.messages.Msg.Key;
+import com.timestored.misc.HtmlUtils;
 import com.timestored.qdoc.HtmlPqfOutputter;
+import com.timestored.qdoc.parser.*;
 import com.timestored.swingxx.SwingUtils;
 import com.timestored.theme.Theme;
 
@@ -70,6 +70,12 @@ public class GenerateDocumentationAction extends AbstractAction {
 			lastSelectedDocGenFolder = fc.getSelectedFile();
 			List<Document> docs = openDocumentsModel.getDocuments();
 			List<String> errors = HtmlPqfOutputter.output(docs, lastSelectedDocGenFolder, null);
+			// Also generate metrics and lint reports
+			try {
+				com.timestored.qdoc.QDocMain.generateReports(docs, lastSelectedDocGenFolder);
+			} catch (Exception e) {
+				LOG.warning("Error generating reports: " + e.getMessage());
+			}
 			if(errors.size()>0) {
 				String title = Msg.get(Key.ERROR_GENERATING_DOCS);
 				String message = Joiner.on("\r\n").join(errors);

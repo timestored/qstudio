@@ -13,7 +13,6 @@ import javax.swing.JPopupMenu;
 import com.timestored.TimeStored;
 import com.timestored.qstudio.CommonActions;
 import com.timestored.qstudio.Persistance;
-import com.timestored.qstudio.UpdateHelper;
 import com.timestored.qstudio.Persistance.Key;
 import com.timestored.qstudio.model.AdminModel;
 import com.timestored.qstudio.model.DatabaseDirector.ActionsGenerator;

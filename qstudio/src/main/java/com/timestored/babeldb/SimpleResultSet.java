@@ -432,7 +432,7 @@ public class SimpleResultSet extends BaseResultSet implements CachedRowSet {
 		case java.sql.Types.BIGINT: return val instanceof Long ? val : 0;
 		case java.sql.Types.BOOLEAN: return val instanceof Boolean ? val : false;
 		case java.sql.Types.TIMESTAMP: 
-			// Note: this conversion may lose some precision when converting Double -> Long
+			// This is quite horrible in that it will convert Double -> Long -> then lose some precision :(
 			if(val instanceof Long) {
 				long v = (Long) val;
 				if(v > 1002857600 && v < 3002857600l) { // between this range is seconds

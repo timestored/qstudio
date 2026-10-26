@@ -22,6 +22,7 @@ import java.util.List;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
 
+import com.timestored.connections.ServerConfig;
 import com.timestored.qstudio.model.QueryAdapter;
 import com.timestored.qstudio.model.QueryManager;
 
@@ -57,14 +58,35 @@ class ServerNameComboBox extends JComboBox {
 	}
 
 	private void refresh() {
-		String selServer = queryManager.getSelectedServerName(); 
+		String selServer = queryManager.getSelectedServerName();
 		String mySel = (String) getSelectedItem();
 		if(selServer != null && !selServer.equals(mySel)) {
 			setSelectedItem(selServer);
 		}
+		refreshTooltip();
 	}
-	
+
 	@Override public void actionPerformed(ActionEvent e) {
 		queryManager.setSelectedServerName((String) getSelectedItem());
+		refreshTooltip();
+	}
+
+	/** Update the combo's tooltip to show host:port / DB / Type for the currently-selected server. */
+	private void refreshTooltip() {
+		String name = (String) getSelectedItem();
+		ServerConfig sc = name == null ? null : queryManager.getServer(name);
+		if(sc == null) { setToolTipText(null); return; }
+		StringBuilder msg = new StringBuilder("<html>");
+		if(sc.getPort() != 0) {
+			msg.append("<b>").append(sc.getHost()).append(':').append(sc.getPort()).append("</b>");
+		}
+		if(sc.getDatabase() != null && !sc.getDatabase().isEmpty()) {
+			if(msg.length() > 6) msg.append("<br />");
+			msg.append("DB: <b>").append(sc.getDatabase()).append("</b>");
+		}
+		if(msg.length() > 6) msg.append("<br />");
+		msg.append("Type: <b>").append(sc.getJdbcType()).append("</b>");
+		msg.append("</html>");
+		setToolTipText(msg.toString());
 	}
 }

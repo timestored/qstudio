@@ -6,7 +6,6 @@ import static org.junit.Assert.fail;
 import java.io.File;
 import java.io.IOException;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -63,13 +62,13 @@ public class KdbTestHelper {
 		if(proc!=null || proc_b!=null) {
 			throw new IllegalStateException("Q Proc already started");
 		}
-		latestDir = Files.createTempDir();
+		latestDir = java.nio.file.Files.createTempDirectory("qstudt").toFile();
 		// Close when last connection is gone.
 //		File tempFile = File.createTempFile(".z.pc:{if[0=count .z.W; exit 0]}", ".q");
 //		IOUtils.writeStringToFile(QHOST, tempFile);
 		
-		proc = CmdRunner.startProc("q -p " + QPORT, latestDir);
-		proc_b = CmdRunner.startProc("q -p " + (QPORT+1), latestDir);
+		proc = CmdRunner.startProc("c:\\q\\w32\\q -p " + QPORT, latestDir);
+		proc_b = CmdRunner.startProc("c:\\q\\w32\\q -p " + (QPORT+1), latestDir);
 		Thread.sleep(200); // give it time to start
 		
 	}

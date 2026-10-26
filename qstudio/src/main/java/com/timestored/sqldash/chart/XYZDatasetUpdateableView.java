@@ -60,17 +60,21 @@ class XYZDatasetUpdateableView implements UpdateableView {
 			for(int series = 0; series<dataset.getSeriesCount(); series++) {
 				for(int item=0; item<dataset.getItemCount(series); item++) {
 					double x = dataset.getX(series, item).doubleValue();
-					if(x < minX) {
-						minX = x;
-					} else if(x > maxX) {
-						maxX = x;
+					if(Double.isFinite(x)) {
+						if(x < minX) {
+							minX = x;
+						} else if(x > maxX) {
+							maxX = x;
+						}
 					}
 
 					double y = dataset.getY(series, item).doubleValue();
-					if(y < minY) {
-						minY = y;
-					} else if(y > maxY) {
-						maxY = y;
+					if(Double.isFinite(y)) {
+						if(y < minY) {
+							minY = y;
+						} else if(y > maxY) {
+							maxY = y;
+						}
 					}
 				}
 			}		
@@ -78,10 +82,19 @@ class XYZDatasetUpdateableView implements UpdateableView {
 			NumberAxis numberaxisX = (NumberAxis) xyplot.getDomainAxis();
 			numberaxisX.setLabel(numCols.get(0).getLabel());
 			numberaxisX.setRange(minX > 0? 0 : minX*1.5, maxX < 0? 0 : maxX*1.15);
+			double rangeMinX = minX > 0? 0 : minX*1.5;
+			double rangeMaxX = maxX < 0? 0 : maxX*1.15;
+			if(Double.isFinite(rangeMinX) && Double.isFinite(rangeMaxX) && rangeMinX < rangeMaxX) {
+				numberaxisX.setRange(rangeMinX, rangeMaxX);
+			}
 			
 			NumberAxis numberaxisY = (NumberAxis) xyplot.getRangeAxis();
 			numberaxisY.setLabel(numCols.get(1).getLabel());
-			numberaxisY.setRange(minY > 0? 0 : minY*1.5, maxY < 0? 0 : maxY*1.15);
+			double rangeMinY = minY > 0? 0 : minY*1.5;
+			double rangeMaxY = maxY < 0? 0 : maxY*1.15;
+			if(Double.isFinite(rangeMinY) && Double.isFinite(rangeMaxY) && rangeMinY < rangeMaxY) {
+				numberaxisY.setRange(rangeMinY, rangeMaxY);
+			}
 		}
 		
 	}
