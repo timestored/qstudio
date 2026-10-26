@@ -8,6 +8,10 @@ on:
   pull_request:
     paths: [ "macos/**", ".github/workflows/macos.yml" ]
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing release to attach the .dmg files to (optional, e.g. 5.09)"
+        required: false
   release:
     types: [ published ]
 
@@ -37,13 +41,13 @@ jobs:
     # jpackage only exists in JDK 16+, so JDK 17 packages the app while the app itself runs on a JDK 11 runtime.
     - name: Set up JDK 17 (jpackage)
       id: jdk17
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         java-version: '17'
         distribution: 'temurin'
     - name: Set up JDK 11 (build and bundled runtime)
       id: jdk11
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         java-version: '11'
         distribution: 'temurin'
@@ -82,6 +86,13 @@ jobs:
           --java-options '--add-exports=java.desktop/com.apple.eawt=ALL-UNNAMED'
         echo "APP=build/out/QStudio.app" >> $GITHUB_ENV
 
+    # Not notarized, but an intact ad-hoc signature means a downloaded app gets the normal
+    # "unidentified developer / Open Anyway" prompt rather than "QStudio is damaged".
+    - name: Ad-hoc sign QStudio.app
+      run: |
+        codesign --force --deep --sign - "$APP"
+        codesign --verify --deep --strict --verbose=2 "$APP"
+
     - name: Smoke test with bundled Java
       run: |
         file "$APP/Contents/runtime/Contents/Home/lib/libjli.dylib"
@@ -105,8 +116,13 @@ jobs:
       run: |
         "${{ steps.jdk17.outputs.path }}/bin/jpackage" --type dmg --dest build/dmg \
           --name QStudio --app-version "$VERSION" --vendor TimeStored --app-image "$APP"
-        mv build/dmg/QStudio-$VERSION.dmg build/dmg/QStudio-$VERSION-macos-${{ matrix.arch }}.dmg
+        DMG=build/dmg/QStudio-$VERSION-macos-${{ matrix.arch }}.dmg
+        mv build/dmg/QStudio-$VERSION.dmg "$DMG"
         ls -la build/dmg
+        # Check the app users get from the .dmg still has a valid signature
+        hdiutil attach -nobrowse -readonly -mountpoint build/mnt "$DMG"
+        codesign --verify --deep --strict --verbose=2 build/mnt/QStudio.app
+        hdiutil detach build/mnt
 
     - uses: actions/upload-artifact@v4
       if: always()
@@ -119,7 +135,8 @@ jobs:
           build/smoke.txt
 
     - name: Attach .dmg to release
-      if: github.event_name == 'release'
+      if: github.event_name == 'release' || inputs.release_tag
       env:
         GH_TOKEN: ${{ github.token }}
-      run: gh release upload "${{ github.event.release.tag_name }}" build/dmg/*.dmg --clobber
+        TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+      run: gh release upload "$TAG" build/dmg/*.dmg --clobber
