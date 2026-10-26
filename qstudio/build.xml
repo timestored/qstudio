@@ -99,6 +99,20 @@
 
 
 	
+	<!-- Single runnable jar with all of lib merged in. Used by the macOS app build. -->
+	<target name="jarr" depends="build">
+		<jar destfile="${TARGET.DIR}/qstudio-merged.jar" basedir="${MAIN.DIR}" duplicate="preserve">
+			<zipgroupfileset dir="${JAR.DIR}" includes="*.jar" excludes="junit-*.jar" />
+		</jar>
+		<!-- Remove signature files from merged dependency jars to avoid SecurityException -->
+		<jar destfile="${TARGET.DIR}/dist/qstudio.jar">
+			<zipfileset src="${TARGET.DIR}/qstudio-merged.jar" excludes="META-INF/*.SF,META-INF/*.DSA,META-INF/*.RSA,META-INF/MANIFEST.MF" />
+			<manifest>
+				<attribute name="Main-Class" value="com.timestored.qstudio.QStudioLauncher" />
+			</manifest>
+		</jar>
+	</target>
+
 	<target name="all" depends="test"></target>
 
 

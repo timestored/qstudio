@@ -500,9 +500,11 @@ public class CommonActions implements CommandProvider {
 	public static String compilePRQL(String qry, JdbcTypes jdbcTypes) throws IOException {
 		
 		String target = getPrqlTarget(jdbcTypes);
-		String[] commands = new String[] { "prqlc","compile", "--hide-signature-comment", "--color", "never" };
+		// Packaged apps (e.g. the macOS .app) pass the bundled compiler location, as Finder launches don't inherit the user's PATH.
+		String prqlc = System.getProperty("prqlc.path", "prqlc");
+		String[] commands = new String[] { prqlc,"compile", "--hide-signature-comment", "--color", "never" };
 		if(target != null && !qry.contains("prql target:")) {
-			commands = new String[] { "prqlc","compile", "--hide-signature-comment", "--color", "never", "--target", target };
+			commands = new String[] { prqlc,"compile", "--hide-signature-comment", "--color", "never", "--target", target };
 		}
 		
 		Process process = new ProcessBuilder(commands).redirectErrorStream(true).start();
