@@ -1,3 +1,4 @@
 .gradle
 build
 /qstudio/src/main/resources
+/customauth/bin
