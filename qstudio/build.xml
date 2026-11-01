@@ -105,7 +105,7 @@
 			<zipgroupfileset dir="${JAR.DIR}" includes="*.jar" excludes="junit-*.jar" />
 		</jar>
 		<!-- Remove signature files from merged dependency jars to avoid SecurityException -->
-		<jar destfile="${TARGET.DIR}/dist/qstudio.jar">
+		<jar destfile="${TARGET.DIR}/dist/qstudio-fork.jar">
 			<zipfileset src="${TARGET.DIR}/qstudio-merged.jar" excludes="META-INF/*.SF,META-INF/*.DSA,META-INF/*.RSA,META-INF/MANIFEST.MF" />
 			<manifest>
 				<attribute name="Main-Class" value="com.timestored.qstudio.QStudioLauncher" />
