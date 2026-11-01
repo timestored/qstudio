@@ -194,7 +194,12 @@ public class TimeStringValuer implements StringValue {
 				s = o.toString();
 			} else if(o instanceof java.sql.Timestamp) {
 				Timestamp ts = (Timestamp) o;
-				s =  dtWithMillisFormat.format(ts) + nanosEndFormat.format((ts.getNanos()%1000000)/1000);
+				s = dtWithMillisFormat.format(ts);
+				// Show microseconds only when there are some, so millisecond columns aren't padded with 000.
+				int micros = (ts.getNanos() % 1000000) / 1000;
+				if(micros != 0) {
+					s += nanosEndFormat.format(micros);
+				}
 			} else if(o instanceof Instant) {
 				s = dtformatter.format((Instant) o);
 			} else if(o instanceof LocalDate) {
