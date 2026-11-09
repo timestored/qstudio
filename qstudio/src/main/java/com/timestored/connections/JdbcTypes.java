@@ -186,8 +186,53 @@ public enum JdbcTypes {
 	DOLPHINDB("DolphinDB","com.dolphindb.jdbc.Driver",9200,"jdbc:dolphindb://{host}:{port}","https://dolphindb.com/","maven:/com.dolphindb:jdbc:3.00.0.1","com/dolphindb/jdbc/3.00.0.1/jdbc-3.00.0.1-jar-with-dependencies.jar"),
 	// Special but potentially popular cases 
 	MONGODB("MongoDB","com.mongodb.jdbc.MongoDriver",27017,"jdbc:mongodb://{host}[:{port}][/{database}]","https://mongodb.com","https://repo1.maven.org/maven2/org/mongodb/mongodb-jdbc/2.0.2/mongodb-jdbc-2.0.2-all.jar", "org/mongodb/mongodb-jdbc/2.0.2/mongodb-jdbc-2.0.2-all.jar"),
-	//jdbc:arrow-flight-sql://us-east-1-1.aws.cloud2.influxdata.com:443?disableCertificateVerification=true&database=BUCKET_NAME
-	INFLUXDB("InfluxDB","com.mongodb.jdbc.MongoDriver",27017,"jdbc:arrow-flight-sql://{host}:{port}?disableCertificateVerification=true[&database={database}]","https://mongodb.com","https://repo1.maven.org/maven2/org/apache/arrow/flight-sql-jdbc-driver/12.0.1/flight-sql-jdbc-driver-12.0.1.jar","org/apache/arrow/flight-sql-jdbc-driver/12.0.1/flight-sql-jdbc-driver-12.0.1.jar"),
+	// InfluxDB v3 using Arrow Flight SQL JDBC Driver
+	// InfluxDB v1 and v2 not supported
+	// Example URL:
+	// jdbc:arrow-flight-sql://localhost:8181?useEncryption=false&disableCertificateVerification=true&database=demo
+	// https://arrow.apache.org/docs/12.0/java/flight_sql_jdbc_driver.html
+	// The driver is compatible with JDK 8+. On JDK 9+, the following JVM parameter is required:
+	// java --add-opens=java.base/java.nio=ALL-UNNAMED ...
+	INFLUXDB("InfluxDB v3","org.apache.arrow.driver.jdbc.ArrowFlightJdbcDriver",8181,"jdbc:arrow-flight-sql://{host}:{port}?useEncryption=false&disableCertificateVerification=true&database={database}&token={password}","https://docs.influxdata.com/influxdb3/core/reference/client-libraries/flight/","https://repo1.maven.org/maven2/org/apache/arrow/flight-sql-jdbc-driver/12.0.1/flight-sql-jdbc-driver-12.0.1.jar","org/apache/arrow/flight-sql-jdbc-driver/12.0.1/flight-sql-jdbc-driver-12.0.1.jar"){
+		// 重载以添加 token 参数
+		// 使用 password 字段来保存 token
+		//  InfluxDB Arrow Flight SQL 驱动的认证机制要求：
+		//   - 必须通过Properties的password字段传递token
+		//   - URL中的token参数可能是次要的或被忽略的
+		//   - 当Properties的password为空时，无论URL中是否有token，认证都会失败
+		//
+		// Override to add token parameter
+		// use password field to hold token
+		// The authentication mechanism of the InfluxDB Arrow Flight SQL driver requires:
+		//   - The token must be passed via the password field in Properties
+		//   - The token parameter in the URL may be secondary or ignored
+		//   - If the password in Properties is empty, authentication will fail regardless of 
+		// whether the URL contains a token
+		@Override public String getURL(ServerConfig sc) {
+			if(sc.getPort() == 0) {
+				// URL模式：
+				// 从URL中移除token参数，必须通过 password 传递
+				//
+				// If port is zero, use URL
+				// URL mode: remove the token parameter from the URL, 
+				// passed via the password in Properties
+				String url = sc.getDatabase();
+				if(url.contains("token=") && sc.getPassword() != null && !sc.getPassword().isEmpty()) {
+					url = url.replaceAll("&?token=[^&]*", "");
+					if(url.endsWith("?") || url.endsWith("&")) {
+						url = url.substring(0, url.length() - 1);
+					}
+				}
+          		return url;
+			}
+			String s = getSampleURL();
+			s = replaceK(s, "host", sc.getHost());
+			s = replaceK(s, "port", ""+sc.getPort());
+			s = replaceK(s, "database", sc.getDatabase());
+			s = replaceK(s, "password", sc.getPassword());
+			return s;
+		}
+	},
 
 	TDENGINE("TDengine","com.taosdata.jdbc.rs.RestfulDriver",6041,"jdbc:TAOS-RS://{host}:{port}/[{database}]","http://www.tdengine.com","maven:/com.taosdata.jdbc:taos-jdbcdriver:RELEASE[3.2.4]","com/taosdata/jdbc/taos-jdbcdriver/3.2.4/taos-jdbcdriver-3.2.4-dist.jar"),
 	ORACLE("Oracle","oracle.jdbc.driver.OracleDriver",1521,"jdbc:oracle:thin:@{host}:{port}/[{database}]","https://www.oracle.com/uk/database/","maven:/com.oracle.database.jdbc:ojdbc8:RELEASE[19.19.0.0]","/com/oracle/database/jdbc/ojdbc8/19.19.0.0/ojdbc8-19.19.0.0.jar"),
