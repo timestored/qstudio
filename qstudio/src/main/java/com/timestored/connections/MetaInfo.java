@@ -67,6 +67,10 @@ import lombok.NonNull;
 	public static MetaInfo getMetaInfo(ConnectionManager connMan, ServerConfig serverConfig) throws Exception {
 		Exception err = null;
 		MetaInfo r = null;
+		if(serverConfig.getJdbcType().equals(JdbcTypes.IOTDB)) {
+			r = getIoTDBMetaInfo(connMan, serverConfig);
+			if(r != null && r.getColumnInfo().size()>0) { return r; }
+		}
 		// Cascade through each method until sensible return encountered
 		if(serverConfig.getJdbcType().equals(JdbcTypes.TDENGINE)) {
 			String tdsql = "SELECT '' AS TABLE_CAT,db_name AS TABLE_SCHEM,table_name,COL_NAME AS COLUMN_NAME,0 AS DATA_TYPE,col_type AS TYPE_NAME FROM INFORMATION_SCHEMA.INS_COLUMNS";
@@ -89,6 +93,102 @@ import lombok.NonNull;
 			throw err;
 		}
 		return MetaInfo.empty();
+	}
+
+	private static MetaInfo getIoTDBMetaInfo(ConnectionManager connMan, ServerConfig serverConfig) {
+		try {
+			MetaInfo treeMeta = fromIoTDBTreeRs(connMan.executeQuery(serverConfig, "SHOW TIMESERIES root.**"));
+			if(treeMeta != null && !treeMeta.getColumnInfo().isEmpty()) { return treeMeta; }
+		} catch(Exception e) {
+			LOG.info("IoTDB tree metadata query unavailable: " + e.getMessage());
+		} catch(Throwable t) {
+			LOG.info(t.getLocalizedMessage());
+		}
+
+		try {
+			String sql = "SELECT database, table_name, column_name, datatype FROM information_schema.columns";
+			MetaInfo tableMeta = fromIoTDBTableRs(connMan.executeQuery(serverConfig, sql));
+			if(tableMeta != null && !tableMeta.getColumnInfo().isEmpty()) { return tableMeta; }
+		} catch(Exception e) {
+			LOG.info("IoTDB table metadata query unavailable: " + e.getMessage());
+		} catch(Throwable t) {
+			LOG.info(t.getLocalizedMessage());
+		}
+		return null;
+	}
+
+	private static MetaInfo fromIoTDBTreeRs(ResultSet rs) throws SQLException {
+		List<ColumnInfo> colInfos = new ArrayList<>();
+		if(rs != null) {
+			try {
+				while(rs.next()) {
+					ColumnInfo columnInfo = fromIoTDBTreeSeries(safeGet(rs, 1), safeGet(rs, 4));
+					if(columnInfo != null) { colInfos.add(columnInfo); }
+				}
+			} finally {
+				try { rs.close(); } catch(Exception e) {}
+			}
+		}
+		return new MetaInfo(colInfos);
+	}
+
+	private static MetaInfo fromIoTDBTableRs(ResultSet rs) throws SQLException {
+		List<ColumnInfo> colInfos = new ArrayList<>();
+		if(rs != null) {
+			try {
+				while(rs.next()) {
+					colInfos.add(fromIoTDBTableColumn(safeGet(rs, 1), safeGet(rs, 2), safeGet(rs, 3), safeGet(rs, 4)));
+				}
+			} finally {
+				try { rs.close(); } catch(Exception e) {}
+			}
+		}
+		return new MetaInfo(colInfos);
+	}
+
+	static ColumnInfo fromIoTDBTreeSeries(String seriesPath, String typeName) {
+		if(seriesPath == null) { return null; }
+		int separator = lastUnquotedPathSeparator(seriesPath);
+		if(separator <= 0 || separator == seriesPath.length() - 1) { return null; }
+		return new ColumnInfo("", "", seriesPath.substring(0, separator), seriesPath.substring(separator + 1),
+				typeName == null ? "" : typeName, 0);
+	}
+
+	static ColumnInfo fromIoTDBTableColumn(String database, String tableName, String columnName, String typeName) {
+		return new ColumnInfo("", nonNull(database), nonNull(tableName), nonNull(columnName), nonNull(typeName), 0);
+	}
+
+	private static int lastUnquotedPathSeparator(String path) {
+		char quote = 0;
+		int separator = -1;
+		for(int i = 0; i < path.length(); i++) {
+			char c = path.charAt(i);
+			if(c == '`' || c == '"') {
+				if(quote == c && i + 1 < path.length() && path.charAt(i + 1) == c) {
+					i++;
+				} else if(quote == 0) {
+					quote = c;
+				} else if(quote == c) {
+					quote = 0;
+				}
+			} else if(c == '.' && quote == 0) {
+				separator = i;
+			}
+		}
+		return separator;
+	}
+
+	private static String safeGet(ResultSet rs, int col) {
+		try {
+			String value = rs.getString(col);
+			return value == null ? "" : value;
+		} catch(Exception e) {
+			return "";
+		}
+	}
+
+	private static String nonNull(String value) {
+		return value == null ? "" : value;
 	}
 
 	private static MetaInfo getTables(ConnectionManager connMan, ServerConfig serverConfig) throws IOException, SQLException {

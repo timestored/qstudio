@@ -13,6 +13,8 @@ Changelog:
 					- Upgrade SQLite driver to 3.53.4.0. Old 3.42.0.0 driver could crash on macOS.
 					- qDoc - improved tag and code example rendering.
 
+2026-11-18 - Add Apache IoTDB JDBC support and metadata browsing.
+
 2026-05-02 - 5.08	- Display Zoom — Ctrl+Plus/Minus/Zero or Ctrl+MouseScroll resizes UI or code font.
 					- Remote SSH Folders auto-reconnect on restart for both password and private-key profiles.
 
@@ -338,4 +340,3 @@ Changelog:
 2013-01-25 - 1.21   - Mac UI Improvements (thanks Charlie)
 					
 2013-01-24 - 1.20   - Results Table shows wide tables with scrollbar (thanks Weiyi)
-					
