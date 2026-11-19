@@ -102,6 +102,7 @@ public enum JdbcIcons implements Icon {
 		case SNOWFLAKE: return DB_SNOWFLAKE;
 		case SQLITE_JDBC: return DB_SQLITE;
 		case TDENGINE: return DB_TDENGINE;
+		case IOTDB: return DB_APACHE;
 		case DOLPHINDB: return DB_DOLPHIN;
 		case APACHE_CALCITE_AVATICA: return DB_CALCITE;
 		case APACHE_KYLIN: return DB_APACHE;

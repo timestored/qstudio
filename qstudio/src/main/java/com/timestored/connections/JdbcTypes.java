@@ -192,7 +192,11 @@ public enum JdbcTypes {
 	TDENGINE("TDengine","com.taosdata.jdbc.rs.RestfulDriver",6041,"jdbc:TAOS-RS://{host}:{port}/[{database}]","http://www.tdengine.com","maven:/com.taosdata.jdbc:taos-jdbcdriver:RELEASE[3.2.4]","com/taosdata/jdbc/taos-jdbcdriver/3.2.4/taos-jdbcdriver-3.2.4-dist.jar"),
 	ORACLE("Oracle","oracle.jdbc.driver.OracleDriver",1521,"jdbc:oracle:thin:@{host}:{port}/[{database}]","https://www.oracle.com/uk/database/","maven:/com.oracle.database.jdbc:ojdbc8:RELEASE[19.19.0.0]","/com/oracle/database/jdbc/ojdbc8/19.19.0.0/ojdbc8-19.19.0.0.jar"),
 	BABELDB("BabelDB", "com.timestored.babeldb.BabelDBJdbcDriver", 80, "jdbc:babeldb:"),
-	REDSHIFT("RedShift","com.amazon.redshift.jdbc.Driver",5439,"jdbc:redshift:{host}:{port}/[{database}]","https://aws.amazon.com/redshift/","maven:/com.amazon.redshift:redshift-jdbc42:RELEASE[2.1.0.28]","/com/amazon/redshift/redshift-jdbc42/2.1.0.28/redshift-jdbc42-2.1.0.28.jar")
+	REDSHIFT("RedShift","com.amazon.redshift.jdbc.Driver",5439,"jdbc:redshift:{host}:{port}/[{database}]","https://aws.amazon.com/redshift/","maven:/com.amazon.redshift:redshift-jdbc42:RELEASE[2.1.0.28]","/com/amazon/redshift/redshift-jdbc42/2.1.0.28/redshift-jdbc42-2.1.0.28.jar"),
+	IOTDB("Apache IoTDB", "org.apache.iotdb.jdbc.IoTDBDriver", 6667,
+			"jdbc:iotdb://{host}:{port}[/{database}]", "https://iotdb.apache.org/",
+			"maven:/org.apache.iotdb:iotdb-jdbc:2.0.11",
+			"org/apache/iotdb/iotdb-jdbc/2.0.11/iotdb-jdbc-2.0.11-jar-with-dependencies.jar")
 	;
 
 

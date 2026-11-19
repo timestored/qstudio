@@ -1066,6 +1066,15 @@ public class ConnectionManager implements AutoCloseable {
 	public static final String APP_TITLE = "QStudio";
 	@Setter private static String appname = APP_TITLE;
 
+	static Properties getDriverProperties(ServerConfig sc) {
+		Properties properties = new Properties();
+		if (sc.getJdbcType() != JdbcTypes.IOTDB || sc.hasLogin()) {
+			properties.setProperty("user", sc.getUsername());
+			properties.setProperty("password", sc.getPassword());
+		}
+		return properties;
+	}
+
 	private static class MyDriverManagerConnectionFactory implements ConnectionFactory {
 		private ServerConfig sc;
 		public MyDriverManagerConnectionFactory(ServerConfig sc) {
@@ -1075,9 +1084,7 @@ public class ConnectionManager implements AutoCloseable {
 			try {
 				String driverName = sc.getJdbcType().getDriver();
 				Class<?> driver = PluginLoader.getCClass(appname, driverName);
-				Properties p = new Properties();
-				p.setProperty("user", sc.getUsername());
-				p.setProperty("password", sc.getPassword());
+				Properties p = getDriverProperties(sc);
 				return ((Driver) driver.newInstance()).connect(sc.getUrl(), p);
 			} catch (InstantiationException | IllegalAccessException | SQLException | ClassNotFoundException e) {
 				// TODO Auto-generated catch block
